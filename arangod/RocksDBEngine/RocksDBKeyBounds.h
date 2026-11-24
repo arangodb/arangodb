@@ -178,9 +178,8 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds VectorVPackIndex(uint64_t indexId);
 
-  /// @brief Bounds for all entries of a bitmap index; `type` selects the
-  /// column family of its variant
-  static RocksDBKeyBounds BitmapIndex(uint64_t indexId, RocksDBEntryType type);
+  /// @brief Bounds for all entries of a RocksDB inverted index
+  static RocksDBKeyBounds RocksDBInvertedIndex(uint64_t indexId);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);

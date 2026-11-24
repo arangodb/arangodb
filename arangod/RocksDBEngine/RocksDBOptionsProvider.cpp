@@ -23,7 +23,7 @@
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
 #include "Basics/VelocyPackHelper.h"
-#include "RocksDBEngine/RocksDBBitmapIndexMergeOperator.h"
+#include "RocksDBEngine/InvertedIndex/MergeOperator.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
@@ -77,27 +77,13 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
       break;
     }
-    case RocksDBColumnFamilyManager::Family::BitmapIndex: {
-      // keys are object id | velocypack array | shard, compared like the
-      // velocypack indexes so that values AQL considers equal share a key.
-      // equal keys may differ in their bytes, so there is no bloom filter.
-      rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
-      tableOptions.filter_policy.reset();
-      result.table_factory = std::shared_ptr<rocksdb::TableFactory>(
-          rocksdb::NewBlockBasedTableFactory(tableOptions));
-      result.comparator = _vpackCmp.get();
-      // the object id comes first and is compared bytewise
+    case RocksDBColumnFamilyManager::Family::RocksDBInvertedIndex: {
+      // keys are object id | term | shard. terms are normalized so that
+      // equal values have equal bytes, see inverted_index::normalizedTerm, and
+      // keys compare bytewise
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-      bitmap_index::configureColumnFamily(result);
-      break;
-    }
-    case RocksDBColumnFamilyManager::Family::BitmapIndexScalar: {
-      // keys are object id | velocypack array | shard with normalized scalar
-      // values, so equal values have equal bytes and keys compare bytewise
-      result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
-          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-      bitmap_index::configureColumnFamily(result);
+      inverted_index::configureColumnFamily(result);
       break;
     }
     case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {

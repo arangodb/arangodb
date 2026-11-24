@@ -32,7 +32,7 @@ class Slice;
 
 namespace arangodb {
 class RocksDBKey;
-namespace bitmap_index {
+namespace inverted_index {
 class PendingWrites;
 }
 
@@ -100,9 +100,9 @@ class RocksDBMethods {
                                          RocksDBKey const&,
                                          rocksdb::Slice const&) = 0;
 
-  /// buffer that coalesces bitmap index writes per key until it is flushed;
-  /// nullptr if they go to RocksDB directly
-  virtual bitmap_index::PendingWrites* bitmapIndexWrites() noexcept {
+  /// buffer that coalesces RocksDB inverted index writes per key until it is
+  /// flushed; nullptr for methods that cannot write
+  virtual inverted_index::PendingWrites* invertedIndexWrites() noexcept {
     return nullptr;
   }
 

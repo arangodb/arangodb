@@ -38,12 +38,12 @@ class RocksDBBatchedBaseMethods : public RocksDBMethods {
 
   void resetMemoryUsage() noexcept;
 
-  bitmap_index::PendingWrites* bitmapIndexWrites() noexcept final override {
-    return _bitmapIndexWrites.get();
+  inverted_index::PendingWrites* invertedIndexWrites() noexcept final override {
+    return _invertedIndexWrites.get();
   }
 
-  /// move the pending bitmap index writes into the write batch
-  rocksdb::Status flushBitmapIndexWrites();
+  /// move the pending RocksDB inverted index writes into the write batch
+  rocksdb::Status flushInvertedIndexWrites();
 
  protected:
   /// @brief returns the payload size of the transaction's WriteBatch. this
@@ -53,7 +53,7 @@ class RocksDBBatchedBaseMethods : public RocksDBMethods {
   /// @brief object used for tracking memory usage
   RocksDBMethodsMemoryTracker& _memoryTracker;
 
-  std::unique_ptr<bitmap_index::PendingWrites> _bitmapIndexWrites;
+  std::unique_ptr<inverted_index::PendingWrites> _invertedIndexWrites;
 };
 
 }  // namespace arangodb

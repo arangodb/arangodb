@@ -221,7 +221,7 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
       "vector",
-      "bitmap"};
+      "rocksdb-inverted"};
 
   return enabledFeatures;
 }
@@ -546,19 +546,21 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
   return res;
 }
 
-/// @brief enhances the json of a bitmap index
-Result IndexFactory::enhanceJsonIndexBitmap(VPackSlice definition,
-                                            VPackBuilder& builder,
-                                            bool create) {
+/// @brief enhances the json of a RocksDB inverted index
+Result IndexFactory::enhanceJsonIndexRocksDBInverted(VPackSlice definition,
+                                                     VPackBuilder& builder,
+                                                     bool create) {
   if (definition.get(StaticStrings::IndexUnique).isTrue()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "bitmap indexes cannot be unique");
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "rocksdb-inverted indexes cannot be unique");
   }
   if (definition.get(StaticStrings::IndexSparse).isTrue()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "bitmap indexes cannot be sparse");
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "rocksdb-inverted indexes cannot be sparse");
   }
 
   Result res =
-      processIndexFields(definition, builder, 1, 8, create,
+      processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 

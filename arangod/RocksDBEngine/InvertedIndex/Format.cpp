@@ -20,25 +20,126 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBBitmapIndexFormat.h"
+#include "RocksDBEngine/InvertedIndex/Format.h"
 
+#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
+#include <bit>
+#include <cmath>
 #include <cstring>
+#include <limits>
 
-namespace arangodb::bitmap_index {
+namespace arangodb::inverted_index {
 
-void appendShard(std::string& out, std::uint64_t shard) {
-  for (std::size_t i = kShardBytes; i > 0; --i) {
-    out.push_back(static_cast<char>((shard >> (8 * (i - 1))) & 0xff));
+namespace {
+enum TermType : std::uint8_t {
+  kNull = 0x00,
+  kFalse = 0x01,
+  kTrue = 0x02,
+  kNumber = 0x03,
+  kShortString = 0x04,
+  kLongString = 0x7f,
+};
+inline constexpr std::size_t kMaxShortStringLength =
+    kLongString - kShortString - 1;
+
+std::uint64_t canonicalBits(double d) noexcept {
+  if (d == 0.0) {
+    d = 0.0;
+  } else if (std::isnan(d)) {
+    d = std::numeric_limits<double>::quiet_NaN();
+  }
+  return std::bit_cast<std::uint64_t>(d);
+}
+
+void appendBigEndian(std::string& out, std::uint64_t value) {
+  for (int shift = 56; shift >= 0; shift -= 8) {
+    out.push_back(static_cast<char>((value >> shift) & 0xff));
   }
 }
 
-std::uint64_t readShard(char const* p) noexcept {
+void appendLeb128(std::string& out, std::uint64_t value) {
+  while (value >= 0x80) {
+    out.push_back(static_cast<char>((value & 0x7f) | 0x80));
+    value >>= 7;
+  }
+  out.push_back(static_cast<char>(value));
+}
+
+std::string numberTerm(double d) {
+  std::string out;
+  out.reserve(1 + sizeof(std::uint64_t));
+  out.push_back(static_cast<char>(kNumber));
+  appendBigEndian(out, canonicalBits(d));
+  return out;
+}
+
+std::string stringTerm(std::string_view s) {
+  std::string out;
+  if (s.size() <= kMaxShortStringLength) {
+    out.reserve(1 + s.size());
+    out.push_back(static_cast<char>(kShortString + s.size()));
+  } else {
+    out.reserve(1 + 10 + s.size());
+    out.push_back(static_cast<char>(kLongString));
+    appendLeb128(out, s.size());
+  }
+  out.append(s);
+  return out;
+}
+}  // namespace
+
+std::optional<std::string> normalizedTerm(velocypack::Slice value) {
+  if (value.isNumber()) {
+    return numberTerm(value.getNumber<double>());
+  }
+  if (value.isString()) {
+    return stringTerm(value.stringView());
+  }
+  if (value.isNull()) {
+    return std::string(1, static_cast<char>(kNull));
+  }
+  if (value.isBoolean()) {
+    return std::string(1,
+                       static_cast<char>(value.getBoolean() ? kTrue : kFalse));
+  }
+  return std::nullopt;
+}
+
+std::string termKey(std::uint64_t objectId, std::string_view term) {
+  std::string key;
+  key.reserve(sizeof(objectId) + term.size() + kShardBytes);
+  rocksutils::uint64ToPersistent(key, objectId);
+  key.append(term);
+  return key;
+}
+
+std::string bitmapKey(std::string_view termKey, std::uint64_t shard) {
+  std::string key(termKey);
+  key.resize(termKey.size() + kShardBytes);
+  setShardOfBitmapKey(key, shard);
+  return key;
+}
+
+void setShardOfBitmapKey(std::string& bitmapKey, std::uint64_t shard) {
+  TRI_ASSERT(bitmapKey.size() >= kShardBytes);
+  char* p = bitmapKey.data() + bitmapKey.size() - kShardBytes;
+  for (std::size_t i = kShardBytes; i > 0; --i) {
+    *p++ = static_cast<char>((shard >> (8 * (i - 1))) & 0xff);
+  }
+}
+
+std::optional<std::uint64_t> shardOfBitmapKey(std::string_view key,
+                                              std::string_view termKey) {
+  if (key.size() != termKey.size() + kShardBytes || !key.starts_with(termKey)) {
+    return std::nullopt;
+  }
   std::uint64_t shard = 0;
-  for (std::size_t i = 0; i < kShardBytes; ++i) {
-    shard = (shard << 8) | static_cast<std::uint8_t>(p[i]);
+  for (char c : key.substr(termKey.size())) {
+    shard = (shard << 8) | static_cast<std::uint8_t>(c);
   }
   return shard;
 }
@@ -71,7 +172,7 @@ roaring::Roaring readBitmap(char const* p, std::size_t size,
   std::size_t n = roaring::Roaring::serializedSizeInBytesSafe(p, size);
   if (n == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid bitmap index value");
+                                   "invalid RocksDB inverted index value");
   }
   if (consumed != nullptr) {
     *consumed = n;
@@ -128,19 +229,19 @@ roaring::Roaring decodeBitmap(std::string_view value) {
     return adds;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid bitmap index value");
+                                 "invalid RocksDB inverted index value");
 }
 
 std::int64_t decodeCount(std::string_view value) {
   auto tag = tagOf(value);
   if ((tag != ValueTag::Count && tag != ValueTag::CountDelta) ||
       value.size() != 1 + sizeof(std::int64_t)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid bitmap index count value");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "invalid RocksDB inverted index count value");
   }
   std::int64_t count;
   std::memcpy(&count, value.data() + 1, sizeof(count));
   return count;
 }
 
-}  // namespace arangodb::bitmap_index
+}  // namespace arangodb::inverted_index

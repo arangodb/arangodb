@@ -1,9 +1,11 @@
 add_library(arango_rocksdb STATIC
+  InvertedIndex/Expr.cpp
+  InvertedIndex/Format.cpp
+  InvertedIndex/Iterator.cpp
+  InvertedIndex/MergeOperator.cpp
+  InvertedIndex/PendingWrites.cpp
+  InvertedIndex/RocksDBInvertedIndex.cpp
   RocksDBBackgroundThread.cpp
-  RocksDBBitmapIndex.cpp
-  RocksDBBitmapIndexFormat.cpp
-  RocksDBBitmapIndexMergeOperator.cpp
-  RocksDBBitmapIndexPendingWrites.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
   RocksDBCFStats.cpp

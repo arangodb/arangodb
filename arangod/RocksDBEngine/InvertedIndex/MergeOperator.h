@@ -30,12 +30,12 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace arangodb::bitmap_index {
+namespace arangodb::inverted_index {
 
 /// Merges bitmap deltas into bitmaps and count deltas into counts.
 class MergeOperator final : public rocksdb::MergeOperator {
  public:
-  char const* Name() const override { return "ArangoBitmapIndexMerge"; }
+  char const* Name() const override { return "ArangoInvertedIndexMerge"; }
 
   bool FullMergeV2(MergeOperationInput const& in,
                    MergeOperationOutput* out) const override;
@@ -49,7 +49,7 @@ class MergeOperator final : public rocksdb::MergeOperator {
 /// Removes empty bitmaps and zero counts. Merge operands are never filtered.
 class CompactionFilter final : public rocksdb::CompactionFilter {
  public:
-  char const* Name() const override { return "ArangoBitmapIndexFilter"; }
+  char const* Name() const override { return "ArangoInvertedIndexFilter"; }
 
   Decision FilterV2(int level, rocksdb::Slice const& key, ValueType valueType,
                     rocksdb::Slice const& existingValue, std::string* newValue,
@@ -58,7 +58,7 @@ class CompactionFilter final : public rocksdb::CompactionFilter {
 
 class CompactionFilterFactory final : public rocksdb::CompactionFilterFactory {
  public:
-  char const* Name() const override { return "ArangoBitmapIndexFilter"; }
+  char const* Name() const override { return "ArangoInvertedIndexFilter"; }
 
   std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
       rocksdb::CompactionFilter::Context const& context) override;
@@ -77,7 +77,7 @@ class MergeOperandCollector final : public rocksdb::TablePropertiesCollector {
                              std::uint64_t fileSize) override;
   rocksdb::Status Finish(rocksdb::UserCollectedProperties* properties) override;
   rocksdb::UserCollectedProperties GetReadableProperties() const override;
-  char const* Name() const override { return "ArangoBitmapIndexOperands"; }
+  char const* Name() const override { return "ArangoInvertedIndexOperands"; }
   bool NeedCompact() const override;
 
  private:
@@ -90,7 +90,7 @@ class MergeOperandCollectorFactory final
  public:
   rocksdb::TablePropertiesCollector* CreateTablePropertiesCollector(
       rocksdb::TablePropertiesCollectorFactory::Context context) override;
-  char const* Name() const override { return "ArangoBitmapIndexOperands"; }
+  char const* Name() const override { return "ArangoInvertedIndexOperands"; }
 };
 
 /// at this many merge operands of a key in the memtable RocksDB writes a full
@@ -99,7 +99,7 @@ class MergeOperandCollectorFactory final
 inline constexpr std::size_t kMaxSuccessiveMerges = 32;
 
 /// set merge operator, compaction filter and properties collector for the
-/// bitmap index column family
+/// RocksDB inverted index column family
 void configureColumnFamily(rocksdb::ColumnFamilyOptions& options);
 
-}  // namespace arangodb::bitmap_index
+}  // namespace arangodb::inverted_index

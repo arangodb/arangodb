@@ -1,6 +1,4 @@
 add_library(arango_indexes STATIC
-  BitmapIndexDefinition.cpp
-  BitmapIndexMatcher.cpp
   EdgeIndexDefinition.cpp
   DeprecatedSecondaryIndexDefinition.cpp
   FulltextIndexDefinition.cpp
@@ -23,6 +21,8 @@ add_library(arango_indexes STATIC
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Index.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Covering.cpp
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/RocksDBEngine/InvertedIndex/Definition.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/RocksDBEngine/InvertedIndex/Matcher.cpp
   ${PROJECT_SOURCE_DIR}/arangod/VectorIndex/FaissFactory.cpp)
 
 target_link_libraries(arango_indexes

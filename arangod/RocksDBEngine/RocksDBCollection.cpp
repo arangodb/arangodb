@@ -1448,9 +1448,9 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
                 snapshot, true);
             break;
-          case IndexType::Bitmap:
-            count = rocksutils::countKeyRange(db, rix->getBounds(), snapshot,
-                                              true);
+          case IndexType::RocksDBInverted:
+            count =
+                rocksutils::countKeyRange(db, rix->getBounds(), snapshot, true);
             break;
           default:
             // we should not get here

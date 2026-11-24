@@ -266,9 +266,7 @@ Result compactAll(rocksdb::DB* db, bool changeLevel,
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::BitmapIndex),
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::BitmapIndexScalar),
+          RocksDBColumnFamilyManager::Family::RocksDBInvertedIndex),
   };
 
   LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)

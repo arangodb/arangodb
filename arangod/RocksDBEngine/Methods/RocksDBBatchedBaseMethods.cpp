@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBatchedBaseMethods.h"
-#include "RocksDBEngine/RocksDBBitmapIndexPendingWrites.h"
+#include "RocksDBEngine/InvertedIndex/PendingWrites.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <rocksdb/status.h>
@@ -32,13 +32,13 @@ RocksDBBatchedBaseMethods::RocksDBBatchedBaseMethods(
     RocksDBMethodsMemoryTracker& memoryTracker)
     : RocksDBMethods(),
       _memoryTracker(memoryTracker),
-      _bitmapIndexWrites(
-          std::make_unique<bitmap_index::PendingWrites>(memoryTracker)) {}
+      _invertedIndexWrites(
+          std::make_unique<inverted_index::PendingWrites>(memoryTracker)) {}
 
 RocksDBBatchedBaseMethods::~RocksDBBatchedBaseMethods() = default;
 
-rocksdb::Status RocksDBBatchedBaseMethods::flushBitmapIndexWrites() {
-  return _bitmapIndexWrites->flush(*this);
+rocksdb::Status RocksDBBatchedBaseMethods::flushInvertedIndexWrites() {
+  return _invertedIndexWrites->flush(*this);
 }
 
 void RocksDBBatchedBaseMethods::resetMemoryUsage() noexcept {

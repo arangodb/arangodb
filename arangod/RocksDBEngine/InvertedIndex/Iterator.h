@@ -22,16 +22,21 @@
 
 #pragma once
 
-#include "Indexes/IndexDefinition.h"
+#include "Indexes/IndexIterator.h"
+
+#include <memory>
 
 namespace arangodb {
+class RocksDBInvertedIndex;
 
-struct BitmapIndexDefinition : public IndexDefinition {
-  explicit BitmapIndexDefinition() : IndexDefinition(IndexType::Bitmap) {}
+namespace aql {
+struct AstNode;
+struct Variable;
+}  // namespace aql
 
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   Database const& vocbase) const override;
-};
+std::unique_ptr<IndexIterator> makeRocksDBInvertedIndexIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    RocksDBInvertedIndex const& index, aql::AstNode const* node,
+    aql::Variable const* reference, ReadOwnWrites readOwnWrites);
 
 }  // namespace arangodb

@@ -20,17 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBBitmapIndexPendingWrites.h"
+#include "RocksDBEngine/InvertedIndex/PendingWrites.h"
 
 #include "Basics/debugging.h"
-#include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
+#include "RocksDBEngine/InvertedIndex/Format.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <rocksdb/status.h>
 
-namespace arangodb::bitmap_index {
+namespace arangodb::inverted_index {
 namespace {
 /// rough memory of a map entry beyond its key
 constexpr std::uint64_t kEntryOverhead = 128;
@@ -55,10 +55,10 @@ PendingWrites::Entry& PendingWrites::entry(rocksdb::ColumnFamilyHandle* cf,
 }
 
 void PendingWrites::add(rocksdb::ColumnFamilyHandle* cf,
-                        std::string_view countKey, std::string_view bitmapKey,
+                        std::string_view termKey, std::uint64_t shard,
                         std::uint32_t offset, bool insert) {
-  Entry& count = entry(cf, countKey);
-  Entry& bitmap = entry(cf, bitmapKey);
+  Entry& count = entry(cf, termKey);
+  Entry& bitmap = entry(cf, bitmapKey(termKey, shard));
   Change change{.count = &count,
                 .bitmap = &bitmap,
                 .offset = offset,
@@ -110,9 +110,7 @@ void PendingWrites::clear() noexcept {
   _savePoints.clear();
 }
 
-void PendingWrites::setSavePoint() {
-  _savePoints.push_back(_changes.size());
-}
+void PendingWrites::setSavePoint() { _savePoints.push_back(_changes.size()); }
 
 void PendingWrites::rollbackToSavePoint() {
   TRI_ASSERT(!_savePoints.empty());
@@ -147,4 +145,4 @@ void PendingWrites::popSavePoint() noexcept {
   }
 }
 
-}  // namespace arangodb::bitmap_index
+}  // namespace arangodb::inverted_index

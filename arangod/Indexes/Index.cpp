@@ -450,8 +450,8 @@ IndexType Index::type(std::string_view type) {
   if (type == "vector") {
     return IndexType::Vector;
   }
-  if (type == "bitmap") {
-    return IndexType::Bitmap;
+  if (type == "rocksdb-inverted") {
+    return IndexType::RocksDBInverted;
   }
   return IndexType::Unknown;
 }
@@ -499,8 +499,8 @@ char const* Index::oldtypeName(IndexType type) {
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case IndexType::Vector:
       return "vector";
-    case IndexType::Bitmap:
-      return "bitmap";
+    case IndexType::RocksDBInverted:
+      return "rocksdb-inverted";
     case IndexType::Unknown: {
     }
   }

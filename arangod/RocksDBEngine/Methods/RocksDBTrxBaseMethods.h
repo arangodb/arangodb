@@ -115,8 +115,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status MergeUntracked(rocksdb::ColumnFamilyHandle*,
                                  RocksDBKey const& key,
                                  rocksdb::Slice const& val) final override;
-  bitmap_index::PendingWrites* bitmapIndexWrites() noexcept final override {
-    return _bitmapIndexWrites.get();
+  inverted_index::PendingWrites* invertedIndexWrites() noexcept final override {
+    return _invertedIndexWrites.get();
   }
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
                          RocksDBKey const& key) final override;
@@ -177,8 +177,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief object used for tracking memory usage
   RocksDBMethodsMemoryTracker _memoryTracker;
 
-  /// bitmap index writes not yet in the RocksDB transaction
-  std::unique_ptr<bitmap_index::PendingWrites> _bitmapIndexWrites;
+  /// RocksDB inverted index writes not yet in the RocksDB transaction
+  std::unique_ptr<inverted_index::PendingWrites> _invertedIndexWrites;
 
   bool _indexingDisabled{false};
 };

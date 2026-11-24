@@ -41,24 +41,25 @@ namespace arangodb {
 class RocksDBMethods;
 class RocksDBMethodsMemoryTracker;
 
-namespace bitmap_index {
+namespace inverted_index {
 
-/// Collects the bitmap index writes of a transaction or write batch per key,
-/// so that a key many documents share gets one merge operand per flush
+/// Collects the RocksDB inverted index writes of a transaction or write batch
+/// per key, so that a key many documents share gets one merge operand per flush
 /// instead of one per document. Mirrors the savepoints of its owner: changes
 /// made after the latest savepoint can be rolled back. Must be flushed before
-/// its owner commits or reads its own writes from a bitmap index, at a time
-/// without active savepoints. Memory is reported to the owner's tracker like
-/// write batch growth: it is only given back when the tracker is reset.
+/// its owner commits or reads its own writes from a RocksDB inverted index, at
+/// a time without active savepoints. Memory is reported to the owner's tracker
+/// like write batch growth: it is only given back when the tracker is reset.
 class PendingWrites {
  public:
   explicit PendingWrites(RocksDBMethodsMemoryTracker& memoryTracker) noexcept;
   ~PendingWrites();
 
-  /// add (insert) or remove a document id for the term with the given count
-  /// key; bitmapKey is the count key followed by the shard of the id
-  void add(rocksdb::ColumnFamilyHandle* cf, std::string_view countKey,
-           std::string_view bitmapKey, std::uint32_t offset, bool insert);
+  /// add (insert) or remove a document for the term with the given key, see
+  /// inverted_index::termKey; the shard and offset come from the IdLayout of
+  /// the index
+  void add(rocksdb::ColumnFamilyHandle* cf, std::string_view termKey,
+           std::uint64_t shard, std::uint32_t offset, bool insert);
 
   /// write one merge operand per changed key and forget everything
   rocksdb::Status flush(RocksDBMethods& methods);
@@ -95,5 +96,5 @@ class PendingWrites {
   std::vector<std::size_t> _savePoints;
 };
 
-}  // namespace bitmap_index
+}  // namespace inverted_index
 }  // namespace arangodb

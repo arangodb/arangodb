@@ -35,7 +35,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
-#include "Indexes/BitmapIndexMatcher.h"
+#include "RocksDBEngine/InvertedIndex/Matcher.h"
 #include "Indexes/Index.h"
 
 namespace arangodb::aql {
@@ -211,10 +211,10 @@ containers::HashSet<size_t> collectOverlappingMembersForIndex(
     }
   }
 
-  if (index->type() == IndexType::Bitmap) {
+  if (index->type() == IndexType::RocksDBInverted) {
     // conditions on the array attribute are answered exactly by the bitmaps
-    for (std::size_t i : bitmap_index::coveredMembers(*index, andNode,
-                                                      otherAndNode, variable)) {
+    for (std::size_t i : inverted_index::coveredMembers(
+             *index, andNode, otherAndNode, variable)) {
       toRemove.emplace(i);
     }
   }

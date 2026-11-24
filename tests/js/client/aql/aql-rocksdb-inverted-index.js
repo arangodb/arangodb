@@ -31,7 +31,7 @@ const errors = require('internal').errors;
 const db = require('internal').db;
 const _ = require('lodash');
 
-const cn = 'UnitTestsBitmapIndex';
+const cn = 'UnitTestsRocksDBInvertedIndex';
 const allLabels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
 // deterministic pseudo random numbers
@@ -66,7 +66,7 @@ function makeLabels(random) {
   return labels;
 }
 
-function BitmapIndexSuite(values) {
+function RocksDBInvertedIndexSuite() {
   let docs = {};
 
   let expected = (search) => {
@@ -80,10 +80,10 @@ function BitmapIndexSuite(values) {
     return keys.sort();
   };
 
-  let bitmapIndexNodes = (query, bindVars) => {
+  let invertedIndexNodes = (query, bindVars) => {
     let plan = db._createStatement({query, bindVars}).explain().plan;
     return plan.nodes.filter((n) => n.type === 'IndexNode' &&
-                                    n.indexes.some((i) => i.type === 'bitmap'));
+                                    n.indexes.some((i) => i.type === 'rocksdb-inverted'));
   };
 
   let query = (q, bindVars, trx) => {
@@ -93,7 +93,7 @@ function BitmapIndexSuite(values) {
 
   let check = (search) => {
     const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
-    assertEqual(1, bitmapIndexNodes(q, {labels: search}).length, search);
+    assertEqual(1, invertedIndexNodes(q, {labels: search}).length, search);
     assertEqual(expected(search), query(q, {labels: search}), search);
     const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true}
                         FILTER @labels ALL IN d.labels RETURN d._key`;
@@ -117,9 +117,8 @@ function BitmapIndexSuite(values) {
         batch.push(doc);
       }
       c.insert(batch);
-      let idx = c.ensureIndex({type: 'bitmap', fields: ['labels'], values});
-      assertEqual('bitmap', idx.type);
-      assertEqual(values, idx.values);
+      let idx = c.ensureIndex({type: 'rocksdb-inverted', fields: ['labels']});
+      assertEqual('rocksdb-inverted', idx.type);
       assertEqual(['labels'], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
@@ -132,7 +131,7 @@ function BitmapIndexSuite(values) {
     testCreateRejectsUniqueAndSparse: function () {
       for (let def of [{unique: true}, {sparse: true}]) {
         try {
-          db[cn].ensureIndex(Object.assign({type: 'bitmap', fields: ['other']}, def));
+          db[cn].ensureIndex(Object.assign({type: 'rocksdb-inverted', fields: ['other']}, def));
           assertTrue(false, def);
         } catch (err) {
           assertEqual(require('internal').errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -166,13 +165,13 @@ function BitmapIndexSuite(values) {
 
     testSingleValueIn: function () {
       const q = `FOR d IN ${cn} FILTER 'b' IN d.labels RETURN d._key`;
-      assertEqual(1, bitmapIndexNodes(q, {}).length);
+      assertEqual(1, invertedIndexNodes(q, {}).length);
       assertEqual(expected(['b']), query(q, {}));
     },
 
     testEmptySearchDoesNotUseIndex: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
-      assertEqual(0, bitmapIndexNodes(q, {labels: []}).length);
+      assertEqual(0, invertedIndexNodes(q, {labels: []}).length);
       assertEqual(Object.keys(docs).length, query(q, {labels: []}).length);
     },
 
@@ -262,12 +261,12 @@ function BitmapIndexSuite(values) {
 
     testFailedOperationsInTransactionLeaveNoEntries: function () {
       // single shard, so that the unique index needs no shard key; it is
-      // created after the bitmap index and fails after it was written
+      // created after the index and fails after it was written
       const other = cn + 'Unique';
       db._drop(other);
       let c = db._create(other, {numberOfShards: 1});
       try {
-        c.ensureIndex({type: 'bitmap', fields: ['labels'], values});
+        c.ensureIndex({type: 'rocksdb-inverted', fields: ['labels']});
         c.ensureIndex({type: 'persistent', fields: ['u'], unique: true});
         c.insert({_key: 'keep', labels: ['zz'], u: 0});
         const q = `FOR d IN ${other} FILTER @labels ALL IN d.labels RETURN d._key`;
@@ -368,12 +367,12 @@ function BitmapIndexSuite(values) {
     testCountOnly: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels
                    COLLECT WITH COUNT INTO n RETURN n`;
-      assertEqual(1, bitmapIndexNodes(q, {labels: ['a', 'b']}).length);
+      assertEqual(1, invertedIndexNodes(q, {labels: ['a', 'b']}).length);
       assertEqual([expected(['a', 'b']).length], query(q, {labels: ['a', 'b']}));
     },
 
     testBooleanPredicates: function () {
-      // [filter, whether the bitmap index answers it]
+      // [filter, whether the index answers it]
       const cases = [
         [`['a', 'h'] ANY IN d.labels`, true],
         [`[1, 'g'] ANY IN d.labels`, true],
@@ -397,7 +396,7 @@ function BitmapIndexSuite(values) {
       for (let [filter, usesIndex] of cases) {
         const q = `FOR d IN ${cn} FILTER ${filter} RETURN d._key`;
         const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER ${filter} RETURN d._key`;
-        assertEqual(usesIndex, bitmapIndexNodes(q, {}).length > 0, filter);
+        assertEqual(usesIndex, invertedIndexNodes(q, {}).length > 0, filter);
         let actual = query(q, {});
         assertEqual(query(fullScan, {}), actual, filter);
       }
@@ -438,7 +437,7 @@ function BitmapIndexSuite(values) {
           const q = `FOR r IN ${rn} FOR d IN ${cn} FILTER ${filter} RETURN CONCAT(r._key, '/', d._key)`;
           let plan = db._createStatement({query: q}).explain().plan;
           let indexNodes = plan.nodes.filter((n) => n.type === 'IndexNode' &&
-                                                  n.indexes.some((i) => i.type === 'bitmap'));
+                                                  n.indexes.some((i) => i.type === 'rocksdb-inverted'));
           assertEqual(1, indexNodes.length, filter);
           // the index answers the condition exactly
           assertEqual(undefined, indexNodes[0].filter, filter);
@@ -459,51 +458,32 @@ function BitmapIndexSuite(values) {
       }
     },
 
-    testNestedValuesAndNumbers: function () {
+    testNonScalarValuesAreRejected: function () {
       let c = db[cn];
       let extra = [
-        {_key: 'nested1', labels: [['n', 1], {a: 1, b: 2}, 1]},
-        {_key: 'nested2', labels: [['n', 1.0], {b: 2, a: 1.0}]},
-        {_key: 'nested3', labels: [['n', 2], {a: 1}]},
+        {_key: 'nested1', labels: [['n', 1], 1]},
+        {_key: 'nested2', labels: [{a: 1}]},
       ];
-      if (values === 'scalar') {
-        // documents with values that cannot be stored are rejected
-        for (let doc of extra) {
-          try {
-            c.insert(doc);
-            fail();
-          } catch (err) {
-            assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum, doc);
-          }
-          assertFalse(c.exists(doc._key));
+      for (let doc of extra) {
+        try {
+          c.insert(doc);
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum, doc);
         }
-        // ... so no document can contain such a value
-        const q = `FOR d IN ${cn} FILTER [['n', 1]] ALL IN d.labels RETURN d._key`;
-        assertEqual(1, bitmapIndexNodes(q, {}).length);
-        assertEqual([], query(q, {}));
-        const numbers = `FOR d IN ${cn} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
-        const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
-        assertTrue(query(numbers, {}).length > 0);
-        assertEqual(query(fullScan, {}), query(numbers, {}));
-        return;
+        assertFalse(c.exists(doc._key));
       }
-      c.insert(extra);
-      const cases = [
-        `[['n', 1]] ALL IN d.labels`,
-        `[['n', 1.0], {a: 1, b: 2}] ALL IN d.labels`,
-        `{b: 2.0, a: 1} IN d.labels`,
-        `[['n', 2], {a: 1}] ANY IN d.labels`,
-        `[1.0] ALL IN d.labels`,
-        `['n', 2] IN d.labels AND {a: 1, b: 2} NOT IN d.labels`,
-      ];
-      for (let filter of cases) {
-        const q = `FOR d IN ${cn} FILTER ${filter} RETURN d._key`;
-        const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER ${filter} RETURN d._key`;
-        assertEqual(1, bitmapIndexNodes(q, {}).length, filter);
-        let expected = query(fullScan, {});
-        assertTrue(expected.length > 0, filter);
-        assertEqual(expected, query(q, {}), filter);
-      }
+      // ... so no document can contain such a value
+      const q = `FOR d IN ${cn} FILTER [['n', 1]] ALL IN d.labels RETURN d._key`;
+      assertEqual(1, invertedIndexNodes(q, {}).length);
+      assertEqual([], query(q, {}));
+    },
+
+    testNumbersCompareByValue: function () {
+      const numbers = `FOR d IN ${cn} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
+      const fullScan = `FOR d IN ${cn} OPTIONS {disableIndex: true} FILTER [1.0, 2] ALL IN d.labels RETURN d._key`;
+      assertTrue(query(numbers, {}).length > 0);
+      assertEqual(query(fullScan, {}), query(numbers, {}));
     },
 
     testLateMaterialization: function () {
@@ -516,57 +496,36 @@ function BitmapIndexSuite(values) {
       assertEqual(expected(['a']), keys);
     },
 
-    testValuesOption: function () {
-      // the variant is part of the index identity
-      let other = values === 'any' ? 'scalar' : 'any';
-      let idx = db[cn].ensureIndex({type: 'bitmap', fields: ['labels'], values: other});
-      assertEqual(other, idx.values);
-      assertEqual(2, db[cn].indexes().filter((i) => i.type === 'bitmap').length);
-      assertTrue(db[cn].dropIndex(idx));
+    testCreateRejectsSeveralFields: function () {
       try {
-        db[cn].ensureIndex({type: 'bitmap', fields: ['labels'], values: 'nope'});
+        db[cn].ensureIndex({type: 'rocksdb-inverted', fields: ['a', 'labels']});
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-      if (values === 'scalar') {
-        // building the index over a document it cannot store fails
-        db[cn].insert({_key: 'nested', other: [[1]]});
-        try {
-          db[cn].ensureIndex({type: 'bitmap', fields: ['other'], values});
-          fail();
-        } catch (err) {
-          assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
-        assertEqual(1, db[cn].indexes().filter((i) => i.type === 'bitmap').length);
+    },
+
+    testCreateFailsOnNonScalarValues: function () {
+      db[cn].insert({_key: 'nested', other: [[1]]});
+      try {
+        db[cn].ensureIndex({type: 'rocksdb-inverted', fields: ['other']});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+      assertEqual(1, db[cn].indexes().filter((i) => i.type === 'rocksdb-inverted').length);
     },
 
     testDropIndex: function () {
       const q = `FOR d IN ${cn} FILTER @labels ALL IN d.labels RETURN d._key`;
-      let idx = db[cn].indexes().filter((i) => i.type === 'bitmap')[0];
+      let idx = db[cn].indexes().filter((i) => i.type === 'rocksdb-inverted')[0];
       assertNotEqual(undefined, idx);
       assertTrue(db[cn].dropIndex(idx));
-      assertEqual(0, bitmapIndexNodes(q, {labels: ['a']}).length);
+      assertEqual(0, invertedIndexNodes(q, {labels: ['a']}).length);
       assertEqual(expected(['a']), query(q, {labels: ['a']}));
     },
   };
 }
 
-// both variants run in this file, so their test names need to differ
-function withSuffix(suite, suffix) {
-  return Object.fromEntries(Object.entries(suite).map(
-    ([name, fn]) => [name.startsWith('test') ? name + suffix : name, fn]));
-}
-
-function BitmapIndexAnyValuesSuite() {
-  return withSuffix(BitmapIndexSuite('any'), 'AnyValues');
-}
-
-function BitmapIndexScalarValuesSuite() {
-  return withSuffix(BitmapIndexSuite('scalar'), 'ScalarValues');
-}
-
-jsunity.run(BitmapIndexAnyValuesSuite);
-jsunity.run(BitmapIndexScalarValuesSuite);
+jsunity.run(RocksDBInvertedIndexSuite);
 return jsunity.done();

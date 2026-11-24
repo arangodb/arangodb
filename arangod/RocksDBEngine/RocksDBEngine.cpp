@@ -78,7 +78,6 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
-#include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCFStats.h"
@@ -729,8 +728,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::BitmapIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::BitmapIndexScalar);
+  addFamily(RocksDBColumnFamilyManager::Family::RocksDBInvertedIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -2418,9 +2416,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             it, StaticStrings::IndexUnique, false);
 
         RocksDBKeyBounds bounds =
-            type == IndexType::Bitmap
-                ? RocksDBBitmapIndex::boundsFor(it, objectId)
-                : RocksDBIndex::getBounds(type, objectId, unique);
+            RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
         bool const prefixSameAsStart = type != IndexType::Edge;
         res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart,
@@ -3162,8 +3158,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  addCf(RocksDBColumnFamilyManager::Family::BitmapIndex);
-  addCf(RocksDBColumnFamilyManager::Family::BitmapIndexScalar);
+  addCf(RocksDBColumnFamilyManager::Family::RocksDBInvertedIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -3495,10 +3490,8 @@ bool RocksDBEngine::checkExistingDB(
         RocksDBColumnFamilyManager::Family::MdiVPackIndex);
     auto const vectorVPackIndexName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::VectorIndex);
-    auto const bitmapIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::BitmapIndex);
-    auto const bitmapIndexScalarName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::BitmapIndexScalar);
+    auto const invertedIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::RocksDBInvertedIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
@@ -3506,7 +3499,7 @@ bool RocksDBEngine::checkExistingDB(
       if (it2 == existingColumnFamilies.end()) {
         if (it.name == replicatedLogsName || it.name == mdiIndexName ||
             it.name == mdiVPackIndexName || it.name == vectorVPackIndexName ||
-            it.name == bitmapIndexName || it.name == bitmapIndexScalarName) {
+            it.name == invertedIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

@@ -20,14 +20,14 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBBitmapIndexMergeOperator.h"
+#include "RocksDBEngine/InvertedIndex/MergeOperator.h"
 
 #include "Basics/debugging.h"
-#include "RocksDBEngine/RocksDBBitmapIndexFormat.h"
+#include "RocksDBEngine/InvertedIndex/Format.h"
 
 #include <string>
 
-namespace arangodb::bitmap_index {
+namespace arangodb::inverted_index {
 
 namespace {
 bool isCount(ValueTag tag) {
@@ -185,8 +185,8 @@ rocksdb::Status MergeOperandCollector::Finish(
 
 rocksdb::UserCollectedProperties MergeOperandCollector::GetReadableProperties()
     const {
-  return {{"arango.bitmap.entries", std::to_string(_entries)},
-          {"arango.bitmap.mergeOperands", std::to_string(_operands)}};
+  return {{"arango.inverted.entries", std::to_string(_entries)},
+          {"arango.inverted.mergeOperands", std::to_string(_operands)}};
 }
 
 bool MergeOperandCollector::NeedCompact() const {
@@ -210,4 +210,4 @@ void configureColumnFamily(rocksdb::ColumnFamilyOptions& options) {
   options.max_successive_merges = kMaxSuccessiveMerges;
 }
 
-}  // namespace arangodb::bitmap_index
+}  // namespace arangodb::inverted_index

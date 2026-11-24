@@ -507,8 +507,6 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status MergeCF(uint32_t /*column_family_id*/,
                           const rocksdb::Slice& /*key*/,
                           const rocksdb::Slice& /*value*/) override {
-    // merge operands are only written by bitmap indexes, which are not
-    // replicated via the WAL
     tick();
     return rocksdb::Status();
   }

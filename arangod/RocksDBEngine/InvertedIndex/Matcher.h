@@ -35,7 +35,7 @@ struct AstNode;
 struct Variable;
 }  // namespace aql
 
-namespace bitmap_index {
+namespace inverted_index {
 
 /// Boolean expression over the elements of the indexed array attribute. A
 /// document whose attribute is missing or not an array has no elements.
@@ -56,27 +56,20 @@ struct TermExpr {
   std::vector<TermExpr> children;
   /// And only: documents matching any of these are removed
   std::vector<TermExpr> excluded;
-
-  /// number of searched elements, for cost estimation
-  std::size_t numTerms() const;
 };
 
-/// Parts of an AND condition a bitmap index can answer. The last index field
-/// is the array attribute, all others are equality prefixes.
+/// Parts of an AND condition a RocksDB inverted index can answer. The only
+/// index field is the array attribute.
 struct ConditionParts {
-  /// per prefix field, the node holding the compared value
-  std::vector<aql::AstNode const*> prefixValues;
   /// conjunction of all supported conditions on the array attribute
   TermExpr expr{.type = TermExpr::Type::And};
   /// positions of the used members in the AND node, ascending
   std::vector<std::size_t> members;
 };
 
-/// Match an n-ary AND node. Every prefix field needs an equality and at
-/// least one member must require some searched element to be present.
-/// Searched values and prefix values may be any values, also computed from
-/// outside variables. Values are compared like AQL does, so 1 and 1.0 or
-/// objects with a different attribute order are equal.
+/// Match an n-ary AND node. At least one member must require some searched
+/// element to be present. Searched values may be computed from outside
+/// variables.
 ///
 /// Supported conditions on the array attribute, also nested with AND, OR and
 /// NOT (an OR may not mix required and excluded elements):
@@ -108,5 +101,5 @@ containers::HashSet<std::size_t> coveredMembers(
     Index const& index, aql::AstNode const* andNode,
     aql::AstNode const* indexCondition, aql::Variable const* reference);
 
-}  // namespace bitmap_index
+}  // namespace inverted_index
 }  // namespace arangodb

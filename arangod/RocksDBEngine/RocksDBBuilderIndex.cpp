@@ -84,7 +84,7 @@ Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
                                  RocksDBIndex& ridx, bool isForeground) {
-  if (rocksdb::Status s = batched.flushBitmapIndexWrites(); !s.ok()) {
+  if (rocksdb::Status s = batched.flushInvertedIndexWrites(); !s.ok()) {
     return rocksutils::convertStatus(s, rocksutils::StatusHint::index);
   }
   auto docsInBatch = batch.GetWriteBatch()->Count();
@@ -624,7 +624,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status MergeCF(uint32_t /*column_family_id*/,
                           const rocksdb::Slice& /*key*/,
                           const rocksdb::Slice& /*value*/) override {
-    // merge operands belong to bitmap indexes, never to documents
+    // merge operands belong to RocksDB inverted indexes, never to documents
     incTick();
     return rocksdb::Status();
   }
@@ -746,7 +746,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   }
 
   auto commitLambda = [&](rocksdb::SequenceNumber seq) {
-    if (rocksdb::Status s = batched.flushBitmapIndexWrites(); !s.ok()) {
+    if (rocksdb::Status s = batched.flushInvertedIndexWrites(); !s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
     }
     auto docsInBatch = wb.GetWriteBatch()->Count();

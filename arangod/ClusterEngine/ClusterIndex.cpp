@@ -29,12 +29,11 @@
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
-#include "Indexes/BitmapIndexMatcher.h"
+#include "RocksDBEngine/InvertedIndex/Matcher.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "VectorIndex/Definition.h"
-#include "RocksDBEngine/RocksDBBitmapIndex.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -102,9 +101,6 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
-    } else if (_indexType == IndexType::Bitmap) {
-      _coveredFields =
-          RocksDBBitmapIndex::coveredFieldsFor(collection, _fields);
     } else if (_indexType == IndexType::Vector) {
       velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
       TRI_ASSERT(_vectorIndexDefinition != nullptr);
@@ -337,9 +333,9 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case IndexType::MDIPrefixed:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
-    case IndexType::Bitmap:
-      return bitmap_index::supportsFilterCondition(*this, node, reference,
-                                                   itemsInIndex);
+    case IndexType::RocksDBInverted:
+      return inverted_index::supportsFilterCondition(*this, node, reference,
+                                                     itemsInIndex);
     case IndexType::Unknown:
       break;
   }
@@ -386,7 +382,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
     case IndexType::Vector:
-    case IndexType::Bitmap:
+    case IndexType::RocksDBInverted:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -444,8 +440,8 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
       return mdi::specializeCondition(this, node, reference);
-    case IndexType::Bitmap:
-      return bitmap_index::specializeCondition(*this, node, reference);
+    case IndexType::RocksDBInverted:
+      return inverted_index::specializeCondition(*this, node, reference);
     case IndexType::Vector:
     case IndexType::Unknown:
       break;
@@ -477,7 +473,7 @@ ClusterIndex::coveredFields() const {
     case IndexType::MDI:
     case IndexType::MDIPrefixed:
     case IndexType::Vector:
-    case IndexType::Bitmap:
+    case IndexType::RocksDBInverted:
     case IndexType::NoAccess: {
       return Index::emptyCoveredFields;
     }

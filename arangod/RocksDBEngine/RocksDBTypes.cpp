@@ -93,17 +93,11 @@ static rocksdb::Slice UniqueVPackIndexValue(
         &uniqueVPIndex),
     1);
 
-static RocksDBEntryType bitmapIndex = RocksDBEntryType::BitmapIndexValue;
-static rocksdb::Slice BitmapIndexValue(
+static RocksDBEntryType invertedIndex =
+    RocksDBEntryType::RocksDBInvertedIndexValue;
+static rocksdb::Slice RocksDBInvertedIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &bitmapIndex),
-    1);
-
-static RocksDBEntryType bitmapIndexScalar =
-    RocksDBEntryType::BitmapIndexScalarValue;
-static rocksdb::Slice BitmapIndexScalarValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &bitmapIndexScalar),
+        &invertedIndex),
     1);
 
 static RocksDBEntryType vectorVPIndex = RocksDBEntryType::VectorVPackIndexValue;
@@ -255,10 +249,8 @@ std::string_view arangodb::rocksDBEntryTypeName(
       return "UniqueMdiVPackIndexValue";
     case arangodb::RocksDBEntryType::VectorVPackIndexValue:
       return "VectorVPackIndexValue";
-    case arangodb::RocksDBEntryType::BitmapIndexValue:
-      return "BitmapIndexValue";
-    case arangodb::RocksDBEntryType::BitmapIndexScalarValue:
-      return "BitmapIndexScalarValue";
+    case arangodb::RocksDBEntryType::RocksDBInvertedIndexValue:
+      return "RocksDBInvertedIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
     case RocksDBEntryType::ReplicatedState:
@@ -345,10 +337,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueVPackIndexValue;
     case arangodb::RocksDBEntryType::VectorVPackIndexValue:
       return VectorVPackIndexValue;
-    case arangodb::RocksDBEntryType::BitmapIndexValue:
-      return BitmapIndexValue;
-    case arangodb::RocksDBEntryType::BitmapIndexScalarValue:
-      return BitmapIndexScalarValue;
+    case arangodb::RocksDBEntryType::RocksDBInvertedIndexValue:
+      return RocksDBInvertedIndexValue;
     case RocksDBEntryType::FulltextIndexValue:
       return FulltextIndexValue;
     case RocksDBEntryType::LegacyGeoIndexValue:

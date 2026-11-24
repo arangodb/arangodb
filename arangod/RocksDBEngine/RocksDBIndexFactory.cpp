@@ -30,7 +30,7 @@
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBBitmapIndex.h"
+#include "RocksDBEngine/InvertedIndex/RocksDBInvertedIndex.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
@@ -113,8 +113,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::createIndex(
       return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
     case IndexType::Vector:
       return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
-    case IndexType::Bitmap:
-      return RocksDBBitmapIndex::create(id, collection, definition);
+    case IndexType::RocksDBInverted:
+      return std::make_shared<RocksDBInvertedIndex>(id, collection, definition);
     case IndexType::Inverted:
       return iresearch::createRocksDBInvertedIndex(ctx);
     case IndexType::Unknown:

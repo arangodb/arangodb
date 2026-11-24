@@ -49,10 +49,10 @@ bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
     return false;
   }
 
-  // a bitmap index covers no attributes but produces document ids in
+  // a RocksDB inverted index covers no attributes but produces document ids in
   // ascending order, which is all a later batched lookup needs
   if (indexHandle->coveredFields().empty() &&
-      indexHandle->type() != IndexType::Bitmap) {
+      indexHandle->type() != IndexType::RocksDBInverted) {
     LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
              << "does not support covering call";
     return false;

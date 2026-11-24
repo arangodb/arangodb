@@ -212,11 +212,11 @@ class IndexFactory {
       arangodb::velocypack::Slice definition,
       arangodb::velocypack::Builder& builder, bool create);
 
-  /// @brief enhances the json of a bitmap index. all fields but the last one
-  /// are scalar prefix fields, the last one is the array attribute.
-  static Result enhanceJsonIndexBitmap(arangodb::velocypack::Slice definition,
-                                       arangodb::velocypack::Builder& builder,
-                                       bool create);
+  /// @brief enhances the json of a RocksDB inverted index. its only field is
+  /// the array attribute.
+  static Result enhanceJsonIndexRocksDBInverted(
+      arangodb::velocypack::Slice definition,
+      arangodb::velocypack::Builder& builder, bool create);
 
   /// @brief enhances the json of a vector index
   static Result enhanceJsonIndexVector(arangodb::velocypack::Slice definition,

@@ -50,8 +50,7 @@ struct RocksDBColumnFamilyManager {
     MdiIndex = 8,
     MdiVPackIndex = 9,
     VectorIndex = 10,
-    BitmapIndex = 11,
-    BitmapIndexScalar = 12,
+    RocksDBInvertedIndex = 11,
 
     Invalid = 1024  // special placeholder
   };
@@ -62,7 +61,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 13;
+  static constexpr size_t numberOfColumnFamilies = 12;
 
   static void initialize();
 

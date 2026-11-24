@@ -678,8 +678,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
     _checkTick = true;
 #endif
     incTick();
-    // merge operands are only written by bitmap indexes, which are not
-    // part of the WAL API output
     return rocksdb::Status();
   }
 

@@ -43,6 +43,6 @@ enum class IndexType : std::uint8_t {
   MDIPrefixed = 15,
   Inverted = 16,
   Vector = 17,
-  Bitmap = 18,
+  RocksDBInverted = 18,
 };
 }  // namespace arangodb
