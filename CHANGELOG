@@ -4,6 +4,8 @@
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
 

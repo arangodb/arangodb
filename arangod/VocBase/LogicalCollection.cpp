@@ -220,7 +220,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase,
   }
 }
 
-LogicalCollection::~LogicalCollection() = default;
+LogicalCollection::~LogicalCollection() { close(); }
 
 #ifndef USE_ENTERPRISE
 void LogicalCollection::initializeSmartAttributesBefore(
