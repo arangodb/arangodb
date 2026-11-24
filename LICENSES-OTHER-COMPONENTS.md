@@ -1006,7 +1006,7 @@ License Id: MIT
 #### ajv
 
 Name: ajv
-Version: 6.10.0
+Version: 6.15.0
 Project Home: https://github.com/epoberezkin/ajv
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ajv/LICENSE
 License Name: MIT License
@@ -1231,7 +1231,7 @@ License Id: MIT
 #### cross-spawn
 
 Name: cross-spawn
-Version: 6.0.5
+Version: 6.0.6
 Project Home: https://github.com/moxystudio/node-cross-spawn
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/cross-spawn/LICENSE
 License Name: MIT License
@@ -1492,7 +1492,7 @@ License Id: MIT
 #### flatted
 
 Name: flatted
-Version: 2.0.0
+Version: 3.4.4
 Project Home: https://github.com/WebReflection/flatted
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/flatted/LICENSE
 License Name: ISC License
@@ -1985,15 +1985,6 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### os-tmpdir
-
-Name: os-tmpdir
-Version: 1.0.2
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/os-tmpdir/license
-License Name: MIT License
-License Id: MIT
-
 #### parent-module
 
 Name: parent-module
@@ -2366,7 +2357,7 @@ License Id: MIT
 #### tmp
 
 Name: tmp
-Version: 0.0.33
+Version: 0.2.7
 Project Home: http://raszi.hu/
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/tmp/LICENSE
 License Name: MIT License
@@ -2510,8 +2501,8 @@ License Id: MIT
 #### @xmldom/xmldom
 
 Name: @xmldom/xmldom
-Version: 0.8.0
+Version: 0.8.15
 Project Home: https://github.com/xmldom/xmldom
-License: httpsx://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/@xmldom/xmldom/LICENSE
 License Name: MIT (dual license)
 License Id: MIT
