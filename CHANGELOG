@@ -1,6 +1,8 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
 * Updated node modules:
  - @xmldom/xmldom to 0.8.15 to resolve CVE-2026-83605, CVE-2026-83607,
    CVE-2026-83608, CVE-2026-83610, CVE-2026-83611, CVE-2026-83613,
