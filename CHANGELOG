@@ -1,6 +1,12 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* Updated node modules:
+ - @xmldom/xmldom to 0.8.15 to resolve CVE-2026-83605, CVE-2026-83607,
+   CVE-2026-83608, CVE-2026-83610, CVE-2026-83611, CVE-2026-83613,
+   CVE-2026-83614, CVE-2026-83615, CVE-2026-83616 and CVE-2026-83619
+ - minimatch 10.2.5 patched with the upstream fix to resolve CVE-2026-118764
+
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
 

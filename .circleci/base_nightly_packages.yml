@@ -64,7 +64,10 @@ version: 2.1
 #                       prepare-nightly): .circleci/trivy-gate-waivers.json,
 #                       entries {id, package (optional), severity (optional
 #                       only for class design-acceptance), detected,
-#                       expires, reason, approved-by, class (optional)},
+#                       expires, reason, approved-by, class (optional),
+#                       requires (optional: [{file, contains}] that must
+#                       hold in the checkout, e.g. a local patch the waiver
+#                       relies on, or validation fails)},
 #                       matched on id, package and severity. Expiry is
 #                       end-of-day, inside the FedRAMP High window from
 #                       "detected" (CRITICAL/HIGH/UNKNOWN 30d, MEDIUM 90d,
@@ -811,7 +814,9 @@ jobs:
                    elif $sev == "UNKNOWN" then 30
                    else null
                    end;
-                 ["id", "package", "severity", "detected", "expires", "reason", "approved-by", "class"] as $allowed
+                 def relpath: nonempty and (startswith("/") | not)
+                   and ((split("/") | index("..")) == null);
+                 ["id", "package", "severity", "detected", "expires", "reason", "approved-by", "class", "requires"] as $allowed
                  | ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] as $sevs
                  | ["remediation-pending", "design-acceptance"] as $classes
                  | if (type != "object") or (has("waivers") | not) or ((.waivers | type) != "array")
@@ -844,6 +849,12 @@ jobs:
                                  else "\($at): approved-by is required and must be a non-empty string" end ),
                                ( if ($w | has("package") | not) or ($w.package | nonempty) then empty
                                  else "\($at): package, when given, must be a non-empty string" end ),
+                               ( if ($w | has("requires") | not) then empty
+                                 elif (($w.requires | type) == "array") and ($w.requires | length > 0)
+                                      and all($w.requires[];
+                                        (type == "object") and ((keys - ["contains", "file"]) == [])
+                                        and (.file | relpath) and (.contains | nonempty)) then empty
+                                 else "\($at): requires, when given, must be a non-empty array of {file, contains}, file relative to the checkout without .., contains a non-empty string" end ),
                                ( if ($w.detected // null | isdate) then empty
                                  else "\($at): detected is required and must be a real YYYY-MM-DD date (the window runs from it)" end ),
                                ( if ($w.detected // null | isdate)
@@ -874,6 +885,31 @@ jobs:
             if [ -s /tmp/waiver-problems.txt ]; then
               echo "ERROR: ${W} failed validation:" >&2
               sed -e "s/^/  /" /tmp/waiver-problems.txt >&2
+              exit 1
+            fi
+            # A waiver for a fix Trivy cannot see (a local patch, same
+            # version) lists the evidence under "requires". Trivy matches
+            # on the version only, so if the patched code is ever replaced
+            # (re-vendored, upgraded without the patch), the waiver would
+            # silently keep hiding the finding: fail instead. The files are
+            # read from the commit, not the working tree: this checkout is
+            # sparse, and its blob filter fetches them on demand.
+            jq -r --arg today "${TODAY}" '.waivers[] | select(.expires >= $today)
+                 | .id as $id | .requires[]?
+                 | [$id, .file, .contains] | map(@base64) | join(" ")' "${W}" \
+              | while read -r ID FILE TEXT; do
+                  ID=$(printf '%s' "${ID}" | base64 -d)
+                  FILE=$(printf '%s' "${FILE}" | base64 -d)
+                  TEXT=$(printf '%s' "${TEXT}" | base64 -d)
+                  if ! git cat-file -e "HEAD:${FILE}" 2>/dev/null; then
+                    echo "${ID}: required file ${FILE} is missing"
+                  elif ! git show "HEAD:${FILE}" | grep -qF -- "${TEXT}"; then
+                    echo "${ID}: ${FILE} no longer contains: ${TEXT}"
+                  fi
+                done > /tmp/waiver-requires.txt
+            if [ -s /tmp/waiver-requires.txt ]; then
+              echo "ERROR: ${W} waives findings whose fix is no longer in the checkout; restore the fix or remove the waiver:" >&2
+              sed -e "s/^/  /" /tmp/waiver-requires.txt >&2
               exit 1
             fi
             # KEV-listed ids get the BOD 26-04 clock (14 days from
