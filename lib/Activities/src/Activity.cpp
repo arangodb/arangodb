@@ -10,24 +10,32 @@ auto Activity::parentId() const noexcept -> std::optional<ActivityId> {
   }
 }
 
-auto Activity::threads() const noexcept -> std::vector<basics::ThreadInfo> {
-  auto threads = _threads.copy();
-  std::vector<basics::ThreadInfo> out;
-  for (auto const& thread : threads) {
-    out.emplace_back(thread.get_ref().value());
-  }
-  return out;
-}
-
-auto Activity::addCurrentThread() -> ThreadListIterator {
-  return _threads.doUnderLock([](auto& threads) {
-    threads.push_back({basics::ThreadInfo::current()});
-    return std::prev(threads.end());
+auto Activity::threads() const -> std::vector<basics::ThreadInfo> {
+  return _threads.doUnderLock([](ThreadList const& list) {
+    std::vector<basics::ThreadInfo> out;
+    for (auto* n = list.head; n != nullptr; n = n->next) {
+      auto id = n->thread;
+      out.emplace_back(id.kernel_id, id.name());
+    }
+    return out;
   });
 }
 
-auto Activity::removeThread(ThreadListIterator it) -> void {
-  _threads.doUnderLock([it](auto& threads) { threads.erase(it); });
+auto Activity::link(ThreadNode& node) noexcept -> void {
+  _threads.doUnderLock([&node](ThreadList& list) {
+    node.prev = list.tail;
+    node.next = nullptr;
+    (list.tail != nullptr ? list.tail->next : list.head) = &node;
+    list.tail = &node;
+  });
+}
+
+auto Activity::unlink(ThreadNode& node) noexcept -> void {
+  _threads.doUnderLock([&node](ThreadList& list) {
+    (node.prev != nullptr ? node.prev->next : list.head) = node.next;
+    (node.next != nullptr ? node.next->prev : list.tail) = node.prev;
+    node.prev = node.next = nullptr;
+  });
 }
 
 }  // namespace arangodb::activities

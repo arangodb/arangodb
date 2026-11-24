@@ -61,11 +61,11 @@ struct Registry {
   auto garbageCollectAll() -> void;
 
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
-    return _currentlyExecutingActivity.activity;
+    return _currentlyExecutingActivity.activity();
   }
   static auto setCurrentlyExecutingActivity(ActivityHandle activity) noexcept
       -> void {
-    _currentlyExecutingActivity = CurrentlyExecuting{std::move(activity)};
+    _currentlyExecutingActivity.switchTo(std::move(activity));
   }
 
   template<typename T, typename... Args>
@@ -85,7 +85,7 @@ struct Registry {
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> T::HandleType {
-    return makeActivityWithParent<T>(_currentlyExecutingActivity.activity,
+    return makeActivityWithParent<T>(_currentlyExecutingActivity.activity(),
                                      std::forward<Args>(args)...);
   }
 
