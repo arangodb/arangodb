@@ -81,6 +81,7 @@
 - shell_api_multi_permissions:
     options:
       priority: 500
+      type: single
     suites:
       - shell_api
       - shell_api_multi:
@@ -377,6 +378,7 @@
           args:
             protocol: ssl
             suffix: ssl
+      - server_permissions
 
 # shell_client_multi tests run quite long, so want to have a
 # separate job for each protocol
