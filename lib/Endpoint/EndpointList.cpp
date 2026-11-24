@@ -122,7 +122,7 @@ std::string_view EndpointList::encryptionName(
     Endpoint::EncryptionType encryption) {
   switch (encryption) {
     case Endpoint::EncryptionType::SSL:
-      return "ssl-encrypted";
+      return "TLS-encrypted";
     case Endpoint::EncryptionType::NONE:
     default:
       return "non-encrypted";
