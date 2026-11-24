@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
 
