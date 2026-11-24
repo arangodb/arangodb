@@ -114,27 +114,6 @@ function connectionHandlesJwtRenewalSuite() {
                   JSON.stringify(handleTable()));
     },
 
-    testDifferentUsersGetDifferentHandles: function () {
-      const rootHandle = connectAsRoot();
-      const otherHandle = connectAsOther();
-
-      assertNotEqual(rootHandle, otherHandle);
-      const table = handleTable();
-      assertTrue(table.hasOwnProperty(rootHandle), JSON.stringify(table));
-      assertTrue(table.hasOwnProperty(otherHandle), JSON.stringify(table));
-    },
-
-    testHandleTableHasExactlyOneActiveAndNoUnidentifiedEntry: function () {
-      connectAsRoot();
-      connectAsOther();
-      connectAsRoot();
-
-      const table = handleTable();
-      assertFalse(table.hasOwnProperty(''), JSON.stringify(table));
-      const active = Object.keys(table).filter((handle) => table[handle].active);
-      assertEqual([arango.getConnectionHandle()], active, JSON.stringify(table));
-    },
-
     // a renewed token replaces the connection, but keeps its handle
     testRenewalKeepsHandleAndReplacesToken: function () {
       const handle = connectAsRoot();
@@ -147,39 +126,6 @@ function connectionHandlesJwtRenewalSuite() {
       assertEqual(handle, arango.getConnectionHandle());
       const tokenAfter = handleTable()[handle].jwtToken;
       assertNotEqual(tokenBefore, tokenAfter);
-    },
-
-    // switching back to a cached handle whose token expired meanwhile must
-    // renew that token before the next request, rather than sending the
-    // expired one (which the server answers with HTTP 401)
-    testSwitchingToHandleWithExpiredTokenRenewsIt: function () {
-      const rootHandle = connectAsRoot();
-      connectAsOther();
-
-      waitForTokenExpiry();
-
-      assertTrue(arango.connectHandle(rootHandle));
-      assertEqual(200, readRootUser());
-      assertEqual(rootHandle, arango.getConnectionHandle());
-    },
-
-    // every handle renews as the user it was created for, not as the user
-    // that logged in last
-    testRenewalUsesTheCredentialsOfTheHandle: function () {
-      const rootHandle = connectAsRoot();
-      const otherHandle = connectAsOther();
-
-      waitForTokenExpiry();
-
-      assertTrue(arango.connectHandle(rootHandle));
-      assertEqual(200, readRootUser());
-
-      assertTrue(arango.connectHandle(otherHandle));
-      assertEqual(403, readRootUser());
-      assertEqual(200, arango.GET_RAW('/_api/user/' + otherUser).code);
-
-      assertTrue(arango.connectHandle(rootHandle));
-      assertEqual(200, readRootUser());
     },
 
     // getEndpoint() and connectedUser() describe the active handle, also

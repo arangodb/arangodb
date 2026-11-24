@@ -217,6 +217,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionsWithBackingStore.cpp
   ClientTools/BackgroundJwtRenewalTest.cpp
   ClientTools/ConnectionHandlesTest.cpp
+  ClientTools/ConnectionManagerTest.cpp
   ClientTools/RenewingJwtTokenTest.cpp
   ClientTools/RequestCodingTest.cpp
   Cluster/AgencyPathsTest.cpp

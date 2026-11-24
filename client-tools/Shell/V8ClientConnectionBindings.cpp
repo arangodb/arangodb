@@ -22,7 +22,7 @@
 
 #include "V8ClientConnectionBindings.h"
 
-#include "ClientConnection.h"
+#include "Shell/ClientConnection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"

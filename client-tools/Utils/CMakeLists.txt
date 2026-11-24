@@ -1,6 +1,7 @@
 add_library(clienttools_utils STATIC
   BackgroundJwtRenewal.cpp
   ClientManager.cpp
+  ConnectionManager.cpp
   ManagedDirectory.cpp
   RenewingJwtToken.cpp
   RequestCoding.cpp
@@ -16,6 +17,7 @@ target_link_libraries(clienttools_utils
   arango_basic_http_client
   arango_scheduler
   fuerte
+  Boost::hash2
   v8_interface
 )
 target_include_directories(clienttools_utils PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)

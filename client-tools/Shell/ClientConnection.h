@@ -31,10 +31,11 @@
 
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Utils/ConnectionHandles.h"
-#include "Utils/RenewingJwtToken.h"
+#include "Utils/ConnectionManager.h"
 #include "Utils/RequestCoding.h"
-#include <optional>
+
+#include <atomic>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -110,7 +111,7 @@ class ClientConnection {
   std::string endpointSpecification() const;
 
   std::string getLocalEndpoint() {
-    if (auto const& connection = _handles.connection(); connection) {
+    if (auto const& connection = _manager.activeConnection(); connection) {
       return connection->localEndpoint();
     } else {
       return "not connected";
@@ -136,23 +137,10 @@ class ClientConnection {
 
   std::string getHandle();
 
-  struct HandleInfo {
-    std::string handle;
-    bool active;
-    struct Peer {
-      bool connected;
-      std::string endpoint;
-      std::string localEndpoint;
-    };
-    // empty if the handle has no connection
-    std::optional<Peer> peer;
-    std::string username;
-    std::string password;
-    std::string jwtToken;
-  };
+  using HandleInfo = ConnectionManager::HandleInfo;
   std::vector<HandleInfo> connectionHandleTable() const;
 
-  enum class HandleSwitch { kAlreadyActive, kSwitched, kUnknownHandle };
+  using HandleSwitch = ConnectionManager::HandleSwitch;
   HandleSwitch connectHandle(std::string const& handle);
 
   // false if the handle is unknown
@@ -172,39 +160,6 @@ class ClientConnection {
   void forceNewConnection();
 
  private:
-  // how the jwt token of a connection is kept fresh
-  struct TokenRenewal {
-    enum class Kind {
-      // basic auth, no auth, or a token without expiry from --server.jwt-secret
-      kNone,
-      // a user token from /_open/auth, renewed by logging in again
-      kLogin,
-      // the --server.jwt-token, renewed by the ClientFeature in the background
-      kJwtTokenOption,
-    };
-    Kind kind = Kind::kNone;
-    // token state of kLogin, which logs in with the credentials of the
-    // Configuration
-    JwtTokenState token;
-  };
-
-  // how a connection is configured
-  struct Configuration {
-    fuerte::ConnectionBuilder builder;
-    TokenRenewal renewal;
-    // the endpoint and credentials as given by the client, whichever of them
-    // the authentication mode uses
-    std::string endpoint;
-    std::string username;
-    std::string password;
-    std::string jwtSecret;
-    // not part of the identity: requests name their database, so switching
-    // it keeps the connection
-    std::string databaseName;
-  };
-
-  using Handles = ConnectionHandles<Configuration>;
-
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
@@ -219,34 +174,21 @@ class ClientConnection {
     _lastErrorMessage = msg;
   }
 
-  // Requests a token at the endpoint of target: kLogin logs in via
-  // /_open/auth with username and password, kRenew renews the token of target
-  // via /_open/auth/renew, over the active connection if that has the token.
-  // yields no token if the server issues none (yet). Need to hold _lock
-  TokenOutcome requestToken(TokenRequest request,
-                            fuerte::ConnectionBuilder const& target,
-                            std::string const& username = "",
-                            std::string const& password = "");
-
-  // The superuser token for the jwt secret, generated once per secret
-  std::string const& internalToken(std::string const& jwtSecret);
-
   // Renews the token of the active configuration if due, and switches to a
   // connection with the new token
   void renewTokenIfDue();
 
   // Points the client settings at the endpoint, credentials and database of
-  // config, so that whatever reads them, such as the importers, the prompt
+  // settings, so that whatever reads them, such as the importers, the prompt
   // and reconnect() defaults, follows the active handle
-  void adoptClientSettings(Configuration const& config);
+  void adoptClientSettings(ConnectionSettings const& settings);
+
+  std::chrono::milliseconds requestTimeout() const;
 
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
 
-  // the last superuser token, and the jwt secret it was generated with
-  std::string _internalToken;
-  std::string _internalTokenSecret;
   std::chrono::duration<double> _requestTimeout;
 
   mutable std::recursive_mutex _lock;
@@ -261,14 +203,10 @@ class ClientConnection {
   bool _forceJson;
   std::atomic<bool> _setCustomError;
 
-  // the active connection and a per-endpoint, per-user cache of inactive
-  // ones. whenever we reconnect to another endpoint, we can put the old
-  // connection into this cache, and recycle it later. the goal is to not use
-  // too many separate connections and ephemeral ports for patterns such as
-  // "connect-to-leader" -> "connect-to-follower" -> "connect-to-leader" etc.
-  // the config() of the active entry is the one to connect with next while no
-  // connection is active; whoever retargets it to another connection has to
-  // deactivate() the active connection first
-  Handles _handles;
+  // whenever we reconnect to another endpoint, the old connection is kept
+  // for reuse, so as not to use too many separate connections and ephemeral
+  // ports for patterns such as "connect-to-leader" -> "connect-to-follower" ->
+  // "connect-to-leader". declared after _loop, which its connections run on
+  ConnectionManager _manager;
 };
 }  // namespace arangodb
