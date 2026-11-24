@@ -192,7 +192,8 @@ class AqlItemBlock {
   void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs,
                               size_t fromRow);
 
-  /// @brief false if another cell holds the pointer; nothing changed then
+  /// @brief the block won't free the stolen value, so delete the block soon
+  /// Returns false and does nothing if another cell shares the pointer
   [[nodiscard]] bool steal(AqlValue const& value);
 
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);

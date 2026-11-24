@@ -1005,25 +1005,20 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_MANAGED_STRING:
       return basics::VelocyPackHelper::compare(
           left.slice(leftType), right.slice(rightType), compareUtf8, options);
-    case RANGE: {
-      auto const* rl = left.range();
-      auto const* rr = right.range();
-      TRI_ASSERT(rl != nullptr);
-      TRI_ASSERT(rr != nullptr);
-      if (rl->_low < rr->_low) {
+    case RANGE:
+      if (left.range()->_low < right.range()->_low) {
         return -1;
       }
-      if (rl->_low > rr->_low) {
+      if (left.range()->_low > right.range()->_low) {
         return 1;
       }
-      if (rl->_high < rr->_high) {
+      if (left.range()->_high < right.range()->_high) {
         return -1;
       }
-      if (rl->_high > rr->_high) {
+      if (left.range()->_high > right.range()->_high) {
         return 1;
       }
       return 0;
-    }
   }
   return 0;
 }

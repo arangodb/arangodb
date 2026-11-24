@@ -1,10 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
-  instead of value content, causing byte-identical values to be serialized
-  multiple times instead of reusing their position in the AqlItemBlock raw
-  array.
+* COR-538: Fixed AqlValue hash and equality comparing pointers instead of
+  content, so identical values were serialized more than once per AqlItemBlock.
+  Also fixed crashes when copying blocks with string values and when a value
+  shared among cells was stolen from a block.
 
 * Patch FAISS v1.16.0 with alubsan fix.
 

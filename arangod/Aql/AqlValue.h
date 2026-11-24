@@ -112,10 +112,10 @@ struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
   friend struct std::equal_to<aql::AqlValue>;
 
- public:
-  /// @brief default seed for hash function
+ private:
   static constexpr uint64_t kDefaultSeed = 0xdeadbeef;
 
+ public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
     VPACK_INLINE = 0,      // contains vpack data, inline

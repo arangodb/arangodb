@@ -24,13 +24,19 @@
 #include "gtest/gtest.h"
 
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegIdFlatSet.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <boost/container/flat_set.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+
+#include <cmath>
+#include <memory>
+#include <string>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -525,10 +531,107 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
   }
 }
 
-// By design, not a bug: Scatter steals (not clones) the shadow row per
-// client, so exactly one client gets the real value and the rest get an
-// already-emptied cell - matching Gather's own "only one will contain the
-// data" contract (MultiAqlItemBlockInputRange::nextShadowRow).
+TEST_F(AqlItemBlockTest, test_serialization_dedups_equal_content) {
+  std::string const content = "shared content, too long to be inlined";
+  std::string const other = "other content, too long to be inlined";
+  AqlValue a{content};
+  AqlValue b{content};
+  ASSERT_NE(a.data(), b.data());
+
+  auto block = itemBlockManager.requestBlock(3, 2);
+  block->setValue(0, 0, a);
+  block->setValue(0, 1, b);
+  block->setValue(1, 0, AqlValue{other});
+  block->setValue(1, 1, a);
+  block->setValue(2, 0, b);
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  result.close();
+
+  // two leading nulls, then one entry per distinct value
+  EXPECT_EQ(result.slice().get("raw").length(), 2 + 2);
+
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
+  auto stringAt = [&](size_t row, RegisterId::value_t col) {
+    return testee->getValueReference(row, col).slice().stringView();
+  };
+  EXPECT_EQ(stringAt(0, 0), content);
+  EXPECT_EQ(stringAt(0, 1), content);
+  EXPECT_EQ(stringAt(1, 0), other);
+  EXPECT_EQ(stringAt(1, 1), content);
+  EXPECT_EQ(stringAt(2, 0), content);
+}
+
+TEST_F(AqlItemBlockTest, test_serialization_keeps_distinct_encodings) {
+  auto makeDouble = [](double d) {
+    VPackBuilder b;
+    b.add(VPackValue(d));
+    return AqlValue{b.slice()};
+  };
+  auto block = itemBlockManager.requestBlock(6, 1);
+  block->setValue(0, 0, AqlValue{AqlValueHintInt{42}});
+  block->setValue(1, 0, makeDouble(42.0));
+  block->setValue(2, 0, makeDouble(0.0));
+  block->setValue(3, 0, makeDouble(-0.0));
+  block->setValue(4, 0, AqlValue{VPackParser::fromJson("[]")->slice()});
+  block->setValue(5, 0, AqlValue{VPackParser::fromJson("[null]")->slice()});
+
+  VPackBuilder result;
+  result.openObject();
+  block->toVelocyPack(nullptr, result);
+  result.close();
+
+  EXPECT_EQ(result.slice().get("raw").length(), 2 + 6);
+
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
+  EXPECT_TRUE(testee->getValueReference(0, 0).slice().isInteger());
+  EXPECT_TRUE(testee->getValueReference(1, 0).slice().isDouble());
+  EXPECT_FALSE(
+      std::signbit(testee->getValueReference(2, 0).slice().getDouble()));
+  EXPECT_TRUE(
+      std::signbit(testee->getValueReference(3, 0).slice().getDouble()));
+  EXPECT_EQ(testee->getValueReference(4, 0).length(), 0);
+  EXPECT_EQ(testee->getValueReference(5, 0).length(), 1);
+}
+
+TEST_F(AqlItemBlockTest, test_clone_to_block_dedups_equal_content) {
+  auto const expected = VPackParser::fromJson(
+      R"({"thisField": "is too large to be inlined, deliberately so"})");
+  auto bytes = expected->slice();
+  DocumentData doc =
+      std::make_unique<std::string>(bytes.startAs<char>(), bytes.byteSize());
+
+  auto block = itemBlockManager.requestBlock(1, 4);
+  block->setValue(0, 0, AqlValue{doc});
+  block->setValue(0, 1, AqlValue{bytes});
+  block->setValue(0, 2, AqlValue{bytes});
+  block->setValue(0, 3, AqlValue{std::string(200, 'x')});
+  ASSERT_EQ(block->getValueReference(0, 0).type(),
+            AqlValue::VPACK_MANAGED_STRING);
+  ASSERT_NE(block->getValueReference(0, 1).data(),
+            block->getValueReference(0, 2).data());
+
+  RegIdFlatSet const registers{RegisterId{0}, RegisterId{1}, RegisterId{2},
+                               RegisterId{3}};
+  SharedAqlItemBlockPtr copy =
+      InputAqlItemRow{block, 0}.cloneToBlock(itemBlockManager, registers, 4);
+  AqlValue const& first = copy->getValueReference(0, 0);
+  EXPECT_NE(first.data(), block->getValueReference(0, 1).data());
+  block.reset(nullptr);
+
+  EXPECT_EQ(first.type(), AqlValue::VPACK_MANAGED_SLICE);
+  EXPECT_TRUE(first.slice().binaryEquals(expected->slice()));
+  for (RegisterId::value_t col : {1, 2}) {
+    EXPECT_EQ(copy->getValueReference(0, col).data(), first.data());
+  }
+  EXPECT_NE(copy->getValueReference(0, 3).data(), first.data());
+}
+
+// only the first clone gets the shadow row's data, as Gather expects
 TEST_F(AqlItemBlockTest,
        test_scatter_clone_shadow_row_only_one_client_gets_data) {
   auto const json =
@@ -561,10 +664,7 @@ TEST_F(AqlItemBlockTest,
   EXPECT_TRUE(client2->getValueReference(1, 0).isEmpty());
 }
 
-// Contrasting case: two NORMAL rows (no shadow row involved) that collapse to
-// the same aliased pointer after the same round-trip. copyValueOver's cache
-// still dedups/clones correctly here, so both clients must see real data.
-TEST_F(AqlItemBlockTest, test_scatter_clone_normal_row_collision_stays_safe) {
+TEST_F(AqlItemBlockTest, test_scatter_clone_normal_rows_sharing_value) {
   auto const json =
       R"({"thisField": "is too large to be inlined, deliberately so"})";
   auto const expected = Parser::fromJson(json);
@@ -581,11 +681,12 @@ TEST_F(AqlItemBlockTest, test_scatter_clone_normal_row_collision_stays_safe) {
   ASSERT_TRUE(result.isOpenObject());
   result.close();
 
+  // the round trip dedups both rows into one pointer
   SharedAqlItemBlockPtr testee =
       itemBlockManager.requestAndInitBlock(result.slice());
   ASSERT_FALSE(testee->isShadowRow(1));
-  ASSERT_FALSE(testee->getValueReference(0, 0).isEmpty());
-  ASSERT_FALSE(testee->getValueReference(1, 0).isEmpty());
+  ASSERT_EQ(testee->getValueReference(0, 0).data(),
+            testee->getValueReference(1, 0).data());
 
   SharedAqlItemBlockPtr client1 = testee->cloneDataAndMoveShadow();
   SharedAqlItemBlockPtr client2 = testee->cloneDataAndMoveShadow();
@@ -601,10 +702,8 @@ TEST_F(AqlItemBlockTest, test_scatter_clone_normal_row_collision_stays_safe) {
   }
 }
 
-// Regression test: round-trip content-aliasing merges row0 and the shadow
-// row's cell into one allocation. steal() must clone instead of handing
-// client1 sole ownership, or testee's row0 dangles once client1 is gone.
-TEST_F(AqlItemBlockTest, test_scatter_clone_shadow_row_use_after_free) {
+TEST_F(AqlItemBlockTest,
+       test_scatter_clone_shadow_row_sharing_value_keeps_source_valid) {
   auto const json =
       R"({"thisField": "is too large to be inlined, deliberately so"})";
   auto const expected = Parser::fromJson(json);
@@ -621,6 +720,7 @@ TEST_F(AqlItemBlockTest, test_scatter_clone_shadow_row_use_after_free) {
   block->toVelocyPack(nullptr, result);
   result.close();
 
+  // the round trip dedups row 0 and the shadow row into one pointer
   SharedAqlItemBlockPtr testee =
       itemBlockManager.requestAndInitBlock(result.slice());
 
@@ -632,7 +732,29 @@ TEST_F(AqlItemBlockTest, test_scatter_clone_shadow_row_use_after_free) {
             0);
 }
 
-// shared pointer: stealValue must not drop the refcount, row 1 still reads it
+TEST_F(AqlItemBlockTest,
+       test_scatter_clone_shadow_row_with_value_in_two_cells) {
+  auto const expected = Parser::fromJson(
+      R"({"thisField": "is too large to be inlined, deliberately so"})");
+
+  auto block = itemBlockManager.requestBlock(2, 2);
+  AqlValue shared{AqlValueHintSliceCopy{expected->slice()}};
+  block->setValue(1, 0, shared);
+  block->setValue(1, 1, shared);
+  block->makeShadowRow(1, 0);
+
+  SharedAqlItemBlockPtr copy = block->cloneDataAndMoveShadow();
+  block.reset(nullptr);
+
+  for (RegisterId::value_t col : {0, 1}) {
+    EXPECT_TRUE(copy->getValueReference(1, col).slice().binaryEquals(
+        expected->slice()));
+  }
+  copy->destroyValue(1, 0);
+  EXPECT_TRUE(
+      copy->getValueReference(1, 1).slice().binaryEquals(expected->slice()));
+}
+
 TEST_F(AqlItemBlockTest, test_steal_value_shared_pointer_keeps_refcount) {
   auto const json =
       R"({"thisField": "is too large to be inlined, deliberately so"})";
@@ -655,8 +777,7 @@ TEST_F(AqlItemBlockTest, test_steal_value_shared_pointer_keeps_refcount) {
             0);
 }
 
-// the shared cell must get the clone's type, not MANAGED_STRING
-TEST_F(AqlItemBlockTest, test_clone_shared_managed_string) {
+TEST_F(AqlItemBlockTest, test_clone_shared_managed_string_to_managed_slice) {
   auto const expected = Parser::fromJson(
       R"({"thisField": "is too large to be inlined, deliberately so"})");
   auto bytes = expected->slice();
