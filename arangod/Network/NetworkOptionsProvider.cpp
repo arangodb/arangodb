@@ -70,16 +70,22 @@ communicate with each other via TLS:
   that is used to connect to the server, as advertised in the cluster, in its
   Subject Alternative Name (SAN) extension.
 
+The option does not apply to the communication with the Agency. The
+certificates of the Agents are not verified.
+
 If the verification fails, the servers cannot communicate with each other and
-the cluster doesn't start up. The server logs only report generic connection
-errors (`could not connect`) in this case, not the reason why the certificate
-verification failed.
+the cluster doesn't start up. With the default log levels, the logs only show
+generic connection errors (`Unable to connect`). To see the reason, set
+`--log.level communication=debug`. The server whose certificate is rejected
+then logs messages like
+`error during TLS handshake: 'tlsv1 alert unknown ca (SSL routines)'`.
 
 ```bash
 SSL_CERT_FILE=/path/to/ca.crt arangod \
   --server.endpoint https://192.168.1.1:8530 \
   --ssl.keyfile server.pem \
   --network.verify-hosts \
+  --log.level communication=debug \
   ...
 ```)");
 
