@@ -15,7 +15,7 @@
 //   /_admin/server/databaseDefaults GET RestAdminServerHandler  AUTHEN
 //   /_admin/server/id GET          RestAdminServerHandler       AUTHEN (cluster only)
 //   /_admin/server/mode GET        RestAdminServerHandler       AUTHEN
-//   /_admin/server/mode PUT        RestAdminServerHandler       AdminMaintenance
+//   /_admin/server/mode PUT        RestAdminServerHandler       AdminReadOnlyMode
 //   /_admin/server/role GET        RestAdminServerHandler       AUTHEN
 //   /_admin/server/tls  GET        RestAdminServerHandler       AUTHEN
 //   /_admin/server/tls  POST       RestAdminServerHandler       isSuperuser
@@ -236,7 +236,7 @@ export default [
   },
 
   // ── /_admin/server/mode PUT ──────────────────────────────────────────────
-  // Auth: canUseAdminAction(AdminMaintenance) → RW on _system
+  // Auth: canUseAdminAction(AdminReadOnlyMode) → RW on _system
   // We send {"mode":"default"} which is a no-op when the server is already
   // in default mode, so the test is safe even when run 64+ times.
   // Expected: AU→401, AN→401, AR→403, AW→200, superuser→200

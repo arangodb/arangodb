@@ -966,9 +966,10 @@ using AllAdminPermissions =
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
                p::AdminLicense, p::AdminBackup, p::AdminReadReplicatedLog,
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
-               p::AdminWalAccess, p::AdminReadAgency, p::AdminQueryCache>;
+               p::AdminWalAccess, p::AdminReadAgency, p::AdminReadOnlyMode,
+               p::AdminQueryCache>;
 
-static_assert(std::tuple_size_v<AllAdminPermissions> == 30);
+static_assert(std::tuple_size_v<AllAdminPermissions> == 31);
 
 // Same as AllAdminPermissions, minus AdminQueryCache: used by the tests below
 // that pin "forbidden without RW", which no longer holds for AdminQueryCache.
@@ -983,9 +984,9 @@ using AllAdminPermissionsExceptQueryCache =
                p::AdminClusterInfo, p::AdminMaintenance, p::AdminRebalance,
                p::AdminLicense, p::AdminBackup, p::AdminReadReplicatedLog,
                p::AdminWriteReplicatedLog, p::AdminDump, p::AdminRestore,
-               p::AdminWalAccess, p::AdminReadAgency>;
+               p::AdminWalAccess, p::AdminReadAgency, p::AdminReadOnlyMode>;
 
-static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 29);
+static_assert(std::tuple_size_v<AllAdminPermissionsExceptQueryCache> == 30);
 
 TEST_F(ClassicAuthModeTest, EveryAdminActionIsGrantedBySystemReadWrite) {
   beAdmin();
