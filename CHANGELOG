@@ -1,6 +1,9 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* COR-1306: Fixed issue with subqueries in cluster queries during a rolling
+  upgrade to 4.0.
+
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
 
 * Updated node modules:
