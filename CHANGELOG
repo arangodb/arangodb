@@ -693,6 +693,12 @@
   how large a compressed HTTP request body may be after decompression. The
   default is 512 MiB.
 
+* OASIS-28474: Coordinators compress responses to requests they forward to
+  another Coordinator, such as fetching the next cursor batch or running a
+  query in a Stream Transaction, the same way as responses they produce
+  themselves: `--http.compress-response-threshold` applies, and the
+  `Content-Type` header keeps `charset=utf-8`.
+
 * COR-1086: Replaced deprecated OpenSSL functions with the proper newer, higher
   level envelope calls. Removed unused functions and refactored some minor parts
   of the SslInterface.
