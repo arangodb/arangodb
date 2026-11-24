@@ -39,9 +39,9 @@ struct Pipeline {
 
   Pipeline() : _pipeline{} {};
   Pipeline(ExecBlock&& init) { _pipeline.emplace_back(std::move(init)); }
-  Pipeline(std::deque<ExecBlock>&& init) : _pipeline(std::move(init)){};
+  Pipeline(std::deque<ExecBlock>&& init) : _pipeline(std::move(init)) {};
   Pipeline(Pipeline& other) = delete;
-  Pipeline(Pipeline&& other) : _pipeline(std::move(other._pipeline)){};
+  Pipeline(Pipeline&& other) : _pipeline(std::move(other._pipeline)) {};
 
   Pipeline& operator=(Pipeline&& other) {
     _pipeline = std::move(other._pipeline);

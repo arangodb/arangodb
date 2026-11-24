@@ -32,6 +32,7 @@
 #include <system_error>
 #include <unordered_map>
 #include <vector>
+#include <format>
 
 #include "Basics/debugging.h"
 
@@ -478,7 +479,7 @@ auto concatImplIter(std::pair<Iters, Iters>&&... iters) -> std::string {
 /// All arguments must either be `std::string` or `std::string_view`.
 template<typename... Args>
 auto concatImplStr(Args&&... args) -> std::string {
-  static_assert(((isStringOrView<Args>)&&...));
+  static_assert(((isStringOrView<Args>) && ...));
   return concatImplIter(std::make_pair(args.begin(), args.end())...);
 }
 
@@ -512,7 +513,7 @@ auto joinImplIter(std::string_view delim, std::pair<Iter, Iter>&& head,
 /// All arguments must either be `std::string` or `std::string_view`.
 template<typename... Args>
 auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
-  static_assert(((isStringOrView<Args>)&&...));
+  static_assert(((isStringOrView<Args>) && ...));
   if constexpr (sizeof...(Args) == 0) {
     return std::string{};
   } else {

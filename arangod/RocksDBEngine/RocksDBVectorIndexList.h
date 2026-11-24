@@ -140,24 +140,24 @@ struct IteratorFilterContext : IteratorContext {
 ////////////////////////////////////////////////////////////////////////////////
 // TODO(jbajic) could be used during insertion with a bit refactoring
 template<typename T>
-concept VectorIndexStoredValuesStrategy = requires {
-  // Must have a compile-time constant indicating if stored values are
-  // present
-  { T::hasStoredValues } -> std::convertible_to<bool>;
-}
-&&requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
-           size_t codeSize, std::vector<uint8_t> const& encodedValue,
-           velocypack::Slice storedValues) {
-  // Extract encoded vector from raw bytes
-  // Returns document ID and the encoded vector
-  // Caller manages the vector lifetime and can extract pointer as needed
-  {T::extractVectorIndexEntry(key, value, codeSize)};
+concept VectorIndexStoredValuesStrategy =
+    requires {
+      // Must have a compile-time constant indicating if stored values are
+      // present
+      { T::hasStoredValues } -> std::convertible_to<bool>;
+    } && requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
+                  size_t codeSize, std::vector<uint8_t> const& encodedValue,
+                  velocypack::Slice storedValues) {
+      // Extract encoded vector from raw bytes
+      // Returns document ID and the encoded vector
+      // Caller manages the vector lifetime and can extract pointer as needed
+      { T::extractVectorIndexEntry(key, value, codeSize) };
 
-  // Extract encoded vector from raw bytes
-  // Returns the encoded vector
-  // Caller manages the vector lifetime and can extract pointer as needed
-  {T::extractVectorIndexValue(value, codeSize)};
-};
+      // Extract encoded vector from raw bytes
+      // Returns the encoded vector
+      // Caller manages the vector lifetime and can extract pointer as needed
+      { T::extractVectorIndexValue(value, codeSize) };
+    };
 
 /// @brief Non-owning view into a vector-index entry. Backed by the rocksdb
 /// iterator's value() bytes; valid only until the iterator advances.
@@ -382,8 +382,8 @@ struct RocksDBInvertedListsFilteringIterator final
 // values that will be used during expression evaluation.
 // It can be used iff storedValues fully cover the filterExpression
 template<VectorIndexStoredValuesStrategy Strategy>
-requires(Strategy::hasStoredValues) struct
-    RocksDBInvertedListsFilteringStoredValuesIterator final
+  requires(Strategy::hasStoredValues)
+struct RocksDBInvertedListsFilteringStoredValuesIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,

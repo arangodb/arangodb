@@ -38,11 +38,9 @@ class CachingHelper {
 
   template<typename Visitor>
   bool Visit(std::string_view key, Visitor&& visitor) const noexcept {
-    const size_t key_hash = cache_.hash_ref()(key);
-
     {
       std::shared_lock lock{mutex_};
-      if (auto it = cache_.find(key, key_hash); it != cache_.end()) {
+      if (auto it = cache_.find(key); it != cache_.end()) {
         return visitor(it->second);
       }
     }
@@ -68,19 +66,15 @@ class CachingHelper {
   }
 
   void Remove(std::string_view key) noexcept {
-    const size_t key_hash = cache_.hash_ref()(key);
-
     std::lock_guard lock{mutex_};
-    if (const auto it = cache_.find(key, key_hash); it != cache_.end()) {
+    if (const auto it = cache_.find(key); it != cache_.end()) {
       cache_.erase(it);
     }
   }
 
   void Rename(std::string_view src, std::string_view dst) noexcept {
-    const auto src_hash = cache_.hash_ref()(src);
-
     std::lock_guard lock{mutex_};
-    if (auto src_it = cache_.find(src, src_hash); src_it != cache_.end()) {
+    if (auto src_it = cache_.find(src); src_it != cache_.end()) {
       auto tmp = std::move(src_it->second);
       cache_.erase(src_it);
       try {

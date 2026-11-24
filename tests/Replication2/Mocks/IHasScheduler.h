@@ -71,7 +71,8 @@ concept Iterable = requires(T t) {
 struct IHasScheduler;
 
 template<class T>
-concept HasScheduler = std::derived_from<T, IHasScheduler> or
+concept HasScheduler =
+    std::derived_from<T, IHasScheduler> or
     std::derived_from<typename std::pointer_traits<T>::element_type,
                       IHasScheduler>;
 

@@ -79,19 +79,25 @@ TEST(thread_pool_test, test_run_3tasks_seq_mt) {
   std::mutex mutex;
   std::mutex sync_mutex;
   auto task1 = [&mutex, &sync_mutex, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::unique_lock<std::mutex> lock(sync_mutex, std::try_to_lock);
     if (lock.owns_lock()) ++count;
     std::this_thread::sleep_for(300ms);
   };
   auto task2 = [&mutex, &sync_mutex, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::unique_lock<std::mutex> lock(sync_mutex, std::try_to_lock);
     if (lock.owns_lock()) ++count;
     std::this_thread::sleep_for(300ms);
   };
   auto task3 = [&mutex, &sync_mutex, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::unique_lock<std::mutex> lock(sync_mutex, std::try_to_lock);
     if (lock.owns_lock()) ++count;
     std::this_thread::sleep_for(300ms);
@@ -236,19 +242,25 @@ TEST(thread_pool_test, test_max_idle_mt) {
   notifying_counter start_count(start_cond, 3);
   std::mutex start_mutex;
   auto task1 = [&start_mutex, &start_count, &mutex1, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(start_mutex); }
+    {
+      std::lock_guard<std::mutex> lock(start_mutex);
+    }
     ++start_count;
     std::lock_guard<std::mutex> lock(mutex1);
     ++count;
   };
   auto task2 = [&start_mutex, &start_count, &mutex1, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(start_mutex); }
+    {
+      std::lock_guard<std::mutex> lock(start_mutex);
+    }
     ++start_count;
     std::lock_guard<std::mutex> lock(mutex1);
     ++count;
   };
   auto task3 = [&start_mutex, &start_count, &mutex2, &count]() -> void {
-    { std::lock_guard<std::mutex> lock(start_mutex); }
+    {
+      std::lock_guard<std::mutex> lock(start_mutex);
+    }
     ++start_count;
     std::lock_guard<std::mutex> lock(mutex2);
     ++count;
@@ -288,12 +300,16 @@ TEST(thread_pool_test, test_stop_run_pending_delay_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   std::unique_lock<std::mutex> lock(mutex);
@@ -413,7 +429,9 @@ TEST(thread_pool_test, test_stop_long_running_run_after_stop_mt) {
   std::condition_variable cv;
   std::atomic<size_t> count{0};
   auto long_running_task = [&mtx, &count]() {
-    { auto lock = std::lock_guard(mtx); }
+    {
+      auto lock = std::lock_guard(mtx);
+    }
 
     std::this_thread::sleep_for(2s);
     ++count;
@@ -449,7 +467,9 @@ TEST(thread_pool_test, test_stop_long_ruuning_run_skip_pending_mt) {
   std::mutex mtx;
   std::atomic<size_t> count{0};
   auto long_running_task = [&mtx, &count]() {
-    { auto lock = std::lock_guard(mtx); }
+    {
+      auto lock = std::lock_guard(mtx);
+    }
 
     std::this_thread::sleep_for(2s);
 
@@ -509,19 +529,27 @@ TEST(thread_pool_test, test_stop_run_pending_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   auto task3 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   auto task4 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   std::unique_lock<std::mutex> lock(mutex);
 
@@ -573,16 +601,22 @@ TEST(thread_pool_test, test_stop_with_pending_task_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   auto task3 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   {
@@ -645,16 +679,22 @@ TEST(thread_pool_test, test_abort_with_pending_task_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   auto task3 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   {
@@ -718,12 +758,16 @@ TEST(thread_pool_test, test_stop_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   std::unique_lock<std::mutex> lock(mutex);
@@ -744,12 +788,16 @@ TEST(thread_pool_test, test_stop_skip_pending_mt) {
   std::mutex mutex;
   auto task1 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   auto task2 = [&mutex, &count]() -> void {
     ++count;
-    { std::lock_guard<std::mutex> lock(mutex); }
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+    }
     std::this_thread::sleep_for(300ms);
   };
   std::unique_lock<std::mutex> lock(mutex);

@@ -86,8 +86,7 @@ struct compressor : memory::Managed {
   virtual bytes_view compress(byte_type* in, size_t size, bstring& buf) = 0;
 
   /// @brief flush arbitrary payload relevant to compression
-  virtual void flush(data_output& /*out*/) { /*NOOP*/
-  }
+  virtual void flush(data_output& /*out*/) { /*NOOP*/ }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

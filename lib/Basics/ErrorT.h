@@ -43,7 +43,8 @@ struct ErrorT {
         Contained(std::in_place_index<1>, std::forward<Args>(args)...));
   }
 
-  ErrorT() requires(std::is_nothrow_default_constructible_v<T>)
+  ErrorT()
+    requires(std::is_nothrow_default_constructible_v<T>)
       : _contained{T{}} {}
 
   [[nodiscard]] auto ok() const noexcept -> bool {
@@ -57,7 +58,8 @@ struct ErrorT {
   [[nodiscard]] auto get() -> T& { return std::get<1>(_contained); }
 
   [[nodiscard]] explicit operator bool() const noexcept
-      requires(!std::convertible_to<T, bool>) {
+    requires(!std::convertible_to<T, bool>)
+  {
     return ok();
   }
 

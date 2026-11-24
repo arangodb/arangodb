@@ -41,7 +41,6 @@ struct CollectionInvariants {
   bool isSmart{false};
   bool isDisjoint{false};
   bool isSmartChild{false};
-  bool timeTravelEnabled{false};
 
   std::optional<std::string> smartJoinAttribute;
   std::optional<replication2::agency::CollectionGroupId> groupId;

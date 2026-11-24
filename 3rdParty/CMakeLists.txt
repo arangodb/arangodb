@@ -93,6 +93,13 @@ if (USE_JEMALLOC)
 endif ()
 
 ################################################################################
+## Google Abseil
+################################################################################
+
+# before V8, which needs ABSL_INCLUDE_DIR
+add_subdirectory(abseil-cpp)
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -125,16 +132,6 @@ set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
 set(ICU64_LIBRARY_DIR "${ICU64_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_DT_LEGACY "${ICU_DT_LEGACY}" PARENT_SCOPE)
 set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}" PARENT_SCOPE)
-
-################################################################################
-## Google Abseil
-################################################################################
-
-UpdateModule(${GIT_EXECUTABLE} "abseil-cpp" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-
-set(ABSL_PROPAGATE_CXX_STD ON)
-
-add_subdirectory(abseil-cpp)
 
 ################################################################################
 ## Google S2

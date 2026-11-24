@@ -24,12 +24,14 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "utils/log.hpp"
 #include "utils/vpack_utils.hpp"
 
-#include <absl/strings/internal/escaping.h>
+#include <absl/strings/escaping.h>
 
 namespace {
 
@@ -371,11 +373,11 @@ bool MinHashTokenStream::next() {
 
   const auto value = absl::little_endian::FromHost(*begin_);
 
-  [[maybe_unused]] const size_t length =
-    absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const uint8_t*>(&value), sizeof value, buf_.data(),
-      buf_.size(), absl::strings_internal::kBase64Chars, false);
-  IRS_ASSERT(length == buf_.size());
+  // tokens are stored without the single trailing padding `=`
+  const auto encoded = absl::Base64Escape(
+    std::string_view{reinterpret_cast<const char*>(&value), sizeof value});
+  IRS_ASSERT(encoded.size() == buf_.size() + 1 && encoded.back() == '=');
+  std::copy_n(encoded.data(), buf_.size(), buf_.data());
 
   std::get<increment>(attrs_).value = std::exchange(next_inc_.value, 0);
   ++begin_;

@@ -995,8 +995,9 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesFailOnWarningDynamic) {
 
   EXPECT_TRUE(trx.begin().ok());
   auto doc = velocypack::Parser::fromJson("{\"value\":42}");
-  EXPECT_THROW({ trx.insert("test", doc->slice(), OperationOptions()); },
-               basics::Exception);
+  EXPECT_THROW(
+      { trx.insert("test", doc->slice(), OperationOptions()); },
+      basics::Exception);
 }
 
 TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {

@@ -81,7 +81,7 @@ void IResearchRocksDBLink::toVelocyPack(
 
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
-    builder.add("objectId", VPackValue(absl::AlphaNum{objectId()}.Piece()));
+    builder.add("objectId", VPackValue(absl::AlphaNum(objectId()).Piece()));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

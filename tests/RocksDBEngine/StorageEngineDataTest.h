@@ -53,15 +53,10 @@ DECLARE_COUNTER(arangodb_storage_engine_test_transactions_expired_total,
 // A fixture that adds the scaffolding needed to exercise database, collection
 // and document operations through the storage engine. The helpers stay
 // deliberately thin: they only use what the engine already exposes.
-//
-// Parameterized on the base storage-engine fixture so the same scaffolding and
-// helpers serve both the plain engine (StorageEngineFixture) and the
-// time-travel engine (TimeTravelStorageEngineFixture) without duplication.
-template<class BaseFixture>
-class BasicStorageEngineDataTest : public BaseFixture {
+class StorageEngineDataTest : public StorageEngineFixture {
  protected:
   static void SetUpTestSuite() {
-    BaseFixture::SetUpTestSuite();
+    StorageEngineFixture::SetUpTestSuite();
     // Minting a collection's GUID reads the global server id, which is normally
     // populated by the ServerIdFeature at startup. That feature is not part of
     // this setup, so we seed the id directly. The value must be large enough
@@ -71,21 +66,21 @@ class BasicStorageEngineDataTest : public BaseFixture {
     // Building a LogicalCollection constructs a ShardingInfo, which resolves
     // its sharding strategy through the ShardingFeature. Register it on our own
     // server and run prepare() so the strategy factories are available.
-    suite().server.addFeature<ShardingFeature>().prepare();
+    _suite->server.addFeature<ShardingFeature>().prepare();
 
     // Transactions resolve their manager through engine().transactionManager(),
     // which is only valid once the manager has been created. In production the
     // ManagerFeature does this at startup; here we create it directly (the
     // engine holds only a weak reference, so we keep it alive as a member).
-    _transactionManager = suite().engine.createTransactionManager(
+    _transactionManager = _suite->engine.createTransactionManager(
         transaction::ManagerFeatureOptions{},
-        suite().metricsRegistry.add(
+        _suite->metricsRegistry.add(
             arangodb_storage_engine_test_transactions_expired_total{}));
   }
 
   static void TearDownTestSuite() {
     _transactionManager.reset();
-    BaseFixture::TearDownTestSuite();
+    StorageEngineFixture::TearDownTestSuite();
   }
 
   inline static std::shared_ptr<transaction::Manager> _transactionManager;
@@ -97,14 +92,14 @@ class BasicStorageEngineDataTest : public BaseFixture {
   // engine().openDatabase(): the direct path keeps the test in full control of
   // the collaborators.
   std::unique_ptr<Database> makeDatabase(std::string_view name, uint64_t id) {
-    CreateDatabaseInfo info{suite().server, ExecContext::superuser()};
+    CreateDatabaseInfo info{_suite->server, ExecContext::superuser()};
     // Name validation still reaches into the DatabaseFeature (extendedNames()),
     // which is not available here. Disable it (gap 2 in the gap report).
     info.validateNames(false);
     auto res = info.load(name, id);
     EXPECT_TRUE(res.ok()) << res.errorMessage();
-    return std::make_unique<Database>(std::move(info), this->engine(),
-                                      suite().dbProvider);
+    return std::make_unique<Database>(std::move(info), engine(),
+                                      _suite->dbProvider);
   }
 
   // Persist the create-database marker so the database is discoverable through
@@ -116,8 +111,8 @@ class BasicStorageEngineDataTest : public BaseFixture {
                 VPackValue(std::to_string(database.id())));
     builder.add("name", VPackValue(database.name()));
     builder.close();
-    auto res = this->engine().writeCreateDatabaseMarker(database.id(),
-                                                        builder.slice());
+    auto res =
+        engine().writeCreateDatabaseMarker(database.id(), builder.slice());
     ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 
@@ -125,27 +120,14 @@ class BasicStorageEngineDataTest : public BaseFixture {
   // database.createCollection() both builds the collection object and registers
   // it in the database's lookup tables, so transactions can resolve it by name;
   // engine().createCollection() then writes the on-disk marker that the
-  // inventory API reports. When `timeTravel` is set, the collection is created
-  // with the immutable enableTimeTravel property so its primary index is backed
-  // by the PrimaryIndex_TT column family.
+  // inventory API reports.
   std::shared_ptr<LogicalCollection> makeCollection(Database& database,
-                                                    std::string_view name,
-                                                    bool timeTravel = false) {
-    auto colDescriptor =
-        arangodb::tests::testCollectionDescriptor(std::string{name});
-    colDescriptor.constant.enableTimeTravel = timeTravel;
-    auto collection = database.createCollection(colDescriptor);
-    this->engine().createCollection(database, *collection);
+                                                    std::string_view name) {
+    auto collection = database.createCollection(
+        arangodb::tests::testCollectionDescriptor(std::string{name}));
+    engine().createCollection(database, *collection);
     return collection;
   }
-
- private:
-  static StorageEngineFixtureSuite& suite() { return *BaseFixture::_suite; }
 };
-
-using StorageEngineDataTest = BasicStorageEngineDataTest<StorageEngineFixture>;
-
-using TimeTravelStorageEngineDataTest =
-    BasicStorageEngineDataTest<TimeTravelStorageEngineFixture>;
 
 }  // namespace arangodb::tests
