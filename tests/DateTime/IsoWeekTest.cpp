@@ -39,4 +39,31 @@ TEST(IsoWeekTest, works) {
   ASSERT_EQ(iwd.weeknum, 52);
   ASSERT_EQ(iwd.dow, std::chrono::Saturday);
 }
+
+TEST(IsoWeekTest, works2) {
+  auto const y = std::chrono::year{2005};
+  auto const m = std::chrono::January;
+  auto const d = std::chrono::day{1};
+  auto days = std::chrono::year_month_day(y, m, d);
+
+  auto iwd = IsoWeekDate(days);
+
+  ASSERT_EQ(iwd.year, 2004);
+  ASSERT_EQ(iwd.weeknum, 53);
+  ASSERT_EQ(iwd.dow, std::chrono::Saturday);
+}
+
+TEST(IsoWeekTest, works3) {
+  auto const y = std::chrono::year{2008};
+  auto const m = std::chrono::December;
+  auto const d = std::chrono::day{30};
+  auto days = std::chrono::year_month_day(y, m, d);
+
+  auto iwd = IsoWeekDate(days);
+
+  ASSERT_EQ(iwd.year, 2009);
+  ASSERT_EQ(iwd.weeknum, 1);
+  ASSERT_EQ(iwd.dow, std::chrono::Tuesday);
+}
+
 }  // namespace arangodb::datetime
