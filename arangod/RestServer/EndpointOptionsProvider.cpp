@@ -45,66 +45,80 @@ void EndpointOptionsProvider::declareOptionsImpl(
 the ArangoDB server listen for incoming requests on multiple endpoints.
 
 The endpoints are normally specified either in ArangoDB's configuration file or
-on the command-line with `--server.endpoint`. ArangoDB supports different types
-of endpoints:
+on the command-line with `--server.endpoint`. ArangoDB supports the following
+types of endpoints:
 
-- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
-- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
-- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
-- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
+| Endpoint               | Encryption |
+|:-----------------------|:-----------|
+| `http://address:port`  | None       |
+| `https://address:port` | TLS        |
 
-You can use `http://` as an alias for `tcp://`, and `https://` as an alias for
-`ssl://`.
+The address can be one of the following:
 
-If a TCP/IP endpoint is specified without a port number, then the default port
-(8529) is used.
+- An IPv4 address, like `http://192.168.1.1:8529`
+- An IPv6 address in square brackets, like `https://[fd12:3456::789a]:8529`
+- A host name, like `https://db.example.com:8529`. The server resolves the name
+  once on startup and binds to the first IPv4 address it resolves to. To
+  resolve the name to an IPv6 address, put it in square brackets, like
+  `https://[db.example.com]:8529`.
 
-If you use SSL-encrypted endpoints, you must also supply the path to a server
-certificate using the `--ssl.keyfile` option.
+If you don't specify a port number, the default port 8529 is used.
+
+If you use TLS-encrypted endpoints, you must also supply the path to a server
+certificate using the `--tls.keyfile` option.
 
 ```bash
-arangod --server.endpoint tcp://127.0.0.1:8529 \
-        --server.endpoint ssl://127.0.0.1:8530 \
-        --ssl.keyfile server.pem /tmp/data-dir
+arangod \
+  --server.endpoint http://127.0.0.1:8529 \
+  --server.endpoint https://127.0.0.1:8530 \
+  --tls.keyfile server.pem \
+  /tmp/data-dir
 
 ...
-2022-11-07T10:39:30Z [1] INFO [6ea38] {general} using endpoint 'http+ssl://0.0.0.0:8530' for ssl-encrypted requests
-2022-11-07T10:39:30Z [1] INFO [6ea38] {general} using endpoint 'http+tcp://0.0.0.0:8529' for non-encrypted requests
-2022-11-07T10:39:31Z [1] INFO [cf3f4] {general} ArangoDB (version 3.10.0 [linux]) is ready for business. Have fun!
+2026-10-28T13:12:19Z [1] INFO [6ea38] {general} using endpoint 'http+ssl://127.0.0.1:8530' for TLS-encrypted requests
+2026-10-28T13:12:19Z [1] INFO [6ea38] {general} using endpoint 'http+tcp://127.0.0.1:8529' for non-encrypted requests
+2026-10-28T13:12:20Z [1] INFO [cf3f4] {general} ArangoDB (version 3.12.13 enterprise [linux]) is ready for business. Have fun!
 ```
 
-On one specific ethernet interface, each port can only be bound
-**exactly once**. You can look up your available interfaces using the `ifconfig`
-command on Linux. The general names of the
-interfaces differ between operating systems and the hardware they run on.
-However, every host has typically a so called loopback interface, which is a
-virtual interface. By convention, it always has the address `127.0.0.1` (IPv4)
-or `::1` (IPv6), and can only be reached from the very same host. Ethernet
-interfaces usually have names like `eth0`, `wlan0`, `eth1:17`, `le0`.
+The server logs the endpoints in a normalized form, with `http+tcp://` for
+`http://` and `http+ssl://` for `https://`. The `ssl` in these names is a
+historical term and refers to TLS. ArangoDB doesn't support the outdated SSL
+protocols. For backward compatibility, you can also specify endpoints in this
+form, or use `tcp://` and `ssl://` as aliases for `http://` and `https://`.
 
-To find out which services already use ports (so ArangoDB can't bind them
-anymore), you can use the `netstat` command. It behaves a little different on
-each platform; run it with `-lnpt` on Linux for valuable information.
+On a network interface, each port can only be bound **exactly once**. You can
+look up the available interfaces and their addresses with the `ip address`
+command on Linux. Interface names differ between operating systems and the
+hardware they run on, like `eth0`, `enp3s0`, or `wlan0`. Every host typically
+has a loopback interface, which is a virtual interface. By convention, it has
+the address `127.0.0.1` (IPv4) or `::1` (IPv6), and can only be reached from the
+same host.
 
-ArangoDB can also do a so called *broadcast bind* using `tcp://0.0.0.0:8529`.
-This way, it is reachable on all interfaces of the host. This may be useful on
+To find out which services already use ports so that ArangoDB can't bind them
+anymore, you can use `ss -lntp` on Linux, or `netstat -lntp` on systems without
+`ss`.
+
+To make ArangoDB reachable on all network interfaces of the host, bind it to
+the unspecified address `0.0.0.0` (IPv4) or `[::]` (IPv6), like
+`http://0.0.0.0:8529`. This is required when running ArangoDB in a container
+and you want to reach it from outside the container. It may also be useful on
 development systems that frequently change their network setup, like laptops.
 
-ArangoDB can also listen to IPv6 link-local addresses via adding the zone ID
+ArangoDB can also listen on IPv6 link-local addresses if you add the zone ID
 to the IPv6 address in the form `[ipv6-link-local-address%zone-id]`. However,
 what you probably want instead is to bind to a local IPv6 address. Local IPv6
-addresses start with `fd`. If you only see a `fe80:` IPv6 address in your
-interface configuration but no IPv6 address starting with `fd`, your interface
+addresses start with `fd`. If you only see an IPv6 address starting with `fe80:`
+in your interface configuration but none starting with `fd`, your interface
 has no local IPv6 address assigned. You can read more about IPv6 link-local
 addresses here: https://en.wikipedia.org/wiki/Link-local_address#IPv6.
 
-To bind to a link-local and local IPv6 address, run `ifconfig` or equivalent
-command. The command lists all interfaces and assigned IP addresses. The
-link-local address may be `fe80::6257:18ff:fe82:3ec6%eth0` (IPv6 address plus
-interface name). A local IPv6 address may be `fd12:3456::789a`.
-To bind ArangoDB to it, start `arangod` with
-`--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
-You can use `telnet` to test the connection.)");
+For example, `ip address` may list the link-local address
+`fe80::6257:18ff:fe82:3ec6` for the interface `eth0`, and the local IPv6 address
+`fd12:3456::789a`. To bind ArangoDB to the link-local address, start `arangod`
+with `--server.endpoint http://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`. To bind
+it to the local address, use `--server.endpoint http://[fd12:3456::789a]:8529`.
+You can use `curl` to test the connection, like
+`curl http://[fd12:3456::789a]:8529/_api/version`.)");
 
   options->addSection("tcp", "TCP features");
 
