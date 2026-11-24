@@ -256,6 +256,9 @@ auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
 auto describe(auth::perms::UseApiVersion const& perm) -> std::string {
   return std::format("use API version '{}'", to_string(perm.version));
 }
+auto describe(auth::perms::FullCompaction const&) -> std::string {
+  return "trigger a full compaction";
+}
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
   return std::format("Failed to {}. {}", describe(request), reason);
@@ -907,6 +910,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // The classic system does not restrict API versions
             return {};
           },
+          [&](p::FullCompaction const& compaction) -> Result {
+            return {TRI_ERROR_FORBIDDEN,
+                    failureMessage(compaction, "Only allowed for superusers.")};
+          },
       },
       permission);
 }
@@ -1411,6 +1418,10 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           [&](p::UseApiVersion const& apiVersion) -> Result {
             return checkOne(rbac::Action::UseApiVersion,
                             rbac::resources::ApiVersion{apiVersion.version});
+          },
+          [&](p::FullCompaction const& compaction) -> Result {
+            return {TRI_ERROR_FORBIDDEN,
+                    failureMessage(compaction, "Only allowed for superusers.")};
           },
       },
       permission);

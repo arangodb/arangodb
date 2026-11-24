@@ -60,8 +60,6 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminMonitoring";
     case Action::AdminMonitoringInternal:
       return "db:AdminMonitoringInternal";
-    case Action::AdminCompaction:
-      return "db:AdminCompaction";
     case Action::AdminAuthReload:
       return "db:AdminAuthReload";
     case Action::AdminCrashHandler:
@@ -183,8 +181,6 @@ auto describe(Action action) -> std::string_view {
       return "access monitoring data (as admin)";
     case Action::AdminMonitoringInternal:
       return "access internal monitoring data (as admin)";
-    case Action::AdminCompaction:
-      return "trigger a compaction (as admin)";
     case Action::AdminAuthReload:
       return "reload authentication data (as admin)";
     case Action::AdminCrashHandler:

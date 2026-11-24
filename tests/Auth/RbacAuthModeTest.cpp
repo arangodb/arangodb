@@ -518,6 +518,11 @@ TEST_F(RbacAuthModeTest, UseApiVersionDenialIsPropagated) {
             TRI_ERROR_FORBIDDEN);
 }
 
+TEST_F(RbacAuthModeTest, FullCompactionIsForbiddenWithoutAskingTheService) {
+  EXPECT_EQ(check(p::FullCompaction{}).errorNumber(), TRI_ERROR_FORBIDDEN);
+  EXPECT_EQ(svc.checkCalls, 0);
+}
+
 // ---------------------------------------------------------------------------
 // Result propagation / short-circuiting
 // ---------------------------------------------------------------------------
