@@ -34,14 +34,17 @@
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
 
-#include <list>
 #include <optional>
 
 namespace arangodb::activities {
 
 struct Activity : std::enable_shared_from_this<Activity> {
-  using ThreadList = std::list<containers::SharedPtr<basics::ThreadInfo>>;
-  using ThreadListIterator = ThreadList::iterator;
+  struct ThreadNode {
+    ThreadNode* prev = nullptr;
+    ThreadNode* next = nullptr;
+    basics::ThreadId thread{};
+  };
+
   Activity(ActivityId id, ActivityHandle parent, ActivityType type)
       : _id(std::move(id)),
         _parent(std::move(parent)),
@@ -55,13 +58,18 @@ struct Activity : std::enable_shared_from_this<Activity> {
   auto parentId() const noexcept -> std::optional<ActivityId>;
   auto type() const noexcept -> ActivityType { return _type; }
   auto created() const noexcept -> ActivityCreated { return _created; }
-  auto threads() const noexcept -> std::vector<basics::ThreadInfo>;
-  auto addCurrentThread() -> ThreadListIterator;
-  auto removeThread(ThreadListIterator it) -> void;
+  auto threads() const -> std::vector<basics::ThreadInfo>;
+  auto link(ThreadNode& node) noexcept -> void;
+  auto unlink(ThreadNode& node) noexcept -> void;
 
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
 
  private:
+  struct ThreadList {
+    ThreadNode* head = nullptr;
+    ThreadNode* tail = nullptr;
+  };
+
   ActivityId _id;
   ActivityHandle _parent;
   ActivityType _type;

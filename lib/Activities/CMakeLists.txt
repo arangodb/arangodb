@@ -11,10 +11,7 @@ target_link_libraries(arango_activities
 PUBLIC
   arango_thread_owning_list
   arango_shared
-  arango_inspection
-PRIVATE
-  arango_infra # temporary; needs to be included in a proper lib
-)
+  arango_inspection)
 
 add_library(arango_activities_global STATIC)
 target_link_libraries(arango_activities_global
