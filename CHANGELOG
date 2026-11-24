@@ -2,8 +2,7 @@
 --------------------
 
 * COR-1306: Fixed issue with subqueries in cluster queries during a rolling
-  upgrade to 4.0. 4.0 servers send repeated values only once, and a 3.12
-  server could then free a value that other rows still used.
+  upgrade to 4.0.
 
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
