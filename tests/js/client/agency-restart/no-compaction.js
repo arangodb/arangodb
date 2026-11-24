@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, ArangoAgent */
+/* global runSetup, getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -23,100 +23,40 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-let db = require('@arangodb').db;
-let internal = require('internal');
-let jsunity = require('jsunity');
+if (getOptions === true) {
+  // set at startup, so compaction is off before the agent first gets to it,
+  // both while writing and right after the restart
+  return { 'server.failure-point': 'State::compact' };
+}
 
-function runSetup () {
-  'use strict';
-  internal.debugClearFailAt();
- 
-  // turn off compaction
-  internal.debugSetFailAt("State::compact");
-  
-  db._drop('UnitTestsRecovery');
-  let c = db._create('UnitTestsRecovery');
+const jsunity = require('jsunity');
+const { assertEqual } = jsunity.jsUnity.assertions;
+const helper = require('@arangodb/testutils/agency-restart-helper');
+const agencyMgr = global.instanceManager.agencyMgr;
 
-  // write 50k log entries, and then crash
-  for (let i = 0; i < 50000; ++i) {
-    let request = {
-      ["arango/test" + i] : {
-        "op": "set",
-        "new": "testmann" + i
-      }
-    };
-        
-    ArangoAgent.write([[ request, {}, "testi"]]);
-  }
-  
-  // make sure everything is synced to disk before we crash
-  c.insert({ _key: "sync" }, true); // wait for sync 
-  
-  internal.debugTerminate('crashing server');
+const count = 50000;
+
+if (runSetup === true) {
+  helper.writeTestEntries(agencyMgr, count);
+  helper.syncToDisk();
+  return 0;
 }
 
 function recoverySuite () {
   'use strict';
-  jsunity.jsUnity.attachAssertions();
 
   return {
     testRestart: function () {
-      // turn off compaction
-      internal.debugSetFailAt("State::compact");
-
-      let state = ArangoAgent.state();
-      assertEqual(state.current, state.log[0].index);
-
-      let found = 0;
-      let index = state.log[0].index;
-      for (let i = 0; i < state.log.length; ++i) {
-        let entry = state.log[i];
-        if (entry.clientId === 'testi') {
-          ++found;
-          assertEqual("testi", entry.clientId);
-          let keys = Object.keys(entry.query);
-          assertEqual(1, keys.length);
-          assertTrue(keys[0].startsWith("arango/test"));
-          let request = {
-            [keys[0]] : {
-              "op": "set",
-              "new": "testmann" + keys[0].substr(- (keys[0].length - "arango/test".length))
-            }
-          };
-          assertEqual(request, entry.query);
-        }
-        assertEqual("number", typeof entry.timestamp);
-        assertEqual("number", typeof entry.term);
-        assertEqual("number", typeof entry.index);
-        assertEqual(index, entry.index);
-        ++index;
-      }
-      assertTrue(found > 0);
-      
-      for (let i = 0; i < 50000; ++i) {
-        let r = ArangoAgent.read([["/arango/test" + i]]);
-        assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
-      }
+      assertEqual(0, helper.latestCompactionIndex());
+      let log = helper.persistedLog(agencyMgr);
+      helper.assertContiguousLog(log);
+      let entries = helper.testEntries(log);
+      assertEqual(count, entries.length);
+      entries.forEach(helper.assertWellFormedTestEntry);
+      helper.assertTestValuesPresent(agencyMgr, count);
     }
-
   };
 }
 
-function main (argv) {
-  'use strict';
-
-  for (let i = 0; i < 100; i++) {
-    if (ArangoAgent.leading().leading) {
-      break;
-    }
-    require('internal').sleep(0.5);
-  }
-
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

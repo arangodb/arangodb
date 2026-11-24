@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNotEqual, assertTrue, ArangoAgent */
+/* global runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -23,108 +23,37 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-let db = require('@arangodb').db;
-let internal = require('internal');
-let jsunity = require('jsunity');
+const jsunity = require('jsunity');
+const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
+const helper = require('@arangodb/testutils/agency-restart-helper');
+const agencyMgr = global.instanceManager.agencyMgr;
 
-function runSetup () {
-  'use strict';
-  internal.debugClearFailAt();
-  
-  db._drop('UnitTestsRecovery');
-  let c = db._create('UnitTestsRecovery');
+const count = 50000;
 
-  // write 50k log entries, and then crash
-  for (let i = 0; i < 50000; ++i) {
-    let request = {
-      ["arango/test" + i] : {
-        "op": "set",
-        "new": "testmann" + i
-      }
-    };
-        
-    ArangoAgent.write([[ request, {}, "testi"]]);
-  }
-  
-  // wait until no more compactions occur
-  while (true) {
-    let numCompactions = db.compact.count();
-
-    let start = internal.time();
-    do {
-      internal.wait(0.25);
-      if (db.compact.count() !== numCompactions) {
-        break;
-      }
-    } while (internal.time() - start < 5);
-
-    if (db.compact.count() === numCompactions) {
-      break;
-    }
-  }
-  
-  // make sure everything is synced to disk before we crash
-  c.insert({ _key: "sync" }, true); // wait for sync 
-  
-  internal.debugTerminate('crashing server');
+if (runSetup === true) {
+  helper.writeTestEntries(agencyMgr, count);
+  helper.waitForCompactionsToSettle();
+  helper.syncToDisk();
+  return 0;
 }
 
 function recoverySuite () {
   'use strict';
-  jsunity.jsUnity.attachAssertions();
 
   return {
     testRestart: function () {
-      let state = ArangoAgent.state();
-      assertNotEqual(0, state.current);
-      assertEqual(state.current, state.log[0].index);
-      let index = state.log[0].index;
-      for (let i = 0; i < state.log.length; ++i) {
-        let entry = state.log[i];
-        if (entry.clientId === 'testi') {
-          assertEqual("testi", entry.clientId);
-          let keys = Object.keys(entry.query);
-          assertEqual(1, keys.length);
-          assertTrue(keys[0].startsWith("arango/test"));
-          let request = {
-            [keys[0]] : {
-              "op": "set",
-              "new": "testmann" + keys[0].substr(- (keys[0].length - "arango/test".length))
-            }
-          };
-          assertEqual(request, entry.query);
-        }
-        assertEqual("number", typeof entry.timestamp);
-        assertEqual("number", typeof entry.term);
-        assertEqual("number", typeof entry.index);
-        assertEqual(index, entry.index);
-        ++index;
-      }
-      
-      for (let i = 0; i < 50000; ++i) {
-        let r = ArangoAgent.read([["/arango/test" + i]]);
-        assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
-      }
+      let compactionIndex = helper.latestCompactionIndex();
+      assertNotEqual(0, compactionIndex);
+      let log = helper.persistedLog(agencyMgr);
+      // the persisted log keeps entries before the compaction point
+      assertTrue(log[0].index <= compactionIndex);
+      assertTrue(compactionIndex <= log[log.length - 1].index);
+      helper.assertContiguousLog(log);
+      helper.testEntries(log).forEach(helper.assertWellFormedTestEntry);
+      helper.assertTestValuesPresent(agencyMgr, count);
     }
-
   };
 }
 
-function main (argv) {
-  'use strict';
-
-  for (let i = 0; i < 100; i++) {
-    if (ArangoAgent.leading().leading) {
-      break;
-    }
-    require('internal').sleep(0.5);
-  }
-
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();
