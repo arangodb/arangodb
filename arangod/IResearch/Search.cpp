@@ -532,7 +532,9 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     if (partialUpdate) {
       return _indexes;
     }
-    return std::move(_indexes);
+    auto res = std::move(_indexes);
+    _indexes.clear();
+    return res;
   }();
   auto oldMeta = std::move(_meta);
   ScopeGuard revert{[&]() noexcept {
