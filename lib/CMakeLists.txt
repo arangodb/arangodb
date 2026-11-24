@@ -174,6 +174,7 @@ target_link_libraries(arango_basic_utils
          snappy
          lz4_static
          arango_activities_global
+         arango_datetime
 )
 
 # Enterprise
@@ -464,3 +465,4 @@ add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
 add_subdirectory(Activities)
+add_subdirectory(DateTime)
