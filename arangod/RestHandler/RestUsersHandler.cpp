@@ -24,7 +24,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogSecurity.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -34,9 +39,91 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
+#include <string>
 #include <string_view>
 
 namespace {
+
+/// @brief whether security logging of account management events is done on
+/// this server. this is only the case on single servers and coordinators,
+/// which are the only servers on which users can be managed by clients.
+bool shouldLogSecurityEvents() noexcept {
+  return arangodb::ServerState::instance()->isSingleServerOrCoordinator();
+}
+
+/// @brief security log for an account management activity (creating,
+/// replacing, updating or removing a user, granting or revoking permissions,
+/// changing a user's configuration data). both successful and failed
+/// attempts are logged. a denied attempt is in addition logged as an access
+/// control violation by ExecContext, so it is not tagged as a violation here.
+/// `details` must never contain secrets such as passwords.
+void logAccountManagement(arangodb::GeneralRequest const& req,
+                          std::string_view operation, std::string_view user,
+                          arangodb::Result const& result,
+                          std::string_view details = {}) {
+  using namespace arangodb;
+  if (result.ok()) {
+    LOG_SECURITY_IF("b5bde", INFO, Logger::AUTHENTICATION,
+                    Security::AccountManagement, shouldLogSecurityEvents())
+        << "account management: " << operation << " for user '" << user
+        << "' succeeded" << (details.empty() ? "" : ", ") << details
+        << ", actor='" << req.user()
+        << "', client=" << req.connectionInfo().fullClient()
+        << ", request=" << GeneralRequest::translateMethod(req.requestType())
+        << " " << req.fullUrl();
+  } else {
+    LOG_SECURITY_IF("ff4bc", INFO, Logger::AUTHENTICATION,
+                    Security::AccountManagement, shouldLogSecurityEvents())
+        << "account management: " << operation << " for user '" << user
+        << "' failed: error=" << result.errorNumber() << ", reason='"
+        << result.errorMessage() << "'" << (details.empty() ? "" : ", ")
+        << details << ", actor='" << req.user()
+        << "', client=" << req.connectionInfo().fullClient()
+        << ", request=" << GeneralRequest::translateMethod(req.requestType())
+        << " " << req.fullUrl();
+  }
+}
+
+/// @brief describes which attributes of a user are set by a create, replace
+/// or update request, without revealing the password.
+std::string describeUserChange(arangodb::velocypack::Slice body) {
+  std::string out = "changes={";
+  bool first = true;
+  auto add = [&](std::string_view what) {
+    if (!first) {
+      out.append(", ");
+    }
+    out.append(what);
+    first = false;
+  };
+  if (body.isObject()) {
+    if (body.get("passwd").isString()) {
+      add("password");
+    }
+    if (auto active = body.get("active"); active.isBool()) {
+      add(active.getBool() ? "active=true" : "active=false");
+    }
+    if (!body.get("extra").isNone()) {
+      add("extra");
+    }
+  }
+  out.push_back('}');
+  return out;
+}
+
+/// @brief describes a database or collection permission target.
+std::string describePermissionTarget(std::string_view db,
+                                     std::string_view coll) {
+  std::string out = "database='";
+  out.append(db);
+  out.push_back('\'');
+  if (!coll.empty()) {
+    out.append(", collection='");
+    out.append(coll);
+    out.push_back('\'');
+  }
+  return out;
+}
 
 // a collection exists in database or a wildcard was specified
 arangodb::Result existsCollection(
@@ -361,13 +448,17 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     auto& exec = ExecContext::current();
     if (auto r = exec.canCreateUser(user); r.ok()) {
       // create user
-      if (auto r = StoreUser(um, 0, user, body); r.ok()) {
+      auto r2 = StoreUser(um, 0, user, body);
+      logAccountManagement(*_request, "create user", user, r2,
+                           describeUserChange(body));
+      if (r2.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::CREATED, doc);
       } else {
-        generateError(r);
+        generateError(r2);
       }
     } else {
+      logAccountManagement(*_request, "create user", user, r);
       generateError(r);
     }
 
@@ -380,7 +471,22 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
       password = s.copyString();
     }
     std::string un;
-    if (um->checkCredentials(user, password, un)) {
+    bool const valid = um->checkCredentials(user, password, un);
+    // this is a password check, so it is an authentication event rather
+    // than an account management activity. failed checks are in addition
+    // security violations (e.g. password guessing).
+    LOG_SECURITY_IF("c8b56", INFO, Logger::AUTHENTICATION,
+                    valid ? Security::Authentication
+                          : Security::Authentication | Security::Violations,
+                    shouldLogSecurityEvents())
+        << "credential validation for user '" << user
+        << (valid ? "' succeeded" : "' failed") << ", actor='"
+        << _request->user()
+        << "', client=" << _request->connectionInfo().fullClient()
+        << ", request="
+        << GeneralRequest::translateMethod(_request->requestType()) << " "
+        << _request->fullUrl();
+    if (valid) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
@@ -405,11 +511,14 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
     // replace existing user
     std::string const& user = suffixes[0];
     if (auto r = exec.canModifyUserProfile(user); r.fail()) {
+      logAccountManagement(*_request, "replace user", user, r);
       generateError(r);
       return RestStatus::DONE;
     }
 
     Result r = StoreUser(um, 1, user, body);
+    logAccountManagement(*_request, "replace user", user, r,
+                         describeUserChange(body));
     if (r.ok()) {
       VPackBuilder doc = um->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
@@ -424,8 +533,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+      std::string target = describePermissionTarget(db, coll);
 
       if (auto r = exec.canGrantUserPermissions(name); r.fail()) {
+        logAccountManagement(*_request, "grant permission", name, r, target);
         generateError(r);
         return RestStatus::DONE;
       }
@@ -435,6 +546,8 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
+          logAccountManagement(*_request, "grant permission", name, res,
+                               target);
           generateError(res);
 
           return RestStatus::DONE;
@@ -442,6 +555,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
 
       if (!body.isObject() || !body.get("grant").isString()) {
+        logAccountManagement(*_request, "grant permission", name,
+                             Result{TRI_ERROR_BAD_PARAMETER,
+                                    "missing or invalid 'grant' attribute"},
+                             target);
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
 
         return RestStatus::DONE;
@@ -449,6 +566,9 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       VPackSlice grant = body.get("grant");
       auth::Level lvl = auth::convertToAuthLevel(grant);
+      target.append(", level='");
+      target.append(convertFromAuthLevel(lvl));
+      target.push_back('\'');
 
       // contains response in case of success
       VPackBuilder b;
@@ -470,6 +590,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
           },
           auth::UserManager::RetryOnConflict::No);
 
+      logAccountManagement(*_request, "grant permission", name, r, target);
       if (r.ok()) {
         generateUserResult(ResponseCode::OK, b);
       } else {
@@ -477,14 +598,16 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
+      std::string const& key = suffixes[2];
+      std::string const target = "config key='" + key + "'";
       if (auto r = exec.canModifyUserProfile(name); r.fail()) {
+        logAccountManagement(*_request, "update user config", name, r, target);
         generateError(r);
         return RestStatus::DONE;
       }
 
       Result res;
       if (!body.isNone()) {
-        std::string const& key = suffixes[2];
         // The API expects: { value : <toStore> }
         // If we get sth else than the above it is translated
         // to a remove of the config option.
@@ -516,6 +639,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
             },
             auth::UserManager::RetryOnConflict::No);
       }
+      logAccountManagement(*_request, "update user config", name, res, target);
       if (res.ok()) {
         resetResponse(ResponseCode::OK);
       } else {
@@ -542,13 +666,17 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
     std::string const& user = suffixes[0];
     if (auto r = exec.canModifyUserProfile(user); r.ok()) {
       // update a user
-      if (auto r = StoreUser(um, 2, user, body); r.ok()) {
+      auto r2 = StoreUser(um, 2, user, body);
+      logAccountManagement(*_request, "update user", user, r2,
+                           describeUserChange(body));
+      if (r2.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
       } else {
-        generateError(r);
+        generateError(r2);
       }
     } else {
+      logAccountManagement(*_request, "update user", user, r);
       generateError(r);
     }
   } else {
@@ -564,11 +692,13 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
     if (auto r = exec.canDropUser(user); r.fail()) {
+      logAccountManagement(*_request, "remove user", user, r);
       generateError(r);
       return RestStatus::DONE;
     }
 
     Result r = um->removeUser(user);
+    logAccountManagement(*_request, "remove user", user, r);
     if (r.ok()) {
       VPackBuilder b;
       b(VPackValue(VPackValueType::Object))(
@@ -589,12 +719,14 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
               return TRI_ERROR_NO_ERROR;
             },
             auth::UserManager::RetryOnConflict::No);
+        logAccountManagement(*_request, "remove user config", user, r);
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
         } else {
           generateError(r);
         }
       } else {
+        logAccountManagement(*_request, "remove user config", user, r2);
         generateError(r2);
       }
     } else {
@@ -607,8 +739,10 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+      std::string const target = describePermissionTarget(db, coll);
 
       if (auto r = exec.canGrantUserPermissions(user); r.fail()) {
+        logAccountManagement(*_request, "revoke permission", user, r, target);
         generateError(r);
         return RestStatus::DONE;
       }
@@ -618,6 +752,8 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
+          logAccountManagement(*_request, "revoke permission", user, res,
+                               target);
           generateError(res);
 
           return RestStatus::DONE;
@@ -637,6 +773,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
           },
           auth::UserManager::RetryOnConflict::Yes);
 
+      logAccountManagement(*_request, "revoke permission", user, r, target);
       if (r.ok()) {
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(
@@ -648,8 +785,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the WebUI
+      std::string const& key = suffixes[2];
+      std::string const target = "config key='" + key + "'";
       if (auto r1 = exec.canModifyUserProfile(user); r1.ok()) {
-        std::string const& key = suffixes[2];
         Result r = um->updateUser(
             user,
             [&](auth::User& u) {
@@ -664,12 +802,14 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
             },
             auth::UserManager::RetryOnConflict::No);
 
+        logAccountManagement(*_request, "remove user config", user, r, target);
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
         } else {
           generateError(r);
         }
       } else {
+        logAccountManagement(*_request, "remove user config", user, r1, target);
         generateError(r1);
       }
     }

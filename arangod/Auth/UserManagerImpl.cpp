@@ -38,6 +38,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
@@ -421,7 +422,9 @@ void UserManagerImpl::createRootUser() {
     return;
   }
   TRI_ASSERT(_userCache.empty());
-  LOG_TOPIC("857d7", DEBUG, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  LOG_SECURITY("857d7", DEBUG, Logger::AUTHENTICATION,
+               Security::AccountManagement)
+      << "Creating user \"root\"";
 
   try {
     // Attention:
@@ -437,11 +440,13 @@ void UserManagerImpl::createRootUser() {
     user.grantCollection("*", "*", Level::RW);
     storeUserInternal(user, false);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("0511c", ERR, Logger::AUTHENTICATION)
+    LOG_SECURITY("0511c", ERR, Logger::AUTHENTICATION,
+                 Security::AccountManagement | Security::SystemErrors)
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION)
+    LOG_SECURITY("268eb", ERR, Logger::AUTHENTICATION,
+                 Security::AccountManagement | Security::SystemErrors)
         << "unable to create user \"root\"";
   }
   readGuard.unlock();
