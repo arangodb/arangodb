@@ -104,12 +104,10 @@ function authorizationQuestionsSuite() {
         "DropCollection db=_system name=UnitTestsAuthzQuestions",
         "UseCollection db=_system name=UnitTestsAuthzQuestions level=read",
         "UseCollection db=_system name=_graphs level=read",
-        // the single server also revokes the collection's permissions from all
-        // users; in the cluster that happens without an ExecContext
-        ...singleOnly([
-          "UseCollection db=_system name=_users level=read",
-          "UseCollection db=_system name=_users level=writedata"
-        ])
+        // dropping also revokes the collection's permissions from all users
+        // (on single server and coordinator alike), which writes to _users
+        "UseCollection db=_system name=_users level=read",
+        "UseCollection db=_system name=_users level=writedata"
       ], endObserve());
     },
 
