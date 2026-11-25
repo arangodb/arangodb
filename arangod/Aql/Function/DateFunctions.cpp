@@ -164,7 +164,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
         return MINUTE;
       }
       // Can be millisecond as well
-      if (flagStr == "std::chrono::milliseconds" || flagStr == "millisecond") {
+      if (flagStr == "milliseconds" || flagStr == "millisecond") {
         return MILLI;
       }
       break;
@@ -1041,7 +1041,7 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   } else if (duration == "s" || duration == "second" || duration == "seconds") {
     ms = day_time.to_duration() - day_time.subseconds();
   } else if (duration == "f" || duration == "millisecond" ||
-             duration == "std::chrono::milliseconds") {
+             duration == "milliseconds") {
     ms = day_time.to_duration();
   } else {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
@@ -1747,7 +1747,7 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
   std::string_view s = durationType.slice().stringView();
 
   int64_t factor = 1;
-  if (s == "std::chrono::milliseconds" || s == "millisecond" || s == "f") {
+  if (s == "milliseconds" || s == "millisecond" || s == "f") {
     factor = 1;
   } else if (s == "seconds" || s == "second" || s == "s") {
     factor = 1000;
