@@ -387,9 +387,15 @@ TEST_F(ActivityRegistryTest,
     {
       auto other = activities::make<GenericActivity>(
           "other", activities::GenericActivityData{});
+      // Executing activity 'other' on 'me' thread removes 'me' thread from
+      // activity a's thread list because a thread only can run one activity
+      // at a time
       auto s = Registry::ScopedCurrentlyExecutingActivity(other);
-      EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{*c}));
+      EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{
+                                  *c}));  // hence, 'me' was removed here
     }
+    // Now activity 'other' is destroyed, so old thread ('me' in this case) come
+    // back to activity a's thread list
     EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{*c, me}));
 
     cOut.count_down();

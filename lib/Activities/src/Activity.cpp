@@ -37,6 +37,9 @@ auto Activity::threads() const -> std::vector<basics::ThreadInfo> {
     std::vector<basics::ThreadInfo> out;
     for (auto const& node : list) {
       auto id = node.threadId;
+      // TODO: name() func only returns a valid thread name when that thread is
+      // active; if the thread stops, name() return some jibberisch. So, load a
+      // thread name once into ThreadNode or somewhere.
       out.emplace_back(id.kernel_id, id.name());
     }
     return out;
