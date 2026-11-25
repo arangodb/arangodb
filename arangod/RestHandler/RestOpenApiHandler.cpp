@@ -37,8 +37,8 @@ constexpr unsigned char kOpenApiV1[] = {
 #include "openapi-v1.csx"
 };
 
-constexpr unsigned char kOpenApiV2[] = {
-#include "openapi-v2.csx"
+constexpr unsigned char kOpenApiExperimental[] = {
+#include "openapi-experimental.csx"
 };
 }  // namespace
 
@@ -54,8 +54,9 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV1),
                               sizeof(kOpenApiV1));
     case ApiVersion::Experimental:
-      return std::string_view(reinterpret_cast<char const*>(kOpenApiV2),
-                              sizeof(kOpenApiV2));
+      return std::string_view(
+          reinterpret_cast<char const*>(kOpenApiExperimental),
+          sizeof(kOpenApiExperimental));
   }
   return std::string_view();
 }
