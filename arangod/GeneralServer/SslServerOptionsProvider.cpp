@@ -202,7 +202,7 @@ with `--log.level ssl=info` at startup.)");
                   new DiscreteValuesParameter<UInt64Parameter>(
                       &opts.sslProtocol, sslProtocols))
       .setLongDescription(R"(Use this option to specify the default encryption
-protocol to be used. The default value is 9 (generic TLS), which allows the
+protocol to be used. The default value is `9` (generic TLS), which allows the
 negotiation of the TLS version between the client and the server, dynamically
 choosing the highest mutually supported version of TLS.
 
