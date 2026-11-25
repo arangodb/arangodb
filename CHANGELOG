@@ -1,6 +1,14 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* BTS-2543: Fix memory and file handle leaks in the zip file functions when a
+  path access check failed or threw an exception.
+  
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
+* Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.20.0-preview-22.
 
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
@@ -78,9 +86,6 @@
  - minimatch to 11.0.5 to resolve CVE-2026-118764
  - qs to 6.16.1 to resolve CVE-2026-82417, CVE-2026-82562 and
    CVE-2026-110816
-
-* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
-  dependencies.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
