@@ -29,15 +29,13 @@ namespace arangodb::activities {
    into that activity's thread list (one activity can have multiple threads).
  */
 struct CurrentlyExecuting {
-  constexpr CurrentlyExecuting() noexcept = default;
+  CurrentlyExecuting() noexcept = default;
   ~CurrentlyExecuting();
   CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
   auto operator=(CurrentlyExecuting const& other) noexcept
       -> CurrentlyExecuting& = delete;
 
-  auto activity() const noexcept -> ActivityHandle const& {
-    return _currentActivity;
-  }
+  auto activity() const noexcept -> ActivityHandle { return _currentActivity; }
   auto switchTo(ActivityHandle nextActivity) noexcept -> void;
 
  private:

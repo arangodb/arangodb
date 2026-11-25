@@ -31,6 +31,7 @@
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Inspection/Transformers.h"
 
+#include <boost/intrusive/list.hpp>
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
 
@@ -39,9 +40,7 @@
 namespace arangodb::activities {
 
 struct Activity : std::enable_shared_from_this<Activity> {
-  struct ThreadNode {
-    ThreadNode* prev = nullptr;
-    ThreadNode* next = nullptr;
+  struct ThreadNode : boost::intrusive::list_base_hook<> {
     basics::ThreadId threadId{};
   };
 
@@ -65,11 +64,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
 
  private:
-  struct ThreadList {
-    ThreadNode* head = nullptr;
-    ThreadNode* tail = nullptr;
-  };
-
+  using ThreadList = boost::intrusive::list<ThreadNode>;
   ActivityId _id;
   ActivityHandle _parent;
   ActivityType _type;
