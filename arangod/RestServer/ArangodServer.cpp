@@ -89,9 +89,8 @@ void assertNoTLSWithFips(
 }
 
 void assertNoEncryptionAtRestWithFips(
-    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
-    [[maybe_unused]] RocksDBEngineOptions const& rocksDBEngineOptions) {
-#ifdef USE_ENTERPRISE
+    FipsFeatureOptions const& fipsOptions,
+    RocksDBEngineOptions const& rocksDBEngineOptions) {
   if (fipsOptions.enableFips) {
     auto const& eeOptions = rocksDBEngineOptions.eeOptions;
     // Whatever combination we have here, the moment this true it means that
@@ -110,7 +109,6 @@ void assertNoEncryptionAtRestWithFips(
       FATAL_ERROR_EXIT();
     }
   }
-#endif  // USE_ENTERPRISE
 }
 
 }  // namespace
