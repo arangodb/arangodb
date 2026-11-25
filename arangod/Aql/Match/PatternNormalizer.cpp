@@ -415,6 +415,13 @@ PathRange PatternNormalizer::normalizeRange(AstNode const* node) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
+  // A lower bound of zero includes a zero-hop path. That path has no edge, and
+  // endpoint projection for it is not defined, so reject the range.
+  if (minDepth == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        "zero-hop variable-length relationships are not supported");
+  }
   return PathRange::bounded(minDepth, maxDepth);
 }
 

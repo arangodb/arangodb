@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1234: Reject a MATCH variable-length relationship whose lower bound is
+  zero, for example `* 0..0` or `* 0..2`. A zero-hop path has no edge, and its
+  endpoint projection is not defined.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
