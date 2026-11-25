@@ -302,6 +302,24 @@ function aqlMatchStatementVariableLengthTestSuite() {
           result.sort();
           assertEqual(result, expected);
         },
+        testMatchVariableLengthZeroLowerBoundRejected: function() {
+          const message = "zero-hop variable-length relationships are not supported";
+          const queries = [
+            "MATCH (v :vc1) -[ e :ec1 * 0..0 ]-> (w :vc1) RETURN e",
+            "MATCH (v :vc1) -[ e :ec1 * 0..1 ]-> (w :vc1) RETURN e",
+            "MATCH (v :vc1) -[ e :ec1 * 0..2 ]-> (w :vc1) RETURN e"
+          ];
+          for (const query of queries) {
+            try {
+              db._query(query, {}, options).toArray();
+              fail();
+            } catch (err) {
+              assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code, err.errorMessage);
+              assertEqual(err.errorMessage, message);
+            }
+          }
+        },
+
         testMatchVariableLengthValueBindParameterRejected: function() {
           // a value bind parameter (@name) cannot denote a collection / edge type;
           // only a collection bind parameter (@@name) is accepted. parsing fails.
