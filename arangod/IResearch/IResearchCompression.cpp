@@ -23,6 +23,9 @@
 #include "IResearchCompression.h"
 #include "Basics/debugging.h"
 #include <utils/lz4compression.hpp>
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+#include "../tests/IResearch/IResearchTestCompressor.h"
+#endif
 
 namespace arangodb {
 namespace iresearch {
@@ -47,6 +50,11 @@ std::string_view columnCompressionToString(
 irs::type_info::type_id columnCompressionFromString(
     std::string_view c) noexcept {
   TRI_ASSERT(!irs::IsNull(c));
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (c == "test") {
+    return irs::type<irs::compression::mock::test_compressor>::id();
+  }
+#endif
   if (c == "lz4") {
     return irs::type<irs::compression::lz4>::id();
   }
