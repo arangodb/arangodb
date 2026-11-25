@@ -510,6 +510,16 @@
     args:
       dumpAgencyOnError: true
 
+- server_permissions:
+    options:
+      priority: 1000
+      parallelity: 5
+      buckets: 4
+      size: medium
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+
 # Dump Tests
 - dump_single:
     options:
