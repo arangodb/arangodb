@@ -1,15 +1,21 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-1234: Reject a MATCH variable-length relationship whose lower bound is
+  zero, for example `* 0..0` or `* 0..2`. A zero-hop path has no edge, and its
+  endpoint projection is not defined.
+
+* Updated ArangoDB Starter to v0.20.0-preview-23.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
+* COR-1299: Prevent --tls.cafile / --tls.keyfile to work with --server.fips-enable.
+
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.20.0-preview-22.
 
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
@@ -820,10 +826,6 @@
 
 * AQL `REGEX_MATCHES()` matches empty strings like any other input.
   This fixes issue #23362.
-
-* AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
-  reversing a string, and reverses strings containing U+FFFF completely.
-  This fixes issue #23360.
 
 * AQL `REVERSE` keeps characters above U+FFFF, such as emoji, intact when
   reversing a string, and reverses strings containing U+FFFF completely.
