@@ -16,6 +16,7 @@
       - version
       - shell_client_large
       - legacy
+      - shell_v8
 
 # Single Server Replication Tests
 - replication_shell:
