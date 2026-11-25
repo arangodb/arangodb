@@ -1,6 +1,8 @@
 v3.11.14.7 (XXXX-XX-XX)
 -----------------------
 
+* Updated ArangoDB Starter to v0.18.36.
+
 * Upgraded the base of the Docker image to Alpine 3.24.
 
 * Updated node modules:
@@ -14,8 +16,6 @@ v3.11.14.7 (XXXX-XX-XX)
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.18.35.
 
 * A sorted AQL COLLECT reuses a preceding SORT if the group variables are the
   leading keys of that SORT, in any order and direction, and does not add a
