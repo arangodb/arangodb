@@ -19,31 +19,31 @@ target_include_directories(arango_common_rest_handler PRIVATE
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi-v0.csx
   COMMAND ${CMAKE_COMMAND}
-    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/0-openapi.json"
+    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/openapi-v0.json"
     -DDST="${CMAKE_CURRENT_BINARY_DIR}/openapi-v0.csx"
     -P "${PROJECT_SOURCE_DIR}/lib/iresearch/cmake/HexEncodeFile.cmake"
-  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/0-openapi.json
-  COMMENT "Hex-encoding OpenAPI v0 specification"
+  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/openapi-v0.json
+  COMMENT "Hex-encoding OpenAPI specification API v0"
 )
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi-v1.csx
   COMMAND ${CMAKE_COMMAND}
-    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/1-openapi.json"
+    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/openapi-v1.json"
     -DDST="${CMAKE_CURRENT_BINARY_DIR}/openapi-v1.csx"
     -P "${PROJECT_SOURCE_DIR}/lib/iresearch/cmake/HexEncodeFile.cmake"
-  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/1-openapi.json
-  COMMENT "Hex-encoding OpenAPI v1 specification"
+  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/openapi-v1.json
+  COMMENT "Hex-encoding OpenAPI specification API v1"
 )
 
 add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi-experimental.csx
   COMMAND ${CMAKE_COMMAND}
-    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/2-openapi.json"
-    -DDST="${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx"
+    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/openapi-experimental.json"
+    -DDST="${CMAKE_CURRENT_BINARY_DIR}/openapi-experimental.csx"
     -P "${PROJECT_SOURCE_DIR}/lib/iresearch/cmake/HexEncodeFile.cmake"
-  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/2-openapi.json
-  COMMENT "Hex-encoding OpenAPI v2 specification"
+  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/openapi-experimental.json
+  COMMENT "Hex-encoding OpenAPI specification API experimental"
 )
 # Create a custom target for the generated files
 add_custom_target(
@@ -51,7 +51,7 @@ add_custom_target(
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v0.csx
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v1.csx
-    ${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx
+    ${CMAKE_CURRENT_BINARY_DIR}/openapi-experimental.csx
 )
 
 add_library(arango_rest_handler STATIC
