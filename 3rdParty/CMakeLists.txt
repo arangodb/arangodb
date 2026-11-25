@@ -244,46 +244,6 @@ set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example progra
 add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)
 
-################################################################################
-## tzdata
-################################################################################
-
-LIST(APPEND TZ_DATA_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/africa"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/antarctica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/asia"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/australasia"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/backward"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/backzone"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/calendars"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/etcetera"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/europe"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/NEWS"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/northamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/southamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/version"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
-
-set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
-
-add_custom_target(tzdata)
-
-if (MSVC)
-  add_custom_command(
-    TARGET tzdata POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
-else()
-  add_custom_command(
-    TARGET tzdata POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tzdata
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/tzdata
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/tzdata)
-endif()
-
 ### Suppressing all warnings from external libs
 add_compile_options(-w)
 

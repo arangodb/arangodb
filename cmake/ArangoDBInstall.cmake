@@ -31,7 +31,6 @@ FILE(MAKE_DIRECTORY ${ARANGODB_DB_DIRECTORY})
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
-set(INSTALL_TZDATA_DEST "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}/tzdata")
 
 set(CMAKE_TEST_DIRECTORY "tests")
 
@@ -159,7 +158,6 @@ to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
 to_native_path("CMAKE_TEST_DIRECTORY")
-to_native_path("INSTALL_TZDATA_DEST")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"
@@ -186,9 +184,6 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
 install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME arangodb-update-db)
-
-install(FILES ${TZ_DATA_FILES}
-  DESTINATION "${INSTALL_TZDATA_DEST}")
 
 if (THIRDPARTY_SBIN)
   install(FILES ${THIRDPARTY_SBIN}
