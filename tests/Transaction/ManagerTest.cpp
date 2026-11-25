@@ -38,8 +38,12 @@
 #include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+
+#include <atomic>
+#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -1138,5 +1142,172 @@ TEST_F(TransactionManagerTest, expired_transaction_is_not_soft_aborted) {
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
   EXPECT_NE(res.errorMessage().find("expired"), std::string::npos)
       << res.errorMessage();
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                          aborting follower transactions on shard
+// -----------------------------------------------------------------------------
+
+class TransactionManagerFollowerTrxOnShardTest : public TransactionManagerTest {
+ protected:
+  static constexpr DataSourceId shardA{42};
+  static constexpr DataSourceId shardB{43};
+
+  arangodb::ServerState::RoleEnum beforeRole;
+  arangodb::ExecContextSuperuserScope exeScope;
+
+  TransactionManagerFollowerTrxOnShardTest()
+      : beforeRole(arangodb::ServerState::instance()->getRole()) {
+    // follower transactions only exist on DB servers
+    arangodb::ServerState::instance()->setRole(
+        arangodb::ServerState::ROLE_DBSERVER);
+    for (auto [name, id] : {std::pair{"shardA", shardA}, {"shardB", shardB}}) {
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(name, id);
+      EXPECT_NE(vocbase.createCollection(colDescriptor), nullptr);
+    }
+  }
+
+  ~TransactionManagerFollowerTrxOnShardTest() {
+    arangodb::ServerState::instance()->setRole(beforeRole);
+  }
+
+  /// @brief begins a write transaction on `collection`
+  void begin(TransactionId tid, std::string_view collection) {
+    auto json = arangodb::velocypack::Parser::fromJson(absl::StrCat(
+        "{ \"collections\":{\"write\": [\"", collection, "\"]}}"));
+    ASSERT_TRUE(mgr->ensureManagedTrx(vocbase, tid, json->slice(),
+                                      transaction::OperationOriginTestCase{},
+                                      tid.isFollowerTransactionId())
+                    .waitAndGet()
+                    .ok());
+    ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+  }
+
+  std::shared_ptr<transaction::Context> lease(TransactionId tid) {
+    return mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false)
+        .waitAndGet();
+  }
+};
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       aborts_only_follower_transactions_on_the_shard) {
+  auto followerOnA = TransactionId::createFollower();
+  auto followerOnB = TransactionId::createFollower();
+  auto leaderOnA = TransactionId::createLeader();
+  begin(followerOnA, "shardA");
+  begin(followerOnB, "shardB");
+  begin(leaderOnA, "shardA");
+
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  // tombstones are not listed anymore
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+  // follower transactions on other shards are left alone
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
+  // leader transactions are left alone
+  EXPECT_EQ(mgr->getManagedTrxStatus(leaderOnA), transaction::Status::RUNNING);
+}
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       reports_whether_follower_transactions_were_found) {
+  auto leaderOnA = TransactionId::createLeader();
+  auto followerOnB = TransactionId::createFollower();
+  begin(leaderOnA, "shardA");
+  begin(followerOnB, "shardB");
+
+  EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(leaderOnA), transaction::Status::RUNNING);
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
+
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardB).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::ABORTED);
+  // nothing left to abort
+  EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardB).waitAndGet());
+}
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       waits_for_follower_transaction_in_use) {
+  auto followerOnA = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+
+  std::atomic<bool> leased{false};
+  std::thread user([&] {
+    arangodb::ExecContextSuperuserScope scope;
+    auto ctx = lease(followerOnA);
+    EXPECT_NE(ctx, nullptr);
+    leased.store(true);
+    // keep it in use for a while, then return it
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  });
+  auto joinGuard = scopeGuard([&]() noexcept { user.join(); });
+  while (!leased.load()) {
+    std::this_thread::yield();
+  }
+
+  // the transaction is in use, but it is found nonetheless, and aborted once
+  // its user has returned it
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  // it was aborted for real, not just soft-aborted
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       soft_aborts_follower_transaction_remaining_in_use) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+  // do not wait 9s for the transaction to be returned
+  TRI_AddFailurePointDebugging(
+      "transaction::Manager::shortStatusChangeTimeout");
+
+  auto followerOnA = TransactionId::createFollower();
+  auto followerOnB = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+  begin(followerOnB, "shardB");
+
+  {
+    auto ctxA = lease(followerOnA);
+    ASSERT_NE(ctxA, nullptr);
+    auto ctxB = lease(followerOnB);
+    ASSERT_NE(ctxB, nullptr);
+
+    EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+    // still in use, so it is only soft-aborted
+    EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+              transaction::Status::ABORTED);
+    auto details = transactionDetails(*mgr, vocbase.name(), followerOnA);
+    ASSERT_FALSE(details->isEmpty());
+    EXPECT_TRUE(details->slice().get("type").isEqualString("managed"));
+    EXPECT_TRUE(details->slice().get("softAborted").isTrue());
+
+    // the follower transaction in use on the other shard is left alone
+    EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+              transaction::Status::RUNNING);
+    details = transactionDetails(*mgr, vocbase.name(), followerOnB);
+    ASSERT_FALSE(details->isEmpty());
+    EXPECT_TRUE(details->slice().get("softAborted").isFalse());
+
+    // soft-aborted transactions are not waited for again
+    EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+    // nobody else can lease it anymore
+    EXPECT_EQ(leaseErrorNumber(*mgr, followerOnA),
+              TRI_ERROR_TRANSACTION_ABORTED);
+  }
+
+  // returning the lease aborted the transaction for real
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
 }
 #endif

@@ -79,16 +79,9 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  bool didWork =
-      mgr->abortManagedTrx([cid](TransactionState const& state,
-                                 std::string const& /*user*/) -> bool {
-        if (state.id().isFollowerTransactionId()) {
-          TransactionCollection* tcoll =
-              state.collection(cid, AccessMode::Type::NONE);
-          return tcoll != nullptr;
-        }
-        return false;
-      });
+  // transactions in use are waited for and soft-aborted if necessary, so that
+  // none of them keeps holding the shard's locks
+  bool didWork = mgr->abortFollowerTrxOnShard(cid).waitAndGet();
 
   LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted follower transactions on shard '" << cid << "'";

@@ -34,6 +34,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <absl/hash/hash.h>
@@ -146,6 +147,12 @@ class Manager final : public IManager {
     /// will be cleared once the transaction gets turned into
     /// a tombstone
     std::string context;
+    /// ids of the collections the transaction was started with. set once in
+    /// storeManagedState() under the bucket's write lock and not changed
+    /// afterwards, so it can be read under the bucket lock alone, even while
+    /// the transaction is in use. collections added at runtime are not
+    /// recorded here
+    std::vector<DataSourceId> collections;
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -248,6 +255,13 @@ class Manager final : public IManager {
   /// permission check (see abortSelectedTrx)
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
+
+  /// @brief abort all follower transactions on shard `cid`. Transactions
+  /// still in use are waited for, and soft-aborted if they remain in use (see
+  /// abortOrSoftAbortManagedTrx()), so that they cannot keep holding the
+  /// shard's locks. Unlike selectManagedTrx(), transactions in use are not
+  /// skipped. Returns whether any transaction was found.
+  futures::Future<bool> abortFollowerTrxOnShard(DataSourceId cid);
 
   /// @brief abort all managed write transactions
   Result abortAllManagedWriteTrx(std::string_view username, bool fanout);

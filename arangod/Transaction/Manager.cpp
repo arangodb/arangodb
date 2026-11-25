@@ -1070,7 +1070,10 @@ futures::Future<Result> Manager::statusChangeWithTimeout(
     TransactionId tid, std::string const& database,
     transaction::Status status) {
   double startTime = 0.0;
-  constexpr double maxWaitTime = 9.0;
+  double maxWaitTime = 9.0;
+  TRI_IF_FAILURE("transaction::Manager::shortStatusChangeTimeout") {
+    maxWaitTime = 0.2;
+  }
   Result res;
   while (true) {
     // does not acquire the lock
@@ -1548,6 +1551,61 @@ bool Manager::abortManagedTrx(
   return abortSelectedTrx(selectManagedTrx(cb));
 }
 
+futures::Future<bool> Manager::abortFollowerTrxOnShard(DataSourceId cid) {
+  std::vector<TransactionId> selected;
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+
+    for (auto const& [tid, mtrx] : _transactions[bucket]._managed) {
+      if (mtrx.type != MetaType::Managed || !tid.isFollowerTransactionId() ||
+          mtrx.aborted()) {
+        // soft-aborted transactions are aborted by their current user or by
+        // the garbage collection; waiting for them again is pointless
+        continue;
+      }
+      // the recorded collections are accessible without the transaction's
+      // lock, so transactions in use are found, too
+      bool onShard = std::ranges::find(mtrx.collections, cid) !=
+                     mtrx.collections.end();
+      if (!onShard) {
+        // collections may have been added at runtime
+        TRI_ASSERT(mtrx.state != nullptr);
+        TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
+        onShard = tryGuard.isLocked() &&
+                  mtrx.state->collection(cid, AccessMode::Type::NONE) != nullptr;
+      }
+      if (onShard) {
+        selected.emplace_back(tid);
+      }
+    }
+  }
+
+  if (selected.empty()) {
+    co_return false;
+  }
+
+  std::vector<futures::Future<Result>> aborts;
+  aborts.reserve(selected.size());
+  for (auto tid : selected) {
+    // waits for transactions in use, soft-aborts them if they stay in use
+    aborts.emplace_back(abortOrSoftAbortManagedTrx(tid, "" /*any database*/));
+  }
+  auto results = co_await futures::collectAll(aborts.begin(), aborts.end());
+
+  for (size_t i = 0; i < results.size(); ++i) {
+    Result res = basics::catchToResult([&] { return results[i].get(); });
+    if (res.fail() && !res.is(TRI_ERROR_LOCKED) &&
+        !res.is(TRI_ERROR_TRANSACTION_NOT_FOUND) &&
+        !res.is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION) &&
+        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
+      LOG_TOPIC("3c1d7", INFO, Logger::TRANSACTIONS)
+          << "error aborting follower transaction " << selected[i]
+          << " on shard " << cid << ": " << res.errorMessage();
+    }
+  }
+  co_return true;
+}
+
 void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
                            std::string_view username, bool fanout,
                            bool details) const {
@@ -1828,6 +1886,15 @@ bool Manager::storeManagedState(
   TRI_ASSERT(state != nullptr);
   arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
 
+  // remember the collections, so that the transaction can be found by
+  // collection even while it is in use and its state is inaccessible
+  std::vector<DataSourceId> collections;
+  collections.reserve(state->numCollections());
+  state->allCollections([&](TransactionCollection& trxColl) {
+    collections.emplace_back(trxColl.id());
+    return true;
+  });
+
   // add transaction to bucket
   size_t bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -1835,6 +1902,9 @@ bool Manager::storeManagedState(
   auto it = _transactions[bucket]._managed.try_emplace(
       tid, _options, MetaType::Managed, ttl, std::move(state),
       std::move(rGuard));
+  if (it.second) {
+    it.first->second.collections = std::move(collections);
+  }
   return it.second;
 }
 
