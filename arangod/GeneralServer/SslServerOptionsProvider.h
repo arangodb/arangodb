@@ -32,7 +32,11 @@ struct SslServerOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           SslServerOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           SslServerOptions& options) {}
+                           SslServerOptions& options);
+
+ private:
+  std::string _cafile;
+  std::string _keyfile;
 };
 
 }  // namespace arangodb

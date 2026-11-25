@@ -70,6 +70,24 @@ void applyAgencyRocksDBMemoryLimits(
         rocksdbOptions.totalWriteBufferSize, uint64_t{512} << 20);  // 512 MiB
   }
 }
+
+void assertNoTLSWithFips(
+    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
+    [[maybe_unused]] SslServerOptions const& sslServerOptions) {
+#ifdef USE_ENTERPRISE
+  if (fipsOptions.enableFips) {
+    bool const tlsRequested = sslServerOptions.cafile.has_value() ||
+                              sslServerOptions.keyfile.has_value();
+    if (tlsRequested) {
+      LOG_TOPIC("dfe35", FATAL, Logger::STARTUP)
+          << "--server.fips-enable was provided. "
+          << "Please remove everything related to TLS/SSL.";
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif  // USE_ENTERPRISE
+}
+
 }  // namespace
 
 void ArangodServer::processOptions() {
@@ -128,6 +146,10 @@ void ArangodServer::processOptions() {
         options()->processingResult(),
         mutableOptions<RocksDBOptionFeatureOptionsProvider>());
   }
+
+  auto const& fipsOptions = getOptions<FipsFeatureOptionsProvider>();
+  auto const& sslServerOption = getOptions<SslServerOptionsProvider>();
+  assertNoTLSWithFips(fipsOptions, sslServerOption);
 }
 
 void ArangodServer::validateOptions() {
