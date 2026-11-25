@@ -555,6 +555,20 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     return true;
   }
 
+  waitForAllShardsInSync() {
+    if (this.instanceManager.waitForAllShardsInSync()) {
+      return true;
+    }
+    // Callers abort their step chain on false; without an entry in results
+    // the skipped steps would leave the run reported as green.
+    this.results.waitForAllShardsInSync = {
+      status: false,
+      failed: 1,
+      message: 'shards did not get in sync'
+    };
+    return false;
+  }
+
   listHotBackup() {
     return hb.get();
   }
