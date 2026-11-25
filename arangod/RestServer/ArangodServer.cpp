@@ -82,7 +82,7 @@ void assertNoTLSWithFips(
       LOG_TOPIC("dfe35", FATAL, Logger::STARTUP)
           << "--server.fips-enable was provided. "
           << "Please remove everything related to TLS/SSL.";
-                FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT();
     }
   }
 #endif  // USE_ENTERPRISE
