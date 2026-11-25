@@ -26,17 +26,18 @@ namespace arangodb::activities {
 
 CurrentlyExecuting::~CurrentlyExecuting() { switchTo(nullptr); }
 
-auto CurrentlyExecuting::switchTo(ActivityHandle next) noexcept -> void {
-  if (_activity == next) {
+auto CurrentlyExecuting::switchTo(ActivityHandle nextActivity) noexcept
+    -> void {
+  if (_currentActivity == nextActivity) {
     return;
   }
-  if (_activity != nullptr) {
-    _activity->unlink(_node);
+  if (_currentActivity != nullptr) {
+    _currentActivity->unlink(_threadNode);
   }
-  _activity = std::move(next);
-  if (_activity != nullptr) {
-    _node.thread = basics::ThreadId::current();
-    _activity->link(_node);
+  _currentActivity = std::move(nextActivity);
+  if (_currentActivity != nullptr) {  // nextActivity can be nullptr
+    _threadNode.threadId = basics::ThreadId::current();
+    _currentActivity->link(_threadNode);
   }
 }
 

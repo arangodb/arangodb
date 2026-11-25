@@ -42,7 +42,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
   struct ThreadNode {
     ThreadNode* prev = nullptr;
     ThreadNode* next = nullptr;
-    basics::ThreadId thread{};
+    basics::ThreadId threadId{};
   };
 
   Activity(ActivityId id, ActivityHandle parent, ActivityType type)
