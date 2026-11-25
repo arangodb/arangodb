@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-23.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
@@ -10,8 +12,6 @@
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.20.0-preview-22.
 
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
