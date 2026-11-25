@@ -71,10 +71,8 @@ void applyAgencyRocksDBMemoryLimits(
   }
 }
 
-void assertNoTLSWithFips(
-    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
-    [[maybe_unused]] SslServerOptions const& sslServerOptions) {
-#ifdef USE_ENTERPRISE
+void assertNoTLSWithFips(FipsFeatureOptions const& fipsOptions,
+                         SslServerOptions const& sslServerOptions) {
   if (fipsOptions.enableFips) {
     bool const tlsRequested = sslServerOptions.cafile.has_value() ||
                               sslServerOptions.keyfile.has_value();
@@ -85,12 +83,12 @@ void assertNoTLSWithFips(
       FATAL_ERROR_EXIT();
     }
   }
-#endif  // USE_ENTERPRISE
 }
 
 void assertNoEncryptionAtRestWithFips(
-    FipsFeatureOptions const& fipsOptions,
-    RocksDBEngineOptions const& rocksDBEngineOptions) {
+    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
+    [[maybe_unused]] RocksDBEngineOptions const& rocksDBEngineOptions) {
+#ifdef USE_ENTERPRISE
   if (fipsOptions.enableFips) {
     auto const& eeOptions = rocksDBEngineOptions.eeOptions;
     // Whatever combination we have here, the moment this true it means that
@@ -109,6 +107,7 @@ void assertNoEncryptionAtRestWithFips(
       FATAL_ERROR_EXIT();
     }
   }
+#endif  // USE_ENTERPRISE
 }
 
 }  // namespace
