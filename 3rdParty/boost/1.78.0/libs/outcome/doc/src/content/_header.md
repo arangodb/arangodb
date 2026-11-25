@@ -1,1 +1,0 @@
-Outcome 2.2 library documentation

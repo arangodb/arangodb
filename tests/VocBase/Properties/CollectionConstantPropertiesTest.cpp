@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 
 #include "VocBase/Properties/CollectionConstantProperties.h"
-#include "VocBase/Properties/InspectContexts.h"
 #include "Basics/ResultT.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
@@ -87,7 +86,9 @@ class CollectionConstantPropertiesTest : public ::testing::Test {
 
 TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
@@ -97,7 +98,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
       testee->keyOptions));
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
-  EXPECT_FALSE(testee->enableTimeTravel);
 }
 
 TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
@@ -116,11 +116,9 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
 
   /// The following defaulted to edge before (not mentioned in doc since 3.3)
   __HELPER_assertParsingThrows(type, "edge");
-  /// The following defaulted to document before (not mentioned in doc
-  /// since 3.3):
-  __HELPER_assertParsingThrows(type, 0);
-  __HELPER_assertParsingThrows(type, 1);
-  __HELPER_assertParsingThrows(type, 4);
+  /// NOTE: Inspect() parses out-of-range numbers (0, 1, 4) but
+  /// applyDefaultsAndValidate() rejects them, which is tested in the
+  /// CreateCollectionRequestTest.
 
   __HELPER_assertParsingThrows(type, "document");
   __HELPER_assertParsingThrows(type, "dogfather");
@@ -132,47 +130,6 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
-
-// Time travel is internal for now: users cannot request it, but a collection
-// that has it must keep it when its marker is loaded again.
-TEST_F(CollectionConstantPropertiesTest,
-       test_enableTimeTravel_ignored_from_user) {
-  auto testee =
-      parse(createMinimumBodyWithOneValue(StaticStrings::EnableTimeTravel, true)
-                .slice());
-  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
-  EXPECT_FALSE(testee->enableTimeTravel);
-}
-
-TEST_F(CollectionConstantPropertiesTest,
-       test_enableTimeTravel_loaded_from_internal_data) {
-  auto body =
-      createMinimumBodyWithOneValue(StaticStrings::EnableTimeTravel, true);
-  CollectionConstantProperties testee;
-  auto status = velocypack::deserializeWithStatus(body.slice(), testee, {},
-                                                  InspectInternalContext{});
-  ASSERT_TRUE(status.ok()) << status.error();
-  EXPECT_TRUE(testee.enableTimeTravel);
-}
-
-TEST_F(CollectionConstantPropertiesTest, test_enableTimeTravel_not_serialized) {
-  CollectionConstantProperties testee;
-  testee.enableTimeTravel = true;
-  auto out = serialize(testee);
-  EXPECT_TRUE(out.slice().get(StaticStrings::EnableTimeTravel).isNone())
-      << out.slice().toJson();
-}
-
-TEST_F(CollectionConstantPropertiesTest,
-       test_enableTimeTravel_serialized_for_internal_data) {
-  CollectionConstantProperties testee;
-  testee.enableTimeTravel = true;
-  VPackBuilder out;
-  velocypack::serializeWithContext(out, testee, InspectInternalContext{});
-  auto slice = out.slice().get(StaticStrings::EnableTimeTravel);
-  ASSERT_TRUE(slice.isBool()) << out.slice().toJson();
-  EXPECT_TRUE(slice.getBool());
-}
 
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);

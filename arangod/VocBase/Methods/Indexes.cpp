@@ -852,10 +852,10 @@ std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
 }
 
 template<typename IndexSpec>
-requires std::is_same_v<IndexSpec, IndexId> or
-    std::is_same_v<IndexSpec, velocypack::Slice>
-        futures::Future<arangodb::Result> Indexes::dropDBServer(
-            LogicalCollection& col, IndexSpec indexSpec) {
+  requires std::is_same_v<IndexSpec, IndexId> or
+           std::is_same_v<IndexSpec, velocypack::Slice>
+futures::Future<arangodb::Result> Indexes::dropDBServer(LogicalCollection& col,
+                                                        IndexSpec indexSpec) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // we have one index less now, so we should flush all cached query execution
@@ -867,13 +867,13 @@ requires std::is_same_v<IndexSpec, IndexId> or
   auto trx = createTrxForDrop(col);
 
   auto beginRes = co_await trx->beginAsync();
-  auto& collection = *trx->documentCollection();
 
   if (!beginRes.ok()) {
-    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+    events::DropIndex(col.vocbase().name(), col.name(), "",
                       beginRes.errorNumber());
     co_return beginRes;
   }
+  auto& collection = *trx->documentCollection();
 
   auto indexIdRes = co_await std::invoke(
       overload{

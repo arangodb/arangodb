@@ -130,7 +130,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
           << impl->name() << "'";
     }
     // refresh view from Agency to get latest state with populated collections
-    view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
+    view = ci.getView(vocbase.name(), absl::AlphaNum(impl->id().id()).Piece());
     // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
@@ -378,7 +378,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
       for (auto& entry : _collections) {
         auto const& name = vocbase().name();
         auto collection = engine.getCollection(
-            name, absl::AlphaNum{entry.first.id()}.Piece());
+            name, absl::AlphaNum(entry.first.id()).Piece());
         if (collection) {
           if (auto r = exec.canUseCollection(name, collection->name(),
                                              AccessLevel::Read);

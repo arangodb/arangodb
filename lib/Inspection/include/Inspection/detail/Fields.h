@@ -361,25 +361,30 @@ struct EmbeddedFieldsRef {
   [[no_unique_address]] Predicate predicate{};
 
   template<class P>
-      [[nodiscard]] auto when(P predicate) && requires(!hasCondition) {
+  [[nodiscard]] auto when(P predicate) &&
+    requires(!hasCondition)
+  {
     return makeConditional<ConditionScope::Always>(std::move(predicate));
   }
 
   template<class P>
-      [[nodiscard]] auto whenLoading(P predicate) && requires(!hasCondition) {
+  [[nodiscard]] auto whenLoading(P predicate) &&
+    requires(!hasCondition)
+  {
     return makeConditional<ConditionScope::Loading>(std::move(predicate));
   }
 
   template<class P>
-      [[nodiscard]] auto whenSaving(P predicate) && requires(!hasCondition) {
+  [[nodiscard]] auto whenSaving(P predicate) &&
+    requires(!hasCondition)
+  {
     return makeConditional<ConditionScope::Saving>(std::move(predicate));
   }
 
- private :
-     // need a comment here to work around stupid clang-format behavior
-     template<ConditionScope S, class P>
-     auto
-     makeConditional(P&& predicate) {
+ private:
+  // need a comment here to work around stupid clang-format behavior
+  template<ConditionScope S, class P>
+  auto makeConditional(P&& predicate) {
     static_assert(
         std::is_invocable_r_v<FieldCondition, P> &&
             std::is_same_v<std::invoke_result_t<P>, FieldCondition>,

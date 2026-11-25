@@ -35,7 +35,7 @@
 // check. Consequently:
 //   - GET  /_api/user           (path "/_api/user",  no trailing slash) and
 //   - POST /_api/user           (path "/_api/user")
-//     DO go through the base check -> `UseApiVersion version=1` and
+//     DO go through the base check -> `UseApiVersion version=v1` and
 //     `UseDatabase name=_system level=read`.
 //   - every /_api/user/<user>[/...] request SKIPS the base check, so the
 //     only quesions observed are the ones the handler body asks itself.
@@ -63,308 +63,308 @@
 // questions) and cleaned up afterwards / in tearDown.
 
 if (getOptions === true) {
-  return {
-    'server.authentication': 'true',
-    'log.force-direct': 'true',
-    // keep background threads from asking questions of their own
-    'foxx.queues': 'false',
-    // disable so it doesn't spoil the test output:
-    'server.statistics': 'false'
-  };
+        return {
+                'server.authentication': 'true',
+                'log.force-direct': 'true',
+                // keep background threads from asking questions of their own
+                'foxx.queues': 'false',
+                // disable so it doesn't spoil the test output:
+                'server.statistics': 'false'
+        };
 }
 
 const jsunity = require('jsunity');
 const {
-  beginObserve,
-  endObserve,
-  disableObserve,
-  assertPermissions
+        beginObserve,
+        endObserve,
+        disableObserve,
+        assertPermissions
 } = require('@arangodb/testutils/permissions-observer');
 const { singleOnly } = require('@arangodb/testutils/apitest-fixtures');
 // a single server reads the _users collection while storing a user or a
 // permission; a coordinator writes it via the agency and asks nothing
 
-function userApiAuthzSuite () {
-  const testuser = 'testuser';
+function userApiAuthzSuite() {
+        const testuser = 'testuser';
 
-  function dropTestuser () {
-    arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
-  }
-  function createTestuser () {
-    dropTestuser();
-    arango.POST_RAW(`/_db/_system/_api/user`,
-                    { user: testuser, passwd: 'testpasswd' });
-  }
-  function dropD2 () {
-    arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
-  }
-  function createD2 () {
-    dropD2();
-    arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
-  }
-  function createC2inD2 () {
-    arango.POST_RAW(`/_db/d2/_api/collection`, { name: 'c2' });
-  }
+        function dropTestuser() {
+                arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
+        }
+        function createTestuser() {
+                dropTestuser();
+                arango.POST_RAW(`/_db/_system/_api/user`,
+                        { user: testuser, passwd: 'testpasswd' });
+        }
+        function dropD2() {
+                arango.DELETE_RAW(`/_db/_system/_api/database/d2`);
+        }
+        function createD2() {
+                dropD2();
+                arango.POST_RAW(`/_db/_system/_api/database`, { name: 'd2' });
+        }
+        function createC2inD2() {
+                arango.POST_RAW(`/_db/d2/_api/collection`, { name: 'c2' });
+        }
 
-  return {
-    tearDown: function () {
-      disableObserve();
-      dropTestuser();
-      dropD2();
-    },
+        return {
+                tearDown: function () {
+                        disableObserve();
+                        dropTestuser();
+                        dropD2();
+                },
 
-    // GET /_api/user - list users. Path "/_api/user" (no trailing slash) does
-    // NOT skip the base check, so `UseDatabase name=_system level=read` is
-    // asked. Then canUseAdminAction(AdminReadUsers) -> `AdminReadUsers`, then
-    // canReadUsers() -> `ReadUser name=<u>` for EVERY user (note: this bulk
-    // variant does NOT apply the self-exception, so root is included).
-    // AUDIT: the user list is enumerated dynamically; AdminReadUsers is an
-    // admin action asked in addition to the per-user ReadUser questions.
-    testListUsers: function () {
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read",
-        "AdminReadUsers",
-        "ReadUser name=root",
-        "UseCollection db=_system name=_users level=read"
-      ], endObserve());
-    },
+                // GET /_api/user - list users. Path "/_api/user" (no trailing slash) does
+                // NOT skip the base check, so `UseDatabase name=_system level=read` is
+                // asked. Then canUseAdminAction(AdminReadUsers) -> `AdminReadUsers`, then
+                // canReadUsers() -> `ReadUser name=<u>` for EVERY user (note: this bulk
+                // variant does NOT apply the self-exception, so root is included).
+                // AUDIT: the user list is enumerated dynamically; AdminReadUsers is an
+                // admin action asked in addition to the per-user ReadUser questions.
+                testListUsers: function () {
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "UseDatabase name=_system level=read",
+                                "AdminReadUsers",
+                                "ReadUser name=root",
+                                "UseCollection db=_system name=_users level=read"
+                        ], endObserve());
+                },
 
-    // POST /_api/user - create testuser. Path "/_api/user" -> base check runs.
-    // canCreateUser(testuser) -> `CreateUser name=testuser`.
-    testCreateUser: function () {
-      dropTestuser();
-      beginObserve();
-      arango.POST_RAW(`/_db/_system/_api/user`,
-                      { user: testuser, passwd: 'testpasswd' });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "UseDatabase name=_system level=read",
-        "IsReadOnly",
-        "CreateUser name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-      dropTestuser();
-    },
+                // POST /_api/user - create testuser. Path "/_api/user" -> base check runs.
+                // canCreateUser(testuser) -> `CreateUser name=testuser`.
+                testCreateUser: function () {
+                        dropTestuser();
+                        beginObserve();
+                        arango.POST_RAW(`/_db/_system/_api/user`,
+                                { user: testuser, passwd: 'testpasswd' });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "UseDatabase name=_system level=read",
+                                "IsReadOnly",
+                                "CreateUser name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                        dropTestuser();
+                },
 
-    // POST /_api/user/testuser - check credentials. Path skips the base check
-    // and the handler only calls um->checkCredentials() (no can()), so NO
-    // authorization question is asked at all.
-    // AUDIT: empty expectation - this endpoint is AUTHEN-only.
-    testCheckCredentials: function () {
-      createTestuser();
-      beginObserve();
-      arango.POST_RAW(`/_db/_system/_api/user/${testuser}`,
-                      { passwd: 'testpasswd' });
-      assertPermissions(["UseApiVersion version=1"], endObserve());
-    },
+                // POST /_api/user/testuser - check credentials. Path skips the base check
+                // and the handler only calls um->checkCredentials() (no can()), so NO
+                // authorization question is asked at all.
+                // AUDIT: empty expectation - this endpoint is AUTHEN-only.
+                testCheckCredentials: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.POST_RAW(`/_db/_system/_api/user/${testuser}`,
+                                { passwd: 'testpasswd' });
+                        assertPermissions(["UseApiVersion version=v1"], endObserve());
+                },
 
-    // GET /_api/user/testuser - canReadUser(testuser)
-    testGetUser: function () {
-      createTestuser();
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user/${testuser}`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "ReadUser name=testuser"
-      ], endObserve());
-    },
+                // GET /_api/user/testuser - canReadUser(testuser)
+                testGetUser: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user/${testuser}`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "ReadUser name=testuser"
+                        ], endObserve());
+                },
 
-    // GET /_api/user/testuser/config - canReadUser(testuser)
-    testGetUserConfig: function () {
-      createTestuser();
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user/${testuser}/config`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "ReadUser name=testuser"
-      ], endObserve());
-    },
+                // GET /_api/user/testuser/config - canReadUser(testuser)
+                testGetUserConfig: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user/${testuser}/config`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "ReadUser name=testuser"
+                        ], endObserve());
+                },
 
-    // GET /_api/user/testuser/database - canReadUser(testuser); the database
-    // enumeration only reads stored auth levels (no can()).
-    testGetUserDatabases: function () {
-      createTestuser();
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "ReadUser name=testuser"
-      ], endObserve());
-    },
+                // GET /_api/user/testuser/database - canReadUser(testuser); the database
+                // enumeration only reads stored auth levels (no can()).
+                testGetUserDatabases: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "ReadUser name=testuser"
+                        ], endObserve());
+                },
 
-    // GET /_api/user/testuser/database/d2 - canReadUser(testuser)
-    testGetUserDatabase: function () {
-      createTestuser();
-      createD2();
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "ReadUser name=testuser"
-      ], endObserve());
-    },
+                // GET /_api/user/testuser/database/d2 - canReadUser(testuser)
+                testGetUserDatabase: function () {
+                        createTestuser();
+                        createD2();
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "ReadUser name=testuser"
+                        ], endObserve());
+                },
 
-    // GET /_api/user/testuser/database/d2/c2 - canReadUser(testuser)
-    testGetUserCollection: function () {
-      createTestuser();
-      createD2();
-      createC2inD2();
-      beginObserve();
-      arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "ReadUser name=testuser"
-      ], endObserve());
-    },
+                // GET /_api/user/testuser/database/d2/c2 - canReadUser(testuser)
+                testGetUserCollection: function () {
+                        createTestuser();
+                        createD2();
+                        createC2inD2();
+                        beginObserve();
+                        arango.GET_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "ReadUser name=testuser"
+                        ], endObserve());
+                },
 
-    // PUT /_api/user/testuser - canModifyUserProfile(testuser)
-    testReplaceUser: function () {
-      createTestuser();
-      beginObserve();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}`,
-                     { passwd: 'newpasswd' });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "ModifyUserProfile name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // PUT /_api/user/testuser - canModifyUserProfile(testuser)
+                testReplaceUser: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}`,
+                                { passwd: 'newpasswd' });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "ModifyUserProfile name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // PATCH /_api/user/testuser - canModifyUserProfile(testuser)
-    testModifyUser: function () {
-      createTestuser();
-      beginObserve();
-      arango.PATCH_RAW(`/_db/_system/_api/user/${testuser}`, { active: true });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "ModifyUserProfile name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // PATCH /_api/user/testuser - canModifyUserProfile(testuser)
+                testModifyUser: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.PATCH_RAW(`/_db/_system/_api/user/${testuser}`, { active: true });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "ModifyUserProfile name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // PUT /_api/user/testuser/config/testkey - canModifyUserProfile(testuser)
-    testSetUserConfig: function () {
-      createTestuser();
-      beginObserve();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
-                     { value: 42 });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "ModifyUserProfile name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // PUT /_api/user/testuser/config/testkey - canModifyUserProfile(testuser)
+                testSetUserConfig: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
+                                { value: 42 });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "ModifyUserProfile name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // PUT /_api/user/testuser/database/d2 - canGrantUserPermissions(testuser)
-    testGrantDatabase: function () {
-      createTestuser();
-      createD2();
-      beginObserve();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
-                     { grant: 'ro' });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "GrantUserPermissions name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // PUT /_api/user/testuser/database/d2 - canGrantUserPermissions(testuser)
+                testGrantDatabase: function () {
+                        createTestuser();
+                        createD2();
+                        beginObserve();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
+                                { grant: 'ro' });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "GrantUserPermissions name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // PUT /_api/user/testuser/database/d2/c2 - canGrantUserPermissions(testuser)
-    // (existsCollection() only resolves the collection, no can())
-    testGrantCollection: function () {
-      createTestuser();
-      createD2();
-      createC2inD2();
-      beginObserve();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
-                     { grant: 'ro' });
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "GrantUserPermissions name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // PUT /_api/user/testuser/database/d2/c2 - canGrantUserPermissions(testuser)
+                // (existsCollection() only resolves the collection, no can())
+                testGrantCollection: function () {
+                        createTestuser();
+                        createD2();
+                        createC2inD2();
+                        beginObserve();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
+                                { grant: 'ro' });
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "GrantUserPermissions name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // DELETE /_api/user/testuser - canDropUser(testuser)
-    testDeleteUser: function () {
-      createTestuser();
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "DropUser name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // DELETE /_api/user/testuser - canDropUser(testuser)
+                testDeleteUser: function () {
+                        createTestuser();
+                        beginObserve();
+                        arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "DropUser name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // DELETE /_api/user/testuser/config/testkey - canModifyUserProfile(testuser)
-    testDeleteUserConfig: function () {
-      createTestuser();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
-                     { value: 1 });
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "ModifyUserProfile name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // DELETE /_api/user/testuser/config/testkey - canModifyUserProfile(testuser)
+                testDeleteUserConfig: function () {
+                        createTestuser();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`,
+                                { value: 1 });
+                        beginObserve();
+                        arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/config/testkey`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "ModifyUserProfile name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // DELETE /_api/user/testuser/database/d2 - canGrantUserPermissions(testuser)
-    testRevokeDatabase: function () {
-      createTestuser();
-      createD2();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
-                     { grant: 'ro' });
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "GrantUserPermissions name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
+                // DELETE /_api/user/testuser/database/d2 - canGrantUserPermissions(testuser)
+                testRevokeDatabase: function () {
+                        createTestuser();
+                        createD2();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2`,
+                                { grant: 'ro' });
+                        beginObserve();
+                        arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "GrantUserPermissions name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
 
-    // DELETE /_api/user/testuser/database/d2/c2 -
-    // canGrantUserPermissions(testuser)
-    testRevokeCollection: function () {
-      createTestuser();
-      createD2();
-      createC2inD2();
-      arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
-                     { grant: 'ro' });
-      beginObserve();
-      arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
-      assertPermissions([
-        "UseApiVersion version=1",
-        "IsReadOnly",
-        "GrantUserPermissions name=testuser",
-        "UseCollection db=_system name=_users level=read",
-        "UseCollection db=_system name=_users level=writedata"
-      ], endObserve());
-    },
-  };
+                // DELETE /_api/user/testuser/database/d2/c2 -
+                // canGrantUserPermissions(testuser)
+                testRevokeCollection: function () {
+                        createTestuser();
+                        createD2();
+                        createC2inD2();
+                        arango.PUT_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`,
+                                { grant: 'ro' });
+                        beginObserve();
+                        arango.DELETE_RAW(`/_db/_system/_api/user/${testuser}/database/d2/c2`);
+                        assertPermissions([
+                                "UseApiVersion version=v1",
+                                "IsReadOnly",
+                                "GrantUserPermissions name=testuser",
+                                "UseCollection db=_system name=_users level=read",
+                                "UseCollection db=_system name=_users level=writedata"
+                        ], endObserve());
+                },
+        };
 }
 
 jsunity.run(userApiAuthzSuite);

@@ -49,7 +49,8 @@ struct JsonPrintInspector
 
  public:
   JsonPrintInspector(std::ostream& stream, JsonPrintFormat format,
-                     bool quoteFieldNames = true) requires(!Base::hasContext)
+                     bool quoteFieldNames = true)
+    requires(!Base::hasContext)
       : Base(),
         _stream(stream),
         _indentation(),

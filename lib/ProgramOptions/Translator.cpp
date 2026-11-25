@@ -72,8 +72,7 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
       } else {
         char const* t = q;
 
-        for (; q < e && *q != '@'; q++)
-          ;
+        for (; q < e && *q != '@'; q++);
 
         if (q < e) {
           std::string k = std::string(t, q);

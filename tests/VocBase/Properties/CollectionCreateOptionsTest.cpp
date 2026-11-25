@@ -79,7 +79,9 @@ class CollectionCreateOptionsTest : public ::testing::Test {
 
 TEST_F(CollectionCreateOptionsTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  {
+    VPackObjectBuilder guard(&body);
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
 }

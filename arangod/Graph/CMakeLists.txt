@@ -19,7 +19,7 @@ target_link_libraries(arango_graph
   arango_aql
   arango_cache
   arango_vocbase
-  boost_boost)
+  Boost::range)
 
 target_include_directories(arango_graph PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

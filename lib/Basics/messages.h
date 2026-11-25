@@ -55,7 +55,7 @@
   "\xd7\x9c\xd7\x94\xd7\xaa\xd7\xa8\xd7\x90\xd7\x95\xd7\xaa\x21"
 // Should really be the following, but most terminals do not write right
 // to left, so we put it here backwards.
-//#define TRI_BYE_MESSAGE_IL
+// #define TRI_BYE_MESSAGE_IL
 //"\xd7\xaa\xd7\x95\xd7\x90\xd7\xa8\xd7\xaa\xd7\x94\xd7\x9c\x21"
 #define TRI_BYE_MESSAGE_IT "Arrivederci!"
 #define TRI_BYE_MESSAGE_JP \

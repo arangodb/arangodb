@@ -2151,14 +2151,8 @@ AstNode* Ast::createPatternOutVariable(std::string_view name) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  // A pattern out variable must not exist before. Otherwise it is supposed to
-  // be a reference. References must not be restricted within the pattern.
   if (_scopes.existsVariable(name)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
-                     "reference '",
-                     name, "'"));
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
   }
 
   return createNodeVariable(name, true);
@@ -2177,6 +2171,36 @@ AstNode* Ast::createPatternEdgeVariable(std::string_view name) {
   }
 
   return createNodeVariable(name, true);
+}
+
+AstNode* Ast::createPatternVertexReference(std::string_view name,
+                                           AstNode const* properties,
+                                           AstNode const* filterExpression,
+                                           AstNode const* projections) {
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // (name) references a previously bound vertex. A new vertex requires a
+  // collection label, so an unknown name should raise a parse error instead
+  // of an internal "variable not found" error.
+  if (!_scopes.existsVariable(name)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("MATCH vertex variable '", name,
+                     "' needs a label or has to be bound earlier"));
+  }
+
+  if (properties != nullptr || filterExpression != nullptr ||
+      projections != nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("filters or constraints are not allowed on MATCH pattern "
+                     "reference '",
+                     name, "'"));
+  }
+
+  return createNodeReference(name);
 }
 
 AstNode* Ast::createNodeMatch() {

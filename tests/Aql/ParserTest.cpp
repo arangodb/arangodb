@@ -28,6 +28,7 @@
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
+#include "Aql/CalculationQueryContext.h"
 #include "Aql/StandaloneCalculation.h"
 #include "Transaction/OperationOrigin.h"
 #include "Logger/LogMacros.h"

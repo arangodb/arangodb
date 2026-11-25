@@ -181,6 +181,13 @@ function makeDataWrapper(options) {
         // Same filter the workload phases ran, normalised the same way.
         argv.push('--test', normalizeSuiteFilter(this.options.test));
       }
+      if (this.options.rbacLogLevel) {
+        String(this.options.rbacLogLevel).split(',').forEach(level => {
+          if (level !== '') {
+            argv.push('--log-level', level);
+          }
+        });
+      }
 
       print(`\n${(new Date()).toISOString()}${GREEN}[============] RBAC scenarios: ` +
             `${argv.join(' ')}${RESET}`);

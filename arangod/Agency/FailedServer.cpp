@@ -324,7 +324,9 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
       }
       // FailedServers entry []
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
-      { VPackArrayBuilder failedServers(_jb.get()); }
+      {
+        VPackArrayBuilder failedServers(_jb.get());
+      }
     }  // Operations
 
     // Preconditions

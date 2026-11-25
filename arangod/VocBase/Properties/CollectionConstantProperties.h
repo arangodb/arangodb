@@ -28,7 +28,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/InspectContexts.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
 #include <optional>
@@ -53,9 +52,6 @@ struct CollectionConstantProperties {
   bool isSmart = false;
   bool isDisjoint = false;
 
-  // Internal for now: neither accepted from nor reported to users.
-  bool enableTimeTravel = false;
-
   inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
       std::nullopt;
 
@@ -74,29 +70,20 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::EnableTimeTravel, props.enableTimeTravel)
-          .fallback(f.keep())
-          .when([]() {
-            return isInternalContext<Inspector>
-                       ? inspection::FieldCondition::Process
-                       : inspection::FieldCondition::Ignore;
-          }),
-      userInvariant(
-          f,
-          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
-          UtilityInvariants::isNonEmptyIfPresent),
-      userInvariant(
-          f,
-          f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
-          UtilityInvariants::isValidCollectionType),
+      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute),
+      f.field(StaticStrings::DataSourceType, props.type).fallback(f.keep()),
       f.field(StaticStrings::KeyOptions, props.keyOptions).fallback(f.keep()),
       /* Backwards compatibility, fields are allowed (MMFILES) but have no
          relevance anymore */
       f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
-      // Written by the server. Not user-modifyable, so the attribute is
-      // accepted and dropped on input while still being written out.
+      // Written by the server; ignored from users, who do not own this field.
       f.field(StaticStrings::ShadowCollections, props.shadowCollections)
-          .whenLoading([]() { return inspection::FieldCondition::Ignore; }));
+          .fallback(f.keep())
+          .whenLoading([]() {
+            return isInternalContext<Inspector>
+                       ? inspection::FieldCondition::Process
+                       : inspection::FieldCondition::Ignore;
+          }));
 }
 
 }  // namespace arangodb

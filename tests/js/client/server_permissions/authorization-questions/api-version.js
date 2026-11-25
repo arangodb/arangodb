@@ -33,17 +33,9 @@
 // /_api/engine serves as the sample endpoint here: RestEngineHandler asks only
 // canUseHardenedAction(MonitoringInternal), which is silent without
 // --server.harden, so nothing but the two base questions is observed.
-//
-// API version 1 is not in ApiVersion.h's supportedApiVersions yet, so it is
-// normally rejected before any handler runs. The
-// 'ApiVersion::treatVersion1AsSupported' failure point makes the version
-// checks treat it as supported; it must be armed before the server registers
-// its routes at startup, hence the startup option (see also
-// failing-user-access-does-not-reveal-information.js).
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'server.failure-point': 'ApiVersion::treatVersion1AsSupported',
     // the observer reads the log file right after the request, so the log must
     // not be written by the logging thread
     'log.force-direct': 'true',
@@ -74,7 +66,7 @@ function apiVersionAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_api/engine`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },
@@ -84,7 +76,7 @@ function apiVersionAuthzSuite () {
       beginObserve();
       arango.GET_RAW(`/_arango/v1/_api/engine`);
       assertPermissions([
-        "UseApiVersion version=1",
+        "UseApiVersion version=v1",
         "UseDatabase name=_system level=read"
       ], endObserve());
     },

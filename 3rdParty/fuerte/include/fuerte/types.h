@@ -147,7 +147,7 @@ std::string to_string(MessageType type);
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
 
-enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
+enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2 };
 std::string to_string(SocketType type);
 
 // -----------------------------------------------------------------------------
@@ -228,7 +228,7 @@ struct ConnectionConfiguration {
   }
 
   ConnectionFailureCallback _onFailure;
-  SocketType _socketType;      // tcp, ssl or unix
+  SocketType _socketType;      // tcp or ssl
   ProtocolType _protocolType;  // http or http2
   bool _upgradeH1ToH2;
 

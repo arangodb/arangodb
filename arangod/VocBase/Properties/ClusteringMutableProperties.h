@@ -78,7 +78,7 @@ struct ClusteringMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
-  auto result = f.object(props).fields(
+  return f.object(props).fields(
       f.field(StaticStrings::WaitForSyncString, props.waitForSync)
           .fallback(f.keep()),
       // minReplicationFactor is deprecated, and not documented anymore
@@ -96,16 +96,6 @@ auto inspect(Inspector& f, ClusteringMutableProperties& props) {
           .transformWith(
               ClusteringMutableProperties::Transformers::ReplicationSatellite{
                   .acceptNumericZero = isInternalContext<Inspector>}));
-
-  if constexpr (isInternalContext<Inspector>) {
-    // Not an invariant of the type: EE SmartGraph edge collections are
-    // persisted with writeConcern == 0 and a non-satellite replicationFactor.
-    // The rule only constrains what a user may ask for.
-    return inspection::Status{std::move(result)};
-  } else {
-    return result.invariant(ClusteringMutableProperties::Invariants::
-                                writeConcernAllowedToBeZeroForSatellite);
-  }
 }
 
 }  // namespace arangodb

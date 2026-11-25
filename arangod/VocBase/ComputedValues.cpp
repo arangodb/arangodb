@@ -30,6 +30,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
+#include "Aql/CalculationQueryContext.h"
 #include "Aql/StandaloneCalculation.h"
 #include "Aql/Variable.h"
 #include "Basics/DownCast.h"

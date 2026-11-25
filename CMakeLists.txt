@@ -146,9 +146,28 @@ endif()
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 
+# FIPS mode: dynamic glibc so OpenSSL can dlopen fips.so.
+option(USE_FIPS "Enable OpenSSL FIPS provider support" OFF)
+
 if(STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  if(USE_FIPS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+    execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libatomic.a
+      OUTPUT_VARIABLE _libatomic_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE LIBATOMIC_RESULT
+    )
+    if(LIBATOMIC_RESULT OR NOT EXISTS "${_libatomic_path}")
+      message(FATAL_ERROR "Static libatomic not found (required for USE_FIPS).")
+    endif()
+    message(STATUS "FIPS: forcing static libatomic from ${_libatomic_path}")
+    add_library(atomic STATIC IMPORTED GLOBAL)
+    set_target_properties(atomic PROPERTIES IMPORTED_LOCATION "${_libatomic_path}")
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  endif()
 endif()
 
 # If enterprise add USE_ENTERPRISE flag to all targets
@@ -488,19 +507,19 @@ set(BASE_LIBS "$ENV{LIBS}" CACHE STRING "base libraries")
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  19.0 # Clang
+  22.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
   list(APPEND BASE_LIBS atomic)
 endif()
 
-# need c++20
+# need c++26
 # XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 26)
 
-# turn off compiler language extensions(e.g. don't use -std=gnu++20, but
-# -std=c++20).
+# turn off compiler language extensions(e.g. don't use -std=gnu++26, but
+# -std=c++26).
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")
@@ -1043,6 +1062,11 @@ if(USE_OPENSSL_NO_SSL2)
   add_definitions(-DOPENSSL_NO_SSL2)
 endif()
 
+if(USE_FIPS)
+  add_definitions(-DUSE_FIPS=1)
+  message(STATUS "FIPS provider support enabled")
+endif()
+
 # ###############################################################################
 # # 3RD PARTY
 # ###############################################################################
@@ -1102,7 +1126,23 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_omp_LIBRARY "${LIBOMP}")
   set(OpenMP_pthread_LIBRARY "pthread")
 
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  if(USE_FIPS)
+    # Ask the compiler that links (it knows its GCC installation's libgfortran)
+    # rather than a gfortran driver, which the build image does not ship.
+    execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libgfortran.a
+      OUTPUT_VARIABLE GFORTRAN_STATIC
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE GFORTRAN_RESULT
+    )
+    if(GFORTRAN_RESULT OR NOT EXISTS "${GFORTRAN_STATIC}")
+      message(FATAL_ERROR "Static libgfortran not found (required for USE_FIPS).")
+    endif()
+    message(STATUS "Using static libgfortran: ${GFORTRAN_STATIC}")
+    set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp ${LAPACK_LIBRARIES} ${GFORTRAN_STATIC}")
+  else()
+    set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  endif()
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
@@ -1137,6 +1177,9 @@ set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
+
+# Select faiss SIMD kernels at runtime based on the CPU.
+set(FAISS_OPT_LEVEL "dd" CACHE STRING "FAISS SIMD level" FORCE)
 
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 

@@ -47,7 +47,7 @@ DocumentFactory::DocumentFactory(
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
     : _handlersFactory(std::move(handlersFactory)),
-      _transactionManager(transactionManager){};
+      _transactionManager(transactionManager) {};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core,
                                         std::shared_ptr<IScheduler> scheduler)

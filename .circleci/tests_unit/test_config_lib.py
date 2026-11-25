@@ -420,7 +420,7 @@ class TestTestJob:
             (
                 [SuiteConfig(name="boost"), SuiteConfig(name="resilience")],
                 TestOptions(buckets=5),
-                "must use buckets='auto'",
+                "can't have more buckets",
             ),
             (
                 [SuiteConfig(name="boost")],
@@ -433,6 +433,18 @@ class TestTestJob:
         """Test TestJob validation raises appropriate errors."""
         with pytest.raises(ValueError, match=error_match):
             TestJob(name="test", suites=suites, options=options or TestOptions())
+
+    def test_multi_suite_job_with_fixed_buckets(self):
+        job = TestJob(
+            name="test-multi",
+            suites=[
+                SuiteConfig(name="boost"),
+                SuiteConfig(name="resilience"),
+                SuiteConfig(name="replication2"),
+            ],
+            options=TestOptions(buckets=2),
+        )
+        assert job.get_bucket_count() == 2
 
     def test_mixed_allows_suite_without_explicit_deployment_type(self):
         """Test mixed jobs allow suites without explicit deployment type."""

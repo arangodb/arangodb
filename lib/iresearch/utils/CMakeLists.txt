@@ -34,7 +34,6 @@ target_link_libraries(iresearch-index-util
 include_directories(iresearch-index-util
   ${IReSearch_generated_INCLUDE_DIR}
   ${IResearch_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   )
 
 ################################################################################
@@ -63,7 +62,6 @@ target_link_libraries(iresearch-benchmarks
 include_directories(iresearch-benchmarks
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   )
 
 ################################################################################
@@ -85,5 +83,4 @@ target_link_libraries(iresearch-pdd
 
 include_directories(iresearch-pdd
   ${IResearch_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   )

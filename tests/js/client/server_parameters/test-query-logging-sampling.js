@@ -34,12 +34,14 @@ const errors = internal.errors;
 const cn = "UnitTestsQueries";
 // fetch everything at once
 const batchSize = 10 * 1000;
+// probability (in percent) with which queries are logged
+const logProbability = 5;
 
 if (getOptions === true) {
   return {
     'query.collection-logger-enabled': 'true',
     'query.collection-logger-include-system-database': 'true',
-    'query.collection-logger-probability': '5',
+    'query.collection-logger-probability': String(logProbability),
     'query.collection-logger-push-interval': '100',
   };
 }
@@ -128,9 +130,14 @@ function QueryLoggerSuite() {
         db._query(query);
       }
 
-      let expected = n * 0.05;
-      let min = expected * 0.5;
-      let max = expected * 1.5;
+      // the number of logged queries follows Binomial(n, p). a ±5σ band keeps
+      // the false-failure rate at ~2e-6 while still detecting a 2x deviation
+      // in either direction with ~95% probability.
+      const p = logProbability / 100;
+      const expected = n * p;
+      const tolerance = 5 * Math.sqrt(n * p * (1 - p));
+      const min = expected - tolerance;
+      const max = expected + tolerance;
 
       let results = checkForQuery({
         query, 
@@ -143,8 +150,8 @@ function QueryLoggerSuite() {
         exitCode: 0
       });
 
-      assertTrue(results.length > min, { actual: results.length, min });
-      assertTrue(results.length < max, { actual: results.length, max });
+      assertTrue(results.length >= min, { actual: results.length, min });
+      assertTrue(results.length <= max, { actual: results.length, max });
     },
     
   };

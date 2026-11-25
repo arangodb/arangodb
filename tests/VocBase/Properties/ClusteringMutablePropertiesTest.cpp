@@ -86,7 +86,9 @@ class ClusteringMutablePropertiesTest : public ::testing::Test {
 
 TEST_F(ClusteringMutablePropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder bodyBuilder{&body}; }
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+  }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
   // Test Default values
@@ -100,10 +102,11 @@ GenerateBoolAttributeTest(ClusteringMutablePropertiesTest, waitForSync);
 
 GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
                                      replicationFactor);
-GeneratePositiveIntegerAttributeTest(ClusteringMutablePropertiesTest,
-                                     writeConcern);
+// NOTE: Inspect() parses a zero, but applyDefaultsAndValidate() rejects it,
+// which is tested in the CreateCollectionRequestTest.
+GenerateIntegerAttributeTest(ClusteringMutablePropertiesTest, writeConcern);
 GeneratePositiveIntegerAttributeTestInternal(ClusteringMutablePropertiesTest,
                                              minReplicationFactor, writeConcern,
-                                             false);
+                                             true);
 
 }  // namespace arangodb::tests

@@ -79,16 +79,13 @@ class index_profile_test_case : public tests::index_test_base {
 
  public:
   index_profile_test_case() {
-    auto beginCons = [](const auto& ) {
-    };
-    auto endCons = [](const auto& ) {
-    };
-    auto flushProgress = []() {
-      return true;
-    };
+    auto beginCons = [](const auto&) {};
+    auto endCons = [](const auto&) {};
+    auto flushProgress = []() { return true; };
 
-    callbacks = { .beginConsolidation = beginCons,
-      .endConsolidation = endCons, .flushProgress = flushProgress };
+    callbacks = {.beginConsolidation = beginCons,
+                 .endConsolidation = endCons,
+                 .flushProgress = flushProgress};
   }
 
   void SetOnTick(bool value) noexcept { onTick_ = value; }
@@ -555,14 +552,14 @@ class index_profile_test_case : public tests::index_test_base {
 
     auto writer = open_writer(irs::OM_CREATE, options);
 
-    thread_pool.run(
-      [consolidate_interval, &working, &writer, &policy, &callbacks = this->callbacks]() -> void {
-        while (working.load()) {
-          writer->Consolidate(policy, callbacks);
-          std::this_thread::sleep_for(
-            std::chrono::milliseconds(consolidate_interval));
-        }
-      });
+    thread_pool.run([consolidate_interval, &working, &writer, &policy,
+                     &callbacks = this->callbacks]() -> void {
+      while (working.load()) {
+        writer->Consolidate(policy, callbacks);
+        std::this_thread::sleep_for(
+          std::chrono::milliseconds(consolidate_interval));
+      }
+    });
 
     {
       irs::Finally finalizer = [&working]() noexcept { working = false; };

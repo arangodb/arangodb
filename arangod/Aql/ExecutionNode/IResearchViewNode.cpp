@@ -1593,7 +1593,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(kNodeViewNameParam, VPackValue(_view->name()));
   if (!_meta) {
-    absl::AlphaNum viewId{_view->id().id()};
+    absl::AlphaNum viewId(_view->id().id());
     nodes.add(kNodeViewIdParam, VPackValue(viewId.Piece()));
   }
 
@@ -1730,7 +1730,7 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    absl::AlphaNum const cidStr{cid.id()};
+    absl::AlphaNum const cidStr(cid.id());
     auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       viewCollections.emplace_back(
@@ -1760,6 +1760,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_volatilityMask = _volatilityMask;
   node->_immutableParts = _immutableParts;
   node->_sort = _sort;
+  node->_sortBuckets = _sortBuckets;
   node->_optState = _optState;
   if (_outSearchDocId != nullptr) {
     node->setSearchDocIdVar(*_outSearchDocId);
@@ -1798,7 +1799,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    absl::AlphaNum const cidStr{cid.id()};
+    absl::AlphaNum const cidStr(cid.id());
     auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       // FIXME better to gather count for multiple collections at once

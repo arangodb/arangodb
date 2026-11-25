@@ -46,6 +46,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexFactory.h"
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -67,9 +68,11 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/CreateCollectionRequest.h"
+#include "VocBase/Properties/InternalCollectionCreateOptions.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -861,7 +864,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   resultBuilder.add(VPackValue(StaticStrings::Properties));
-  vocbase->toVelocyPack(resultBuilder, _request->requestedApiVersion());
+  vocbase->toVelocyPack(resultBuilder);
   vocbase.reset();
 
   auto& exec = ExecContext::current();
@@ -1122,18 +1125,32 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
       co_return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                        "collection indexes declaration is invalid");
     }
+
+    // The indexes are restored later via restore-indexes, possibly after
+    // arangosearch views were restored and their links got ids generated
+    // locally. Reserve the dumped index ids now, so that locally generated
+    // ids cannot collide with them.
+    // TODO (COR-1281): This only solves for a single server restoration; the ID
+    // collision problem persists with a cluster restoration.
+    for (VPackSlice idx : VPackArrayIterator(indexes)) {
+      auto id = helpers::extractId(idx);
+      if (id.isSet()) {
+        TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
+      }
+    }
   }
 
   auto config = _vocbase.getDatabaseConfiguration();
 
   // Original
-  auto input = CreateCollectionBody::fromRestoreAPIBody(parameters, config);
+  auto input = CreateCollectionRequest::fromRestoreAPIBody(parameters, config);
   if (input.fail()) {
     co_return input.result();
   }
   OperationOptions options;
 
-  if (ignoreHiddenEnterpriseCollection(input->name, force)) {
+  if (ignoreHiddenEnterpriseCollection(input->descriptor.mutableProps.name,
+                                       force)) {
     co_return {TRI_ERROR_NO_ERROR};
   }
 
@@ -1144,8 +1161,8 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   }
 
   {
-    auto result = co_await handlingOfExistingCollection(_vocbase, input->name,
-                                                        dropExisting);
+    auto result = co_await handlingOfExistingCollection(
+        _vocbase, input->descriptor.mutableProps.name, dropExisting);
     if (result.fail()) {
       co_return result.result();
     }
@@ -1157,30 +1174,25 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
         // Consider this process successful.
         co_return {TRI_ERROR_NO_ERROR};
       } else {
-        co_return Result(
-            TRI_ERROR_ARANGO_DUPLICATE_NAME,
-            std::string("duplicate collection name '") + input->name + "'");
+        co_return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                         std::string("duplicate collection name '") +
+                             input->descriptor.mutableProps.name + "'");
       }
     }
   }
 
-  // We always wait for Collections to be synced on shards
-  bool waitForSyncReplication = true;
-  bool isNewDatabase = false;
-  bool isRestore = true;
+  // Defaults are what restore wants: waitForSyncReplication and
+  // enforceReplicationFactor true, isNewDatabase false.
+  InternalCollectionCreateOptions internalOptions;
+  internalOptions.isRestore = true;
+  internalOptions.allowEnterpriseCollectionsOnSingleServer =
+      input->descriptor.constant.isSmart ||
+      input->descriptor.clusteringMutable.isSatellite();
 
-  bool allowEnterpriseCollectionsOnSingleServer = false;
-  bool enforceReplicationFactor = true;
+  std::vector<CollectionDescriptor> collections{std::move(input->descriptor)};
 
-  if (input->isSmart || input->isSatellite()) {
-    allowEnterpriseCollectionsOnSingleServer = true;
-  }
-
-  std::vector<CreateCollectionBody> collections{std::move(input.get())};
-  auto result = methods::Collections::create(
-      _vocbase, options, collections, waitForSyncReplication,
-      enforceReplicationFactor, isNewDatabase,
-      allowEnterpriseCollectionsOnSingleServer, isRestore);
+  auto result = methods::Collections::create(_vocbase, options, collections,
+                                             internalOptions, input->options);
 
   co_return result.result();
 }
@@ -2759,11 +2771,10 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
                   "invalid collection parameter");
     return false;
   }
-  if (_request->requestedApiVersion() > 0) {
-    if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
-      generateError(r);
-      return false;
-    }
+
+  if (auto r = auth::isNameAndNoId(ctx.cname); r.fail()) {
+    generateError(r);
+    return false;
   }
 
   // print request

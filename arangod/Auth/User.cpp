@@ -29,13 +29,10 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/UniformCharacter.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
@@ -49,10 +46,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {
-UniformCharacter UCR(20);
-}  // namespace
-
 // create a hash in _outHash_ given a method like "sha1" and an input string.
 static ErrorCode HexHashFromData(std::string_view hashMethod,
                                  std::string const& str, std::string& outHash) {
@@ -61,6 +54,9 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   size_t cryptedLength;
 
   if (hashMethod == "sha1") {
+    LOG_TOPIC("4c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA1 should be retired, it will be deprecated in one of the future "
+           "releases";
     arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
     cryptedLength = 20;
   } else if (hashMethod == "sha512") {
@@ -73,11 +69,15 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
     arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
     cryptedLength = 32;
   } else if (hashMethod == "sha224") {
+    LOG_TOPIC("5c13c", WARN, arangodb::Logger::AUTHENTICATION)
+        << "SHA224 should be retired, it will be deprecated in one of the "
+           "future releases";
     arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
     cryptedLength = 28;
   } else if (hashMethod == "md5") {
-    arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 16;
+    LOG_TOPIC("6c13c", ERR, arangodb::Logger::AUTHENTICATION)
+        << "MD5 is deprecated and cannot not be used anymore!";
+    return TRI_ERROR_BAD_PARAMETER;
   } else {
     // invalid algorithm...
     LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
@@ -134,7 +134,12 @@ auth::User auth::User::newUser(std::string const& user,
   entry._username = user;
   entry._passwordMethod = "sha256";
 
-  std::string salt = UniformCharacter(8, "0123456789abcdef").random();
+  auto rand = SslInterface::sslRandBytes(16);
+  if (!rand.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Could not generate random data");
+  }
+  std::string const salt = StringUtils::encodeHex(rand.value());
   std::string hash;
   auto res = HexHashFromData("sha256", salt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -455,13 +460,19 @@ Result auth::User::createAccessToken(std::string const& name, double validUntil,
     active = false;
   }
 
+  auto rand = SslInterface::sslRandBytes(32);
+  if (!rand.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Could not generate random data");
+  }
+
   VPackBuilder jwt;
   {
     VPackObjectBuilder o(&jwt, true);
     o->add("e", uint64_t(validUntil));
     o->add("c", uint64_t(now));
     o->add("u", _username);
-    o->add("r", UCR.random());
+    o->add("r", StringUtils::encodeHex(rand.value()));
   }
 
   StringBuffer buffer;

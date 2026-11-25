@@ -2,7 +2,6 @@ set(IResearchPython_TARGET_NAME "iresearch-python" CACHE INTERNAL "")
 
 if (MSVC)
   add_definitions(-DPYRESEARCH_DLL)
-  include_directories(${Boost_INCLUDE_DIRS})
 endif ()
 
 add_library(${IResearchPython_TARGET_NAME}

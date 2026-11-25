@@ -535,20 +535,19 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   size_t parsedBytes = 0;
-  for (auto const& buffer : this->_protocol->buffer.data()) {
-    const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
+  auto const buffer = this->_protocol->buffer.data();
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
-      LOG_TOPIC("43942", INFO, Logger::REQUESTS)
-          << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
-          << rv << ")";
-      this->close(ec);
-      return false;  // stop read loop
-    }
-
-    parsedBytes += static_cast<size_t>(rv);
+  auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+  if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
+    LOG_TOPIC("43942", INFO, Logger::REQUESTS)
+        << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
+        << rv << ")";
+    this->close(ec);
+    return false;  // stop read loop
   }
+
+  parsedBytes += static_cast<size_t>(rv);
 
   TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
   // Remove consumed data from receive buffer.
@@ -728,10 +727,8 @@ void H2CommTask<T>::processRequest(Stream& stream,
 
   // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*req); res.fail()) {
-    auto code = res.is(TRI_ERROR_RESOURCE_LIMIT)
-                    ? rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE
-                    : rest::ResponseCode::BAD;
-    this->sendErrorResponse(code, req->contentTypeResponse(), 1,
+    this->sendErrorResponse(this->contentEncodingErrorCode(res),
+                            req->contentTypeResponse(), messageId,
                             res.errorNumber(), res.errorMessage());
     return;
   }
@@ -992,12 +989,12 @@ void H2CommTask<T>::queueHttp2Responses() {
 
 #ifdef USE_DTRACE
 // Moved out to avoid duplication by templates.
-static void __attribute__((noinline))
-DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
+static void __attribute__((noinline)) DTraceH2CommTaskBeforeAsyncWrite(
+    size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskBeforeAsyncWrite, th);
 }
-static void __attribute__((noinline))
-DTraceH2CommTaskAfterAsyncWrite(size_t th) {
+static void __attribute__((noinline)) DTraceH2CommTaskAfterAsyncWrite(
+    size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
 }
 #else
@@ -1111,6 +1108,5 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-template class arangodb::rest::H2CommTask<SocketType::Unix>;
 
 }  // namespace arangodb::rest

@@ -180,7 +180,7 @@ class BoundedList {
   // all historic lists, so it is safe to call this method from multiple threads
   // concurrently.
   template<typename F>
-  requires std::is_invocable_v<F, T const&>
+    requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) {
     // Get snapshots under lock
     std::vector<std::shared_ptr<AtomicList<T>>> snapshots;

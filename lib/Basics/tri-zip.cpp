@@ -231,6 +231,7 @@ static ErrorCode ExtractCurrentFile(
                      "' for writing: " + strerror(errno);
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
+    auto foutGuard = scopeGuard([&fout]() noexcept { fclose(fout); });
 
     while (true) {
       int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
@@ -238,7 +239,6 @@ static ErrorCode ExtractCurrentFile(
       if (result < 0) {
         errorMessage =
             std::string("failed to read from zip file: ") + strerror(errno);
-        fclose(fout);
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
@@ -246,7 +246,6 @@ static ErrorCode ExtractCurrentFile(
         if (fwrite(buffer, result, 1, fout) != 1) {
           errorMessage = std::string("failed to write file ") + fullPath +
                          " - " + strerror(errno);
-          fclose(fout);
           return TRI_set_errno(TRI_ERROR_SYS_ERROR);
         }
       } else {
@@ -254,7 +253,6 @@ static ErrorCode ExtractCurrentFile(
         break;
       }
     }
-    fclose(fout);
   }
 
   int ret = unzCloseCurrentFile(uf);
@@ -338,6 +336,7 @@ ErrorCode TRI_ZipFile(
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  auto bufferGuard = scopeGuard([buffer]() noexcept { TRI_Free(buffer); });
 
   if (!isAllowedAccess(filename)) {
     return TRI_ERROR_FORBIDDEN;
@@ -351,10 +350,9 @@ ErrorCode TRI_ZipFile(
 #endif
 
   if (zf == nullptr) {
-    TRI_Free(buffer);
-
     return TRI_ERROR_CANNOT_WRITE_FILE;
   }
+  auto zfGuard = scopeGuard([zf]() noexcept { zipClose(zf, NULL); });
 
   auto res = TRI_ERROR_NO_ERROR;
 
@@ -431,10 +429,6 @@ ErrorCode TRI_ZipFile(
     }
   }
 
-  zipClose(zf, NULL);
-
-  TRI_Free(buffer);
-
   return res;
 }
 
@@ -508,9 +502,10 @@ ErrorCode TRI_UnzipFile(
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  // isAllowedAccess and the extraction may throw, so release via guards
+  auto bufferGuard = scopeGuard([buffer]() noexcept { TRI_Free(buffer); });
 
   if (!isAllowedAccess(filename)) {
-    TRI_Free(buffer);
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -521,17 +516,11 @@ ErrorCode TRI_UnzipFile(
   unzFile uf = unzOpen64(filename);
 #endif
   if (uf == nullptr) {
-    TRI_Free(buffer);
     errorMessage = std::string("unable to open zip file '") + filename + "'";
     return TRI_ERROR_INTERNAL;
   }
+  auto ufGuard = scopeGuard([uf]() noexcept { unzClose(uf); });
 
-  auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                       password, errorMessage, isAllowedAccess);
-
-  unzClose(uf);
-
-  TRI_Free(buffer);
-
-  return res;
+  return UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
+                   password, errorMessage, isAllowedAccess);
 }

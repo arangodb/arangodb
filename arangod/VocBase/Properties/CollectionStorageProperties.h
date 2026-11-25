@@ -25,6 +25,9 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "VocBase/Properties/CollectionVersion.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <cstdint>
 #include <string>
@@ -43,11 +46,26 @@ struct CollectionStorageProperties {
       static inspection::Status fromSerialized(SerializedType const& v,
                                                MemoryType& result);
     };
+
+    /// VPack stores the version as a number (same as today).
+    struct VersionAsNumber {
+      using MemoryType = CollectionVersion;
+      using SerializedType = std::underlying_type_t<CollectionVersion>;
+
+      static inspection::Status toSerialized(MemoryType v,
+                                             SerializedType& result);
+      static inspection::Status fromSerialized(SerializedType const& v,
+                                               MemoryType& result);
+    };
   };
 
   /// RocksDB object id; 0 means not assigned yet / coordinator stub.
   /// cacheEnabled lives only on CollectionMutableProperties.
   uint64_t objectId{0};
+
+  /// On-disk format version. A collection older than
+  /// minimumCollectionVersion() needs --database.auto-upgrade.
+  CollectionVersion version{currentCollectionVersion()};
 
   bool operator==(CollectionStorageProperties const&) const = default;
 };
@@ -55,10 +73,13 @@ struct CollectionStorageProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionStorageProperties& props) {
   return f.object(props).fields(
-      f.field(StaticStrings::ObjectId, props.objectId)
+      internalFieldRejectingUserInput(f, StaticStrings::ObjectId,
+                                      props.objectId)
           .transformWith(
-              CollectionStorageProperties::Transformers::ObjectIdAsString{})
-          .fallback(f.keep()));
+              CollectionStorageProperties::Transformers::ObjectIdAsString{}),
+      internalFieldRejectingUserInput(f, StaticStrings::Version, props.version)
+          .transformWith(
+              CollectionStorageProperties::Transformers::VersionAsNumber{}));
 }
 
 }  // namespace arangodb

@@ -23,6 +23,7 @@
 #include "CollectionIndexesProperties.h"
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 using namespace arangodb;
@@ -113,4 +114,18 @@ CollectionIndexesProperties::defaultIndexesForCollectionType(
   }
 
   return result;
+}
+
+bool CollectionIndexesProperties::operator==(
+    CollectionIndexesProperties const& other) const {
+  if (indexes.size() != other.indexes.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    if (!basics::VelocyPackHelper::equal(indexes[i].slice(),
+                                         other.indexes[i].slice(), true)) {
+      return false;
+    }
+  }
+  return true;
 }

@@ -157,6 +157,7 @@ def create_generator_config(
     create_preview_docker_images: str,
     validate_only: bool,
     test_suite: str,
+    fips: bool = False,
 ) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
@@ -170,8 +171,10 @@ def create_generator_config(
     # Build list of requested build variants
     build_variants = []
 
-    if no_sanitizer or (not tsan and not alubsan and not coverage):
-        # Include non-instrumented build if explicitly requested or no variants specified
+    # No variant requested: compile the non-instrumented build only, without
+    # any tests.
+    build_only = not (no_sanitizer or tsan or alubsan or coverage)
+    if no_sanitizer or build_only:
         build_variants.append(BuildVariant.NORMAL)
     if tsan:
         build_variants.append(BuildVariant.TSAN)
@@ -179,8 +182,6 @@ def create_generator_config(
         build_variants.append(BuildVariant.ALUBSAN)
     if coverage:
         build_variants.append(BuildVariant.COVERAGE)
-
-    assert build_variants, "build_variants must not be empty (logic error)"
 
     # Create filter criteria
     filter_criteria = FilterCriteria(
@@ -213,6 +214,8 @@ def create_generator_config(
         circleci=circleci_config,
         validate_only=validate_only,
         build_variants=build_variants,
+        fips=fips,
+        build_only=build_only,
     )
 
 
@@ -239,12 +242,20 @@ def create_generator_config(
 @click.option(
     "--no-sanitizer",
     is_flag=True,
-    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/"
+    "--coverage); without any of them only the non-instrumented build is "
+    "compiled, without tests",
 )
 @click.option(
     "--coverage",
     is_flag=True,
     help="Enable coverage build",
+)
+@click.option(
+    "--fips",
+    is_flag=True,
+    help="FIPS mode for all workflows: USE_FIPS builds, tests with "
+    "--server.fips-enable, -fips workflow names, FIPS server Docker images",
 )
 @click.option(
     "-t",
@@ -288,19 +299,19 @@ def create_generator_config(
 )
 @click.option(
     "--create-test-docker-images",
-    type=click.Choice(["none", "alpine"]),
+    type=click.Choice(["none", "ubuntu"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-test and "
-    "arangodb/client-tools-test Docker images (maintainer mode, Alpine "
-    "3.24 based) to public ECR from the build results",
+    "arangodb/client-tools-test Docker images (maintainer mode, Ubuntu "
+    "26.04 based) to public ECR from the build results",
 )
 @click.option(
     "--create-preview-docker-images",
-    type=click.Choice(["none", "alpine"]),
+    type=click.Choice(["none", "ubuntu"]),
     default="none",
     help="Build and publish the multi-arch arangodb/core-preview and "
     "arangodb/client-tools-preview Docker images (non-maintainer, "
-    "release-like; Alpine 3.24 based) to public ECR from the build results",
+    "release-like; Ubuntu 26.04 based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",
@@ -319,6 +330,7 @@ def main(
     alubsan: bool,
     no_sanitizer: bool,
     coverage: bool,
+    fips: bool,
     test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
@@ -366,6 +378,7 @@ def main(
             create_preview_docker_images=create_preview_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
+            fips=fips,
         )
 
         # If validate-only, we're done

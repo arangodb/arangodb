@@ -20,7 +20,9 @@ add_library(fuerte STATIC
 target_link_libraries(fuerte PUBLIC
   nghttp2
   llhttp
-  boost_system
+  Boost::asio_core
+  Boost::lockfree
+  Boost::system
   absl::strings
   velocypack)
 

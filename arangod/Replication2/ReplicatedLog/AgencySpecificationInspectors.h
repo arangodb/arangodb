@@ -99,7 +99,7 @@ struct EnumStruct {
   EnumStruct() : code{0}, message{} {};
   EnumStruct(Enum e)
       : code(static_cast<std::underlying_type_t<Enum>>(e)),
-        message(to_string(e)){};
+        message(to_string(e)) {};
 
   [[nodiscard]] auto get() const -> Enum { return static_cast<Enum>(code); }
 

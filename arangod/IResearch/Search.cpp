@@ -333,7 +333,7 @@ AnalyzerProvider SearchMeta::createProvider(
   return [analyzers = std::move(analyzers), matcher = std::move(matcher)](
              std::string_view field, aql::ExpressionContext* ctx,
              FieldMeta::Analyzer const& contextAnalyzer) mutable
-         -> FieldMeta::Analyzer const& {
+             -> FieldMeta::Analyzer const& {
     auto registerWarning = [ctx](std::string_view error) {
       if (ctx) {
         ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
@@ -532,7 +532,9 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     if (partialUpdate) {
       return _indexes;
     }
-    return std::move(_indexes);
+    auto res = std::move(_indexes);
+    _indexes.clear();
+    return res;
   }();
   auto oldMeta = std::move(_meta);
   ScopeGuard revert{[&]() noexcept {
@@ -625,7 +627,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
               build.add("collection", velocypack::Value{collection->name()});
             }
             build.add("index", velocypack::Value{
-                                   absl::AlphaNum{index.id().id()}.Piece()});
+                                   absl::AlphaNum(index.id().id()).Piece()});
           }
           build.close();
         }

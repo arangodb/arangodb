@@ -180,7 +180,12 @@ struct Socket<SocketType::Tcp> {
     // use the ec-variants of the methods here to prevent exceptions.
     asio_ns::error_code ec;
     try {
-      timer.cancel(ec);
+      timer.cancel();
+    } catch (boost::system::system_error const& ex) {
+      ec = ex.code();
+    }
+
+    try {
       if (socket.is_open()) {
         socket.cancel(ec);
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
@@ -248,7 +253,7 @@ struct Socket<fuerte::SocketType::Ssl> {
             if (verify) {
               socket.set_verify_mode(asio_ns::ssl::verify_peer);
               socket.set_verify_callback(
-                  asio_ns::ssl::rfc2818_verification(config._host));
+                  asio_ns::ssl::host_name_verification(config._host));
             } else {
               socket.set_verify_mode(asio_ns::ssl::verify_none);
             }
@@ -313,7 +318,14 @@ struct Socket<fuerte::SocketType::Ssl> {
     asio_ns::error_code ec;
 
     if (!socket.lowest_layer().is_open()) {
-      timer.cancel(ec);
+      try {
+        timer.cancel();
+      } catch (boost::system::system_error const& ex) {
+        // timer.cancel(ec) was deprecated more than 10 years ago, to keep parity
+        // to the old code, we extract the code from the exception that can be
+        // thrown by timer.cancel()
+        ec = ex.code();
+      }
       std::forward<F>(cb)(ec);
       return;
     }
@@ -352,86 +364,6 @@ struct Socket<fuerte::SocketType::Ssl> {
   ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
   bool canceled = false;
 };
-
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-template <>
-struct Socket<fuerte::SocketType::Unix> {
-  Socket(EventLoopService&, asio_ns::io_context& ctx)
-      : socket(ctx), timer(ctx) {}
-
-  ~Socket() {
-    canceled = true;
-    try {
-      this->cancel();
-    } catch (std::exception const& ex) {
-      FUERTE_LOG_ERROR << "caught exception during unix socket shutdown: " << ex.what() << "\n";
-    }
-  }
-
-  template <typename F>
-  void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    if (canceled) {
-      // cancel() was already called on this socket
-      done(asio_ns::error::operation_aborted);
-      return;
-    }
-
-    asio_ns::local::stream_protocol::endpoint ep(config._host);
-    socket.async_connect(ep, std::forward<F>(done));
-  }
-
-  std::string getConnectionName() {
-    return "no local connection name";
-  }
-
-  bool isOpen() const {
-    return socket.is_open();
-  }
-
-  void rearm() {
-    canceled = false;
-  }
-
-  void cancel() {
-    canceled = true;
-    try {
-      timer.cancel();
-      if (socket.is_open()) {  // non-graceful shutdown
-        asio_ns::error_code ec;
-        socket.close(ec);
-      }
-    } catch (std::exception const& ex) {
-      FUERTE_LOG_ERROR << "caught exception during unix socket cancelation: " << ex.what() << "\n";
-    }
-  }
-
-  template <typename F>
-  void shutdown(F&& cb) {
-    // ec is an out parameter here that is passed to the methods so they
-    // can fill in whatever error happened. we ignore it here anyway. we
-    // use the ec-variants of the methods here to prevent exceptions.
-    asio_ns::error_code ec;
-    try {
-      timer.cancel(ec);
-      if (socket.is_open()) {
-        socket.cancel(ec);
-        socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        socket.close(ec);
-      }
-    } catch (std::exception const& ex) {
-      // an exception is unlikely to occur here, as we are using the error-code
-      // variants of cancel/shutdown/close above
-      FUERTE_LOG_ERROR << "caught exception during unix socket shutdown: " << ex.what() << "\n";
-    }
-    std::forward<F>(cb)(ec);
-  }
-
-  asio_ns::local::stream_protocol::socket socket;
-  asio_ns::steady_timer timer;
-  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
-  bool canceled = false;
-};
-#endif  // ASIO_HAS_LOCAL_SOCKETS
 
 }}}  // namespace arangodb::fuerte::v1
 #endif

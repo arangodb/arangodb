@@ -1554,9 +1554,6 @@ static ErrorCode mkDTemp(char* s, size_t /*bufferSize*/) {
   return TRI_set_errno(TRI_ERROR_SYS_ERROR);
 }
 
-/// @brief the actual temp path used
-static std::unique_ptr<char[]> SystemTempPath;
-
 /// @brief user-defined temp path
 static std::string UserTempPath;
 
@@ -1581,110 +1578,110 @@ SystemTempPathSweeper SystemTempPathSweeperInstance;
 // The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) { UserTempPath = temp; }
 
-std::string TRI_GetTempPath() {
-  char* path = SystemTempPath.get();
+static std::string computeSystemTempPath() {
+  std::string system;
+  if (UserTempPath.empty()) {
+    system = getTempPath();
+  } else {
+    system = UserTempPath;
+  }
 
-  if (path == nullptr) {
-    std::string system;
-    if (UserTempPath.empty()) {
-      system = getTempPath();
-    } else {
-      system = UserTempPath;
-    }
+  // Strip any double back/slashes from the string.
+  while (system.find(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR) !=
+         std::string::npos) {
+    system = StringUtils::replace(
+        system, std::string(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR),
+        std::string(TRI_DIR_SEPARATOR_STR));
+  }
 
-    // Strip any double back/slashes from the string.
-    while (system.find(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR) !=
-           std::string::npos) {
-      system = StringUtils::replace(
-          system, std::string(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR),
-          std::string(TRI_DIR_SEPARATOR_STR));
-    }
+  // remove trailing DIR_SEPARATOR
+  while (!system.empty() && IsDirSeparatorChar(system[system.size() - 1])) {
+    system.pop_back();
+  }
 
-    // remove trailing DIR_SEPARATOR
-    while (!system.empty() && IsDirSeparatorChar(system[system.size() - 1])) {
-      system.pop_back();
-    }
+  // and re-append it
+  system.push_back(TRI_DIR_SEPARATOR_CHAR);
 
-    // and re-append it
-    system.push_back(TRI_DIR_SEPARATOR_CHAR);
+  if (UserTempPath.empty()) {
+    system += TRI_ApplicationName + "_XXXXXX";
+  }
 
-    if (UserTempPath.empty()) {
-      system += TRI_ApplicationName + "_XXXXXX";
-    }
+  std::string path;
+  int tries = 0;
+  while (true) {
+    path = system;
 
-    int tries = 0;
-    while (true) {
-      // copy to a character array
-      SystemTempPath.reset(new char[system.size() + 1]);
-      path = SystemTempPath.get();
-      TRI_CopyString(path, system.c_str(), system.size());
-
-      auto res = TRI_ERROR_NO_ERROR;
-      if (!UserTempPath.empty()) {
-        // --temp.path was specified
-        if (TRI_IsDirectory(system.c_str())) {
-          // temp directory already exists. now simply use it
-          break;
-        }
-
-        res = 0 == TRI_MKDIR(UserTempPath.c_str(), 0700)
-                  ? TRI_ERROR_NO_ERROR
-                  : TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      } else {
-        // no --temp.path was specified
-        // fill template and create directory
-        tries = 9;
-
-        // create base directories of the new directory (but ignore any failures
-        // if they already exist. if this fails, the following mkDTemp will
-        // either succeed or fail and return an error
-        try {
-          long systemError;
-          std::string systemErrorStr;
-          std::string baseDirectory = TRI_Dirname(SystemTempPath.get());
-          if (baseDirectory.size() <= 1) {
-            baseDirectory = SystemTempPath.get();
-          }
-          // create base directory if it does not yet exist
-          TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError,
-                                       systemErrorStr);
-        } catch (...) {
-        }
-
-        // fill template string (XXXXXX) with some pseudo-random value and
-        // create the directory
-        res = mkDTemp(SystemTempPath.get(), system.size() + 1);
-      }
-
-      if (res == TRI_ERROR_NO_ERROR) {
+    auto res = TRI_ERROR_NO_ERROR;
+    if (!UserTempPath.empty()) {
+      // --temp.path was specified
+      if (TRI_IsDirectory(system.c_str())) {
+        // temp directory already exists. now simply use it
         break;
       }
 
-      // directory could not be created
-      // this may be a race, a permissions problem or something else
-      if (++tries >= 10) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC("6656e", ERR, arangodb::Logger::FIXME)
-            << "UserTempPath: " << UserTempPath << ", system: " << system
-            << ", user temp path exists: "
-            << TRI_IsDirectory(UserTempPath.c_str()) << ", res: " << res
-            << ", SystemTempPath: " << SystemTempPath.get();
-#endif
-        LOG_TOPIC("88da0", FATAL, arangodb::Logger::FIXME)
-            << "failed to create a temporary directory - giving up!";
-        FATAL_ERROR_ABORT();
+      res = 0 == TRI_MKDIR(UserTempPath.c_str(), 0700)
+                ? TRI_ERROR_NO_ERROR
+                : TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    } else {
+      // no --temp.path was specified
+      // fill template and create directory
+      tries = 9;
+
+      // create base directories of the new directory (but ignore any failures
+      // if they already exist. if this fails, the following mkDTemp will
+      // either succeed or fail and return an error
+      try {
+        long systemError;
+        std::string systemErrorStr;
+        std::string baseDirectory = TRI_Dirname(path);
+        if (baseDirectory.size() <= 1) {
+          baseDirectory = path;
+        }
+        // create base directory if it does not yet exist
+        TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError,
+                                     systemErrorStr);
+      } catch (...) {
       }
-      // sleep for a random amout of time and try again soon
-      // with this, we try to avoid races between multiple processes
-      // that try to create temp directories at the same time
-      std::this_thread::sleep_for(std::chrono::milliseconds(
-          5 + RandomGenerator::interval(uint64_t(20))));
+
+      // fill template string (XXXXXX) with some pseudo-random value and
+      // create the directory
+      res = mkDTemp(path.data(), path.size() + 1);
     }
 
-    SystemTempPathSweeperInstance.init(SystemTempPath.get());
+    if (res == TRI_ERROR_NO_ERROR) {
+      break;
+    }
+
+    // directory could not be created
+    // this may be a race, a permissions problem or something else
+    if (++tries >= 10) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      LOG_TOPIC("6656e", ERR, arangodb::Logger::FIXME)
+          << "UserTempPath: " << UserTempPath << ", system: " << system
+          << ", user temp path exists: "
+          << TRI_IsDirectory(UserTempPath.c_str()) << ", res: " << res
+          << ", SystemTempPath: " << path;
+#endif
+      LOG_TOPIC("88da0", FATAL, arangodb::Logger::FIXME)
+          << "failed to create a temporary directory - giving up!";
+      FATAL_ERROR_ABORT();
+    }
+    // sleep for a random amout of time and try again soon
+    // with this, we try to avoid races between multiple processes
+    // that try to create temp directories at the same time
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
   }
 
-  return std::string(path);
+  SystemTempPathSweeperInstance.init(path.c_str());
+  return path;
+}
+
+std::string TRI_GetTempPath() {
+  // computed once, on first use; a TRI_SetTempPath() call after that has no
+  // effect
+  static std::string const path = computeSystemTempPath();
+  return path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

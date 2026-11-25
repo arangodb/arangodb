@@ -308,6 +308,12 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
                 VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
+  KeyGeneratorProperties properties() const override {
+    return TraditionalKeyGeneratorProperties{
+        .allowUserKeys = _allowUserKeys,
+        .lastValue = _lastValue.load(std::memory_order_relaxed)};
+  }
+
  private:
   /// @brief generate a key value (internal)
   uint64_t generateValue() override {
@@ -375,6 +381,10 @@ class TraditionalKeyGeneratorCoordinator final
       : TraditionalKeyGenerator(collection, allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator() ||
                ServerState::instance()->isDBServer());
+  }
+
+  KeyGeneratorProperties properties() const override {
+    return TraditionalKeyGeneratorProperties{.allowUserKeys = _allowUserKeys};
   }
 
  private:
@@ -469,6 +479,12 @@ class PaddedKeyGenerator : public KeyGenerator {
     // add our own specific values
     builder.add(StaticStrings::LastValue,
                 VPackValue(_lastValue.load(std::memory_order_relaxed)));
+  }
+
+  KeyGeneratorProperties properties() const override final {
+    return PaddedKeyGeneratorProperties{
+        .allowUserKeys = _allowUserKeys,
+        .lastValue = _lastValue.load(std::memory_order_relaxed)};
   }
 
   /// @brief initialize key generator state, reading data/state from the
@@ -640,6 +656,14 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
                 VPackValue(_lastValue.load(std::memory_order_relaxed)));
   }
 
+  KeyGeneratorProperties properties() const override {
+    return AutoIncrementGeneratorProperties{
+        .allowUserKeys = _allowUserKeys,
+        .offset = _offset,
+        .increment = _increment,
+        .lastValue = _lastValue.load(std::memory_order_relaxed)};
+  }
+
  private:
   std::atomic<uint64_t> _lastValue;  // last value assigned
   uint64_t const _offset;            // start value
@@ -668,6 +692,10 @@ class UuidKeyGenerator final : public KeyGenerator {
   void toVelocyPack(velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("uuid"));
+  }
+
+  KeyGeneratorProperties properties() const override {
+    return UUIDKeyGeneratorProperties{.allowUserKeys = _allowUserKeys};
   }
 
  private:
@@ -705,6 +733,10 @@ class UpgradeKeyGenerator final : public KeyGenerator {
   void toVelocyPack(velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("upgrade"));
+  }
+
+  KeyGeneratorProperties properties() const override {
+    return UpgradeKeyGeneratorProperties{.allowUserKeys = _allowUserKeys};
   }
 };
 

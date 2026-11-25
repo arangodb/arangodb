@@ -225,6 +225,8 @@ target_link_libraries(arango_basic_features
          absl::flat_hash_set
          fuerte
          s2
+  PRIVATE Boost::container
+         Boost::range
 )
 target_include_directories(arango_basic_features PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -254,7 +256,7 @@ target_link_libraries(arango_basic_logger
   PUBLIC velocypack
          arango_inspection
          arango_basic_errors
-         boost_boost
+  PRIVATE Boost::lockfree
 )
 target_include_directories(arango_basic_logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -262,6 +264,7 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango_basic_http_client STATIC
+        Basics/ApiVersion.cpp
         Rest/CommonDefines.cpp
         Rest/GeneralRequest.cpp
         Rest/GeneralResponse.cpp
@@ -281,6 +284,8 @@ add_library(arango_basic_http_client STATIC
         Ssl/ssl-helper.cpp
         Ssl/jwt.cpp
         Ssl/AuthInfo.cpp
+        Ssl/FipsFeature.cpp
+        Ssl/FipsFeatureOptionsProvider.cpp
         Ssl/JwtKeys.cpp
         Ssl/JwtSignature.cpp
 
@@ -290,19 +295,21 @@ add_library(arango_basic_http_client STATIC
         Endpoint/EndpointIpV6.cpp
         Endpoint/EndpointList.cpp
         Endpoint/EndpointSrv.cpp
-        Endpoint/EndpointUnixDomain.cpp
 )
 target_link_libraries(arango_basic_http_client
   PUBLIC velocypack
          arango_inspection
          arango_basic_errors
          arango_build_id
-         boost_boost
          rocksdb
          fuerte
          faiss_interface
+  PRIVATE Boost::container
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# The served API versions carry the major product version as their branch tag.
+set_source_files_properties(Basics/ApiVersion.cpp PROPERTIES
+  COMPILE_DEFINITIONS ARANGODB_VERSION_MAJOR=${ARANGODB_VERSION_MAJOR})
 if (USE_ENTERPRISE)
   target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
@@ -366,8 +373,9 @@ target_link_libraries(arango_lightweight
           arango_utils
           arango_basic_utils
           arango_basic_logger
-          boost_boost
-          boost_system
+          Boost::range
+          Boost::system
+          Boost::container
 )
 
 if (USE_ENTERPRISE)
@@ -387,8 +395,6 @@ add_library(arango STATIC
 target_link_libraries(arango
   PUBLIC s2
          arango_build_id
-         boost_system
-         boost_boost
          arango_futures
          arango_basic_features
          arango_static_strings

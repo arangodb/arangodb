@@ -53,6 +53,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Properties/CollectionDescriptor.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -802,7 +803,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
   auto stripped = rocksutils::stripObjectIds(merged.slice());
 
   try {
-    col = vocbase.createCollection(stripped.first);
+    col = vocbase.createCollection(
+        CollectionDescriptor::fromVelocyPack(stripped.first));
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

@@ -34,10 +34,8 @@ struct HandlerBase {
   using ActorPID = typename Runtime::ActorPID;
   HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
               std::shared_ptr<Runtime> runtime)
-      : self(self),
-        sender(sender),
-        state{std::move(state)},
-        _runtime(runtime){};
+      : self(self), sender(sender), state{std::move(state)}, _runtime(runtime) {
+        };
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage&& message) -> void {

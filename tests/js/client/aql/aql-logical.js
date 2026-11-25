@@ -429,6 +429,25 @@ function ahuacatlLogicalTestSuite () {
       }
     },
     
+    testRightOperandWithSubqueryInExpansionExecutedConditionally : function () {
+      const sub = `(FOR y IN 1..1 RETURN ASSERT(false, 'boom'))[0]`;
+      [
+        `[1, 2][* FILTER ${sub}]`,
+        `[1, 2][* RETURN ${sub}]`,
+        `[1, 2][* LIMIT ${sub}]`,
+        `[1, 2][? FILTER ${sub}]`,
+      ].forEach((operand) => {
+        let query = `RETURN NOOPT(false) && ${operand}`;
+        assertEqual([false], db._query(query).toArray(), query);
+        query = `RETURN NOOPT(true) || ${operand}`;
+        assertEqual([true], db._query(query).toArray(), query);
+      });
+
+      const operand = `[1, 2][* FILTER (RETURN true)[0]]`;
+      assertEqual([[1, 2]], db._query(`RETURN NOOPT(true) && ${operand}`).toArray());
+      assertEqual([[1, 2]], db._query(`RETURN NOOPT(false) || ${operand}`).toArray());
+    },
+
     testNestedConditions : function () {
       const queries = [
         [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i <= 3 || ASSERT(false, 'ass1')) && (j <= 4 || ASSERT(false, 'ass2')) RETURN 1`, 12 ],

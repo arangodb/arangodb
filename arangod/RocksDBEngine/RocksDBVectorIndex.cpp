@@ -23,6 +23,7 @@
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -495,8 +496,8 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
-                      result.labels.data(), &searchParametersIvf);
+  result.stats = searchIvf(inputs.data(), config.topK, searchParametersIvf,
+                           result.distances.data(), result.labels.data());
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -506,6 +507,40 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   return result;
+}
+
+// Same steps as faiss::IndexIVF::search for a single query, but with local
+// IndexIVFStats
+// IndexIvf::search() accumulates into the unsynchronized global indexIVF_stats.
+aql::EnumerateNearVectorStats RocksDBVectorIndex::searchIvf(
+    float const* query, std::size_t topK,
+    faiss::SearchParametersIVF const& params, float* distances,
+    faiss::idx_t* labels) const {
+  using Clock = std::chrono::steady_clock;
+  auto const nProbe = std::min(params.nprobe, _faissIndex->nlist);
+  std::vector<faiss::idx_t> listIds(nProbe);
+  std::vector<float> centroidDistances(nProbe);
+  faiss::IndexIVFStats ivfStats;
+
+  auto const start = Clock::now();
+  _faissIndex->quantizer->search(1, query, nProbe, centroidDistances.data(),
+                                 listIds.data(), params.quantizer_params);
+  auto const coarseDone = Clock::now();
+  _faissIndex->search_preassigned(1, query, topK, listIds.data(),
+                                  centroidDistances.data(), distances, labels,
+                                  false, &params, &ivfStats);
+  auto const scanDone = Clock::now();
+
+  return aql::EnumerateNearVectorStats{
+      .searches = ivfStats.nq,
+      .listsScanned = ivfStats.nlist,
+      .distancesComputed = ivfStats.ndis,
+      .heapUpdates = ivfStats.nheap_updates,
+      .coarseSearchTime =
+          std::chrono::duration<double>(coarseDone - start).count(),
+      .listScanTime =
+          std::chrono::duration<double>(scanDone - coarseDone).count(),
+  };
 }
 
 bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept { return true; }

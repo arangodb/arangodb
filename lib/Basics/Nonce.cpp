@@ -61,7 +61,7 @@ std::string createNonce() {
   buffer[0] = (timestamp >> 24) & 0xFF;
   buffer[1] = (timestamp >> 16) & 0xFF;
   buffer[2] = (timestamp >> 8) & 0xFF;
-  buffer[3] = (timestamp)&0xFF;
+  buffer[3] = (timestamp) & 0xFF;
 
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);

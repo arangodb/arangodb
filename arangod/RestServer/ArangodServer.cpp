@@ -303,8 +303,6 @@ void ArangodServer::addFeatures() {
       getOptions<security::ServerSecurityOptionsProvider>());
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<TempFeature>(std::string{_binaryName},
@@ -394,6 +392,8 @@ void ArangodServer::addFeatures() {
                  BlackHoleStateMachineFeature>();
   addFeature<
       replication2::replicated_state::document::DocumentStateMachineFeature>();
+
+  addFeature<FipsFeature>(getOptions<FipsFeatureOptionsProvider>());
 }
 
 }  // namespace arangodb

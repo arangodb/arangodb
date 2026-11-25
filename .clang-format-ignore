@@ -1,0 +1,7 @@
+# Third-party code keeps its upstream formatting.
+3rdParty/**
+# Snippets for CMake configure checks, not part of the code base.
+cmake/**
+lib/Basics/sdt.h
+lib/Geo/karney/geodesic.c
+lib/iresearch.build/external/snowball/libstemmer/modules.h

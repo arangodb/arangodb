@@ -22,13 +22,12 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/CalculationQueryContext.h"
 #include "Aql/Parser/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/StandaloneCalculation.h"
-#include "Containers/SmallVector.h"
-#include "Logger/LogMacros.h"
 #include "Mocks/Servers.h"
 #include "Transaction/OperationOrigin.h"
 

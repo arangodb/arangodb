@@ -23,6 +23,7 @@
 #pragma once
 
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
@@ -31,26 +32,10 @@ struct ResourceMonitor;
 
 namespace iresearch {
 
-class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
- public:
-  explicit IResearchRocksDBInvertedIndexFactory(
-      application_features::ApplicationServer& server);
-
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const final;
-
-  /// @brief instantiate an Index definition
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const final;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   TRI_vocbase_t const& vocbase) const final;
-
-  bool attributeOrderMatters() const final { return false; }
-};
+// construction logic for a RocksDB inverted index; called from
+// RocksDBIndexFactory::createIndex
+std::shared_ptr<Index> createRocksDBInvertedIndex(
+    IndexCreationContext const& ctx);
 
 class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
                                             public IResearchInvertedIndex {
@@ -186,7 +171,8 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
 
  private:
   // required for calling initFields()
-  friend class iresearch::IResearchRocksDBInvertedIndexFactory;
+  friend std::shared_ptr<Index> createRocksDBInvertedIndex(
+      IndexCreationContext const& ctx);
 
   void initFields() {
     TRI_ASSERT(_fields.empty());

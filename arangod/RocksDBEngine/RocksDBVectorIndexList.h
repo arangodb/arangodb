@@ -94,6 +94,8 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 // the same thread. capturedDocuments is therefore unsynchronised. If
 // parallel_mode is ever changed to 1 or 2, or n>1 with a shared sink, this
 // needs revisiting.
+// Update: Since we split quantizer and lists search and perform them ourselves
+// the parallelism is not possible anymore.
 // =====================================================================
 
 // Common per-search context shared by every iterator path.
@@ -138,24 +140,24 @@ struct IteratorFilterContext : IteratorContext {
 ////////////////////////////////////////////////////////////////////////////////
 // TODO(jbajic) could be used during insertion with a bit refactoring
 template<typename T>
-concept VectorIndexStoredValuesStrategy = requires {
-  // Must have a compile-time constant indicating if stored values are
-  // present
-  { T::hasStoredValues } -> std::convertible_to<bool>;
-}
-&&requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
-           size_t codeSize, std::vector<uint8_t> const& encodedValue,
-           velocypack::Slice storedValues) {
-  // Extract encoded vector from raw bytes
-  // Returns document ID and the encoded vector
-  // Caller manages the vector lifetime and can extract pointer as needed
-  {T::extractVectorIndexEntry(key, value, codeSize)};
+concept VectorIndexStoredValuesStrategy =
+    requires {
+      // Must have a compile-time constant indicating if stored values are
+      // present
+      { T::hasStoredValues } -> std::convertible_to<bool>;
+    } && requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
+                  size_t codeSize, std::vector<uint8_t> const& encodedValue,
+                  velocypack::Slice storedValues) {
+      // Extract encoded vector from raw bytes
+      // Returns document ID and the encoded vector
+      // Caller manages the vector lifetime and can extract pointer as needed
+      { T::extractVectorIndexEntry(key, value, codeSize) };
 
-  // Extract encoded vector from raw bytes
-  // Returns the encoded vector
-  // Caller manages the vector lifetime and can extract pointer as needed
-  {T::extractVectorIndexValue(value, codeSize)};
-};
+      // Extract encoded vector from raw bytes
+      // Returns the encoded vector
+      // Caller manages the vector lifetime and can extract pointer as needed
+      { T::extractVectorIndexValue(value, codeSize) };
+    };
 
 /// @brief Non-owning view into a vector-index entry. Backed by the rocksdb
 /// iterator's value() bytes; valid only until the iterator advances.
@@ -380,8 +382,8 @@ struct RocksDBInvertedListsFilteringIterator final
 // values that will be used during expression evaluation.
 // It can be used iff storedValues fully cover the filterExpression
 template<VectorIndexStoredValuesStrategy Strategy>
-requires(Strategy::hasStoredValues) struct
-    RocksDBInvertedListsFilteringStoredValuesIterator final
+  requires(Strategy::hasStoredValues)
+struct RocksDBInvertedListsFilteringStoredValuesIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
