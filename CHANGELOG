@@ -1,6 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Remove TimeZoneFeature; since arangod now uses std::chrono it is not possible
+  to load an external timezone database anymore. This also means there is no
+  tzdb shipped or installed with arangodb. If the standard library cannot find the
+  host system's tzdb, it will use one embedded in itself.
+
 * COR-1234: Reject a MATCH variable-length relationship whose lower bound is
   zero, for example `* 0..0` or `* 0..2`. A zero-hop path has no edge, and its
   endpoint projection is not defined.
