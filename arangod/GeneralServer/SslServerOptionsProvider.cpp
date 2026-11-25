@@ -193,8 +193,8 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
                         "--tls.prefer-http1-in-alpn");
 }
 
-void SslServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions>, SslServerOptions& options) {
+void SslServerOptionsProvider::processOptions(std::shared_ptr<ProgramOptions>,
+                                              SslServerOptions& options) {
   if (!_cafile.empty()) {
     options.cafile = _cafile;
   }
