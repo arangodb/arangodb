@@ -28,6 +28,7 @@ target_link_libraries(arango_v8
   v8_interface
   velocypack
   immer
+  Boost::hash2
 )
 target_include_directories(arango_v8
   PRIVATE

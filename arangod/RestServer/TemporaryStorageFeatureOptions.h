@@ -31,7 +31,6 @@ struct TemporaryStorageFeatureOptions {
   // parameters that can be configured by the user
   std::string basePath;
   bool useEncryption = false;
-  bool allowHWAcceleration = true;
   std::uint64_t maxDiskCapacity = 0;
   size_t spillOverThresholdNumRows = 5000000;
   size_t spillOverThresholdMemoryUsage = 128 * 1024 * 1024;

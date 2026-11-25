@@ -1,0 +1,13 @@
+# /opt/ssl/fips-only.cnf
+# Minimal wrapper config: activates only the FIPS provider.
+# The base provider and the fips=yes default property are set in C++.
+
+openssl_conf = openssl_init
+
+.include /opt/ssl/fipsmodule.cnf
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+fips = fips_sect

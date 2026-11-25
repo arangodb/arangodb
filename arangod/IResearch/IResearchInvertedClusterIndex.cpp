@@ -45,7 +45,7 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(absl::AlphaNum{_iid.id()}.Piece()));
+              velocypack::Value(absl::AlphaNum(_iid.id()).Piece()));
   builder.add(arangodb::StaticStrings::IndexType,
               velocypack::Value(oldtypeName(type())));
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
@@ -84,7 +84,7 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
     }
     // Short circuit. If id is correct the index is identical.
     auto idRef = value.stringView();
-    return idRef == absl::AlphaNum{id().id()}.Piece();
+    return idRef == absl::AlphaNum(id().id()).Piece();
   }
   return IResearchInvertedIndex::matchesDefinition(other,
                                                    collection().vocbase());

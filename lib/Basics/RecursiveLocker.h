@@ -117,11 +117,11 @@ class RecursiveWriteLocker {
 #define NAME(name) NAME_EXPANDER__(name, __LINE__)
 #define RECURSIVE_READ_LOCKER(lock, owner)                                 \
   arangodb::RecursiveReadLocker<typename std::decay<decltype(lock)>::type> \
-      NAME(RecursiveLocker)(lock, owner, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire)            \
-  arangodb::RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> \
-      name(lock, owner, arangodb::basics::LockerType::BLOCKING, acquire,    \
-           __FILE__, __LINE__)
+  NAME(RecursiveLocker)(lock, owner, __FILE__, __LINE__)
+#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire)               \
+  arangodb::RecursiveWriteLocker<typename std::decay<decltype(lock)>::type>    \
+  name(lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, \
+       __LINE__)
 #define RECURSIVE_WRITE_LOCKER(lock, owner) \
   RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
 

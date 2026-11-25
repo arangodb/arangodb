@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,18 +22,14 @@
 
 #include "SslFeature.h"
 
-#define OPENSSL_THREAD_DEFINES
-#include <openssl/opensslconf.h>
-
-#ifndef OPENSSL_THREADS
-#error missing thread support for openssl, please recomple OpenSSL with threads
-#endif
-
-using namespace arangodb::basics;
-using namespace arangodb::options;
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
 namespace arangodb {
 
-asio_ns::ssl::detail::openssl_init<true> const SslFeature::sslBase{};
+SslFeature::SslFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature(server, *this) {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
 
 }  // namespace arangodb

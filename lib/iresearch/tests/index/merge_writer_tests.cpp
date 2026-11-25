@@ -178,16 +178,13 @@ struct merge_writer_test_case
 
  public:
   merge_writer_test_case() {
-    auto beginCons = [](const auto& ) {
-    };
-    auto endCons = [](const auto& ) {
-    };
-    auto flushProgress = []() {
-      return true;
-    };
+    auto beginCons = [](const auto&) {};
+    auto endCons = [](const auto&) {};
+    auto flushProgress = []() { return true; };
 
-    callbacks = { .beginConsolidation = beginCons,
-      .endConsolidation = endCons, .flushProgress = flushProgress };
+    callbacks = {.beginConsolidation = beginCons,
+                 .endConsolidation = endCons,
+                 .flushProgress = flushProgress};
   }
 
   std::shared_ptr<const irs::format> codec() const {
@@ -298,7 +295,8 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   // 2: 21..30
   const irs::index_utils::ConsolidateCount consolidate_all;
   ASSERT_EQ(!primary_sort || supports_sort(),
-            writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all), callbacks));
+            writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all),
+                                callbacks));
   ASSERT_EQ(!primary_sort || supports_sort(), writer->Commit());
   AssertSnapshotEquality(writer->GetSnapshot(),
                          irs::DirectoryReader(dir, codec_ptr));
@@ -1501,8 +1499,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -1511,8 +1508,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_double"));
@@ -1548,8 +1544,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -1558,8 +1553,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_float"));
@@ -1594,8 +1588,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -1604,8 +1597,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_int"));
@@ -1640,8 +1632,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -1650,8 +1641,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_long"));
@@ -1907,8 +1897,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_double"));
@@ -1944,8 +1933,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_float"));
@@ -1980,8 +1968,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_int"));
@@ -2016,8 +2003,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_long"));
@@ -2301,8 +2287,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -2311,8 +2296,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -2321,8 +2305,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_double"));
@@ -2358,8 +2341,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -2368,8 +2350,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -2378,8 +2359,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_float"));
@@ -2414,8 +2394,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -2424,8 +2403,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -2434,8 +2412,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_int"));
@@ -2470,8 +2447,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -2480,8 +2456,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -2490,8 +2465,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_long"));
@@ -3472,8 +3446,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -3482,8 +3455,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_double"));
@@ -3519,8 +3491,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -3529,8 +3500,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_float"));
@@ -3565,8 +3535,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -3575,8 +3544,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_int"));
@@ -3611,8 +3579,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       {
@@ -3621,8 +3588,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(2))
-          ;
+               .emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_long"));
@@ -3907,8 +3873,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_double"));
@@ -3944,8 +3909,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_float"));
@@ -3980,8 +3944,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_int"));
@@ -4016,8 +3979,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
         for (; itr.next();
              expected_terms[irs::bstring(
                               irs::get<irs::term_attribute>(itr)->value)]
-               .emplace(1))
-          ;
+               .emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_long"));
@@ -4335,8 +4297,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -4345,8 +4306,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -4355,8 +4315,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_double"));
@@ -4392,8 +4351,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -4402,8 +4360,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -4412,8 +4369,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_float"));
@@ -4448,8 +4404,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -4458,8 +4413,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -4468,8 +4422,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_int"));
@@ -4504,8 +4457,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(1))
-        ;
+             .emplace(1));
     }
 
     {
@@ -4514,8 +4466,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(2))
-        ;
+             .emplace(2));
     }
 
     {
@@ -4524,8 +4475,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       for (; itr.next();
            expected_terms[irs::bstring(
                             irs::get<irs::term_attribute>(itr)->value)]
-             .emplace(3))
-        ;
+             .emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_long"));

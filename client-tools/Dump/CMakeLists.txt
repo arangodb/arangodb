@@ -13,6 +13,7 @@ target_link_libraries(${BIN_ARANGODUMP}
   arango_basic_maskings
   arango_shell
   clienttools_utils
+  Boost::hash2
 )
 
 if (USE_JEMALLOC)

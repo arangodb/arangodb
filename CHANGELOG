@@ -4,6 +4,62 @@
 * A MATCH edge with * 1..1 (e.g. -[e:knows * 1..1]-) is now treated as a single edge 
  The edge variable holds the edge document, path variables contain one edge and one vertex, and undirected self-loops are matched only once. Previously, it was treated as a variable-length traversal, causing the edge variable to hold a path object and undirected self-loops to be matched twice.
 
+* Updated ArangoDB Starter to v0.20.0-preview-23.
+
+* BTS-2543: Fix memory and file handle leaks in the zip file functions when a
+  path access check failed or threw an exception.
+  
+* COR-1299: Prevent --tls.cafile / --tls.keyfile to work with --server.fips-enable.
+
+* BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
+
+* Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
+  dependencies.
+
+* BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
+  `name`" when restoring a dump that contains arangosearch views into a single
+  server. The view links could get the same id as an index from the dump.
+  arangorestore now also reports the first failed collection job instead of a
+  follow-up error from creating search-alias views.
+
+* Fixed a data race in the bundled ICU 64 library when several threads ran their
+  first AQL string search (e.g. `CONTAINS`) concurrently.
+
+* COR-1197: Added FIPS 140-3 support. A server built with `USE_FIPS` loads the
+  OpenSSL FIPS provider when started with `--server.fips-enable true` and then
+  uses only FIPS-approved cryptography. A nightly `arangodb/core-fips-preview`
+  Docker image is provided. Docker images are now based on Ubuntu 26.04 instead
+  of Alpine.
+
+* Patch FAISS v1.16.0 with alubsan fix.
+
+* COR-1276: Fix a cluster crash for vector search queries that filter on or return only
+  the vector attribute of a vector index without `storedValues`.
+
+* COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
+  SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
+
+* BTS-2450: Remove exhausted neighbour cursors, fixes a memory leak in traversal queries
+
+* Updated compilers to clang-22.1.8 (previously clang-19.1.7) and to g++-14
+  (previously g++-13).
+
+* Update libunwind from 1.7.2 to 1.8.3.
+
+* COR-1263 / github issue #23383:
+  - Fixed the extra counting issue in NGRAM_MATCH
+  - Added unit tests
+
+* Creating a collection via `POST /_api/collection` no longer silently corrects
+  invalid request bodies. Such requests are now rejected with HTTP 400 instead
+  of being accepted with a deprecation warning. This affects, for example,
+  unknown attributes, `null` attribute values, `type` given as a string or as an unknown number,
+  attributes of the wrong type, `replicationFactor: 0` (use `"satellite"`), and
+  cluster attributes that were ignored before, such as `numberOfShards` together
+  with `distributeShardsLike`, or `writeConcern` on a single server.
+
+* Updated FAISS to v1.16.0.
+
 * COR-1259, BTS-2196: Fix silent out-of-sync shards if a query is aborted and
   the leader had intermediate commits while the follower didn't.
 
@@ -18,7 +74,10 @@
   accepted by arangod or the client tools. The startup option
   `--server.authentication-unix-sockets` is now obsolete and has no effect.
 
-* Updated ArangoDB Starter to v0.20.0-preview-21.
+* BTS-2523: AQL range filters on `_key` and `_id` treat floating-point numbers
+  like any other number. Numbers sort before strings, so `doc._key < 1.5`
+  matches no document and `doc._key > 1.5` matches every document. Both
+  queries use the primary index.
 
 * Build faiss with runtime-dispatched SIMD kernels (AVX2/AVX-512 on x86-64,
   NEON/SVE on aarch64), speeding up vector index operations.
@@ -32,9 +91,6 @@
  - minimatch to 11.0.5 to resolve CVE-2026-118764
  - qs to 6.16.1 to resolve CVE-2026-82417, CVE-2026-82562 and
    CVE-2026-110816
-
-* Rebuilt included rclone v1.75.1 with go1.26.10 and non-vulnerable
-  dependencies.
 
 * Fixed an issue where AQL COLLECT WITH COUNT reported fullCount one too high 
   when used with LIMIT and {fullCount: true}. The single result row was counted
@@ -73,6 +129,14 @@
   group variables are the leading keys of that SORT. Otherwise it adds a SORT
   on the group variables, so a query such as `SORT d.a, d.b COLLECT b = d.b`
   returns each group once.
+
+* COR-1095: Remove custom AESNI code. This makes the command line
+  options
+  --temp.intermediate-results-encryption-hardware-acceleration and
+  --rocksdb.encryption-hardware-acceleration obsolete.  Benchmarking
+  has been done to ensure there are no negative impacts of this
+  removal, and upgrades from deployments using this acceleration to
+  not using it should work without problems.
 
 * BTS-2481: Fix double-free on SortedCollectExecutor on hitting resource limit.
 
@@ -114,8 +178,6 @@
   constraints and `WHERE` expression when a pattern segment was lowered to a
   traversal.
 
-* Upgraded OpenSSL to 3.5.8.
-
 * The AQL optimizer rule `upgrade-scatter-to-distribute` distributes rows by
   the constant value when a shard key is compared with both a constant and
   another expression, as in
@@ -132,6 +194,18 @@
   The rule `upgrade-scatter-to-distribute` can now also turn the ScatterNode
   in front of `e2` into a DistributeNode when the shard key value comes from
   `sat`.
+
+* COR-1148: In a cluster, optimizing an AQL query with several FOR loops
+  stays fast no matter how many OR conditions its filters contain. SmartJoins
+  are also used when the query filters with OR conditions in addition to the
+  join condition. Before, a query with several OR-ed join conditions could
+  keep the Coordinator busy for a long time or crash it.
+  A SmartJoin is only used if nothing but deterministic FOR, FILTER, LET and
+  SORT operations without data modifications come between the joined FOR
+  loops and their join condition, and nothing but FILTER and LET operations
+  between the two FOR loops. Queries with a LIMIT, COLLECT, WINDOW or data
+  modification in these places return the same results as without
+  SmartJoins.
 
 * The AQL optimizer rule `upgrade-scatter-to-distribute` turns a ScatterNode
   into a DistributeNode only if the snippet behind it starts with a
@@ -257,8 +331,6 @@
   enabling efficient object merging and extension with minimal effort, and now follows 
   a last-key-wins strategy instead of the previous first-key-wins behavior.
   
-* Upgraded OpenSSL to 3.5.7.
-
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
@@ -733,8 +805,6 @@
 * COR-1147: The AQL optimizer rule `smart-joins` only joins two collections
   locally on the DB-Servers if every `FOR` loop between them is over a
   SatelliteCollection.
-
-* Upgraded OpenSSL to 3.5.9.
 
 * COR-1019: Security issue fix to enable interrupting unbounded AQL analyzers.
 

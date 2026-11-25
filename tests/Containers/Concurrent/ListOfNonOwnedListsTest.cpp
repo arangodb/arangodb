@@ -45,7 +45,7 @@ struct MyNodeList {
 
   MyNodeList(std::vector<MyData> data) : data{std::move(data)} {}
   template<typename F>
-  requires std::invocable<F, MyData::Snapshot>
+    requires std::invocable<F, MyData::Snapshot>
   auto for_node(F&& function) -> void {
     for (auto const& item : data) {
       function(item.snapshot());

@@ -1469,50 +1469,34 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
-        // COR-1049: filters/constraints on externally defined MATCH references
         testRejectReferenceWithWhereFilter: function () {
-            try {
-                db._query(
-                    `LET x = DOCUMENT("vc/v1")
-                     MATCH (x WHERE x.i > 100)
-                     RETURN x._key`,
-                    {},
-                    options
-                );
-                fail();
-            } catch (err) {
-                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-            }
+            assertRejected(
+                `LET x = DOCUMENT("vc/v1")
+                 MATCH (x WHERE x.i > 100)
+                 RETURN x._key`,
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "filters or constraints are not allowed on MATCH pattern reference 'x'");
         },
 
         testRejectReferenceWithAttributeConstraint: function () {
-            try {
-                db._query(
-                    `LET x = DOCUMENT("vc/v1")
-                     MATCH (x { name: "alice" })
-                     RETURN x._key`,
-                    {},
-                    options
-                );
-                fail();
-            } catch (err) {
-                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-            }
+            assertRejected(
+                `LET x = DOCUMENT("vc/v1")
+                 MATCH (x { name: "alice" })
+                 RETURN x._key`,
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "filters or constraints are not allowed on MATCH pattern reference 'x'");
         },
 
         testRejectReferenceWithLabelAndWhere: function () {
-            try {
-                db._query(
-                    `LET x = DOCUMENT("vc/v1")
-                     MATCH (x :vc WHERE x.i > 100)
-                     RETURN x._key`,
-                    {},
-                    options
-                );
-                fail();
-            } catch (err) {
-                assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-            }
+            assertRejected(
+                `LET x = DOCUMENT("vc/v1")
+                 MATCH (x :vc WHERE x.i > 100)
+                 RETURN x._key`,
+                {},
+                errors.ERROR_QUERY_VARIABLE_REDECLARED,
+                "variable 'x' is assigned multiple times");
         },
 
         testAllowBareReferenceVertex: function () {
@@ -1763,6 +1747,70 @@ function aqlMatchStatementTestSuite() {
             assertRejected(`MATCH (v :vc) -[ec :ec]-> (w :vc) RETURN ec`, {},
                 errors.ERROR_QUERY_PARSE,
                 "MATCH label 'ec' has the same name as a variable in scope; labels must name a collection");
+        },
+
+        testRejectDuplicateVertexVariableInSamePattern: function () {
+            assertRejected(
+                "MATCH (a:vc) -[e:ec]-> (a:vc) RETURN a",
+                {},
+                errors.ERROR_QUERY_VARIABLE_REDECLARED,
+                "variable 'a' is assigned multiple times");
+        },
+
+        testRejectLetVariableRedeclaredInMatch: function () {
+            assertRejected(
+                "LET a = 1 MATCH (a:vc) RETURN a",
+                {},
+                errors.ERROR_QUERY_VARIABLE_REDECLARED,
+                "variable 'a' is assigned multiple times");
+        },
+
+        testRejectPathVariableRedeclaredAsVertex: function () {
+            assertRejected(
+                "MATCH p = (p:vc) RETURN p",
+                {},
+                errors.ERROR_QUERY_VARIABLE_REDECLARED,
+                "variable 'p' is assigned multiple times");
+        },
+
+        testRejectDuplicateLetUnchanged: function () {
+            // Checking: existing LET redeclaration behavior must stay the same.
+            try {
+                db._query("LET a = 1 LET a = 2 RETURN a");
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+                assertEqual(err.errorMessage, "variable 'a' is assigned multiple times");
+            }
+        },
+
+        testRejectPriorMatchReferenceWithWhereFilter: function () {
+            assertRejected(
+                "MATCH (a:vc) MATCH (a WHERE a.i > 100) RETURN a",
+                {},
+                errors.ERROR_QUERY_PARSE,
+                "filters or constraints are not allowed on MATCH pattern reference 'a'");
+        },
+
+        testAllowBareReferenceToPriorMatchVariable: function () {
+            const result = db._query(
+                "MATCH (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc), (a) -[e2:ec]-> (c:vc) " +
+                "RETURN [a._key, c._key]",
+                {},
+                options
+            ).toArray();
+            assertEqual([["v0", "v1"]], result);
+        },
+
+        testAllowBareReferenceAcrossMatchStatements: function () {
+            const result = db._query(
+                "MATCH (a:vc {_key: 'v0'}) -[e:ec]-> (b:vc) " +
+                "MATCH (a) " +
+                "RETURN a._key",
+                {},
+                options
+            ).toArray();
+            assertEqual(["v0"], result);
         },
 
         // The path variable is produced only after all pattern-level WHERE

@@ -62,7 +62,9 @@ bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
   return std::visit(
     irs::Visitor{[](Match v) noexcept { return v.Min <= v.Max; },
                  [](const DocIteratorProvider& v) {
-                   { return nullptr != v; }
+                   {
+                     return nullptr != v;
+                   }
                  }},
     match);
 }

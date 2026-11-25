@@ -44,6 +44,7 @@ cppcheck \
   --suppress="*:*lib/Geo/karney/*" \
   --suppress="*:*lib/iresearch/core/shared.hpp" \
   --suppress="*:*lib/Zip/*" \
+  --suppress="preprocessorErrorDirective:*arangod/Aql/AqlValue.cpp" \
   --suppress="preprocessorErrorDirective:*lib/SimpleHttpClient/SslClientConnection.cpp" \
   --suppress="constStatement" \
   --suppress="cppcheckError" \

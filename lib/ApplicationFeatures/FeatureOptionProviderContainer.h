@@ -31,17 +31,17 @@ template<class Provider>
 concept HasValidateOptions =
     requires(Provider& provider,
              std::shared_ptr<options::ProgramOptions> programOptions) {
-  provider.validateOptionsImpl(programOptions,
-                               std::declval<typename Provider::Options&>());
-};
+      provider.validateOptionsImpl(programOptions,
+                                   std::declval<typename Provider::Options&>());
+    };
 
 template<class Provider>
 concept HasProcessOptions =
     requires(Provider& provider,
              std::shared_ptr<options::ProgramOptions> programOptions) {
-  provider.processOptionsImpl(programOptions,
-                              std::declval<typename Provider::Options&>());
-};
+      provider.processOptionsImpl(programOptions,
+                                  std::declval<typename Provider::Options&>());
+    };
 }  // namespace
 
 template<class... Providers>

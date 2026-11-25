@@ -1593,7 +1593,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
   // need 'view' field to correctly print view name in JS explanation
   nodes.add(kNodeViewNameParam, VPackValue(_view->name()));
   if (!_meta) {
-    absl::AlphaNum viewId{_view->id().id()};
+    absl::AlphaNum viewId(_view->id().id());
     nodes.add(kNodeViewIdParam, VPackValue(viewId.Piece()));
   }
 
@@ -1730,7 +1730,7 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    absl::AlphaNum const cidStr{cid.id()};
+    absl::AlphaNum const cidStr(cid.id());
     auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       viewCollections.emplace_back(
@@ -1799,7 +1799,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     if (_options.restrictSources && !_options.sources.contains(cid)) {
       return true;
     }
-    absl::AlphaNum const cidStr{cid.id()};
+    absl::AlphaNum const cidStr(cid.id());
     auto const* collection = collections.get(cidStr.Piece());
     if (collection) {
       // FIXME better to gather count for multiple collections at once

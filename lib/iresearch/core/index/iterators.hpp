@@ -162,8 +162,7 @@ struct seek_term_iterator : term_iterator {
 template<typename Iterator, typename T, typename Less = std::less<T>>
 bool seek(Iterator& it, const T& target, Less less = Less()) {
   bool next = true;
-  while (less(it.value(), target) && true == (next = it.next()))
-    ;
+  while (less(it.value(), target) && true == (next = it.next()));
   return next;
 }
 

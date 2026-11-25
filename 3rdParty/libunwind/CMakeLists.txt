@@ -57,8 +57,11 @@ if (LINUX)
       ${MAKE} ${MAKE_JOBS}
     BUILD_BYPRODUCTS
       ${LIBUNWIND_LIB}
+    # DESTDIR= overrides a DESTDIR inherited from the environment (e.g. the
+    # nightly packaging build), which would otherwise relocate the install
+    # away from LIBUNWIND_LIB, where jemalloc and arangod expect it
     INSTALL_COMMAND
-      ${MAKE} install
+      ${MAKE} install DESTDIR=
   )
 
   set(LIBUNWIND_HOME "${LIBUNWIND_INSTALL_DIR}" PARENT_SCOPE)

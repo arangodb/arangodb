@@ -194,9 +194,9 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
   auto applyDataDefinitionEntry(ReplicatedOperation::ModifyShard const& op)
       -> Result;
   template<class T>
-  requires IsAnyOf<T, ReplicatedOperation::CreateShard,
-                   ReplicatedOperation::CreateIndex,
-                   ReplicatedOperation::DropIndex>
+    requires IsAnyOf<T, ReplicatedOperation::CreateShard,
+                     ReplicatedOperation::CreateIndex,
+                     ReplicatedOperation::DropIndex>
   auto applyDataDefinitionEntry(T const& op) -> Result;
 
   template<class T>

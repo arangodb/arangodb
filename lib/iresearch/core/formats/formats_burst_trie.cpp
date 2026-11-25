@@ -1397,7 +1397,7 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
 
 #ifdef IRESEARCH_DEBUG
   // ensure evaluated stats are correct
-  struct fst_buffer::fst_stats stats {};
+  struct fst_buffer::fst_stats stats{};
   for (fst::StateIterator<vector_byte_fst> states(fst); !states.Done();
        states.Next()) {
     const auto stateid = states.Value();
@@ -2471,7 +2471,7 @@ bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
   }
 
   // reset to common seek prefix
-  absl::strings_internal::STLStringReserveAmortized(&term_buf_, term.size());
+  term_buf_.reserve(term.size());
   absl::strings_internal::STLStringResizeUninitialized(&term_buf_, prefix);
   sstate_.resize(prefix);  // remove invalid cached arcs
 
@@ -2626,8 +2626,7 @@ class single_term_iterator : public seek_term_iterator {
     return std::make_unique<::cookie>(meta_);
   }
 
-  void read() final { /*NOOP*/
-  }
+  void read() final { /*NOOP*/ }
 
   doc_iterator::ptr postings(IndexFeatures features) const final {
     return postings_->iterator(field_->meta().index_features, features, meta_,

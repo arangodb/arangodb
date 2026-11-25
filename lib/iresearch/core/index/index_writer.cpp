@@ -1338,8 +1338,8 @@ uint64_t IndexWriter::CurrentSegmentId() const noexcept {
 }
 
 ConsolidationResult IndexWriter::Consolidate(
-  const ConsolidationPolicy& policy,
-  const ConsolidationProgress& progress, format::ptr codec) {
+  const ConsolidationPolicy& policy, const ConsolidationProgress& progress,
+  format::ptr codec) {
   REGISTER_TIMER_DETAILED();
   if (!codec) {
     // use default codec if not specified
@@ -1366,7 +1366,8 @@ ConsolidationResult IndexWriter::Consolidate(
 
     // FIXME TODO remove from 'consolidating_segments_' any segments in
     // 'committed_state_' or 'pending_state_' to avoid data duplication
-    policy(candidates, *committed_reader, consolidating_segments_, consolidation_merge_or_cleanup_);
+    policy(candidates, *committed_reader, consolidating_segments_,
+           consolidation_merge_or_cleanup_);
 
     // Alternate between merge and cleanup operations in consolidation
     // to achieve fairness.

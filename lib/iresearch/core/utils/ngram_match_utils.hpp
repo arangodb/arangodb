@@ -86,12 +86,15 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
   const T* t_ngram_start_end = target + target_size - ngram_size +
                                1;  // end() analog for target ngram start
 
-  float_t d = 0;  // will store upper-left cell value for current cache row
   std::vector<float_t> cache(s_ngram_count + 1, 0);
 
   // here could be constructed source string with start characters affixing
 
   for (; t_ngram_start != t_ngram_start_end; ++t_ngram_start) {
+    // Upper-left cell of this row. Column 0 is always 0, so each target
+    // n-gram starts from a zero diagonal. Carrying `d` across rows leaks the
+    // previous row's last cell (the value from two rows earlier).
+    float_t d = 0;
     const T* t_ngram_end = t_ngram_start + ngram_size;
     const T* s_ngram_start = src;
     size_t s_ngram_idx = 1;

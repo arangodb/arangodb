@@ -3323,7 +3323,9 @@ TEST_P(format_test_case, columns_rw) {
     ASSERT_TRUE(reader->prepare(dir(), meta1));
 
     // try to read invalild column
-    { ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid())); }
+    {
+      ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid()));
+    }
 
     // iterate over field0 values (not cached)
     {

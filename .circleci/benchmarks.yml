@@ -1,6 +1,7 @@
 version: 2.1
 # Benchmarks pipeline: runs the benchmark selected by the benchmark parameter
-# (scripts in scripts/benchmark/<benchmark>/).
+# (scripts in scripts/benchmark/<benchmark>/). Workflow names end in
+# -<run-origin> (-pr or -nightly).
 
 parameters:
   enterprise-branch:
@@ -22,8 +23,13 @@ parameters:
     description: "Use compiled local arangod instead of arango-image. The 'nightly-package-x64' CMake preset is used."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:24.04-07ab72a0"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-40:26.04-a8978021"
     description: "Only with build-arango: Ubuntu build image the compile job runs in."
+  run-origin:
+    type: enum
+    enum: ["pr", "nightly"]
+    default: "pr"
+    description: "What started the run, suffixed to the workflow names (e.g. ann-benchmark-docker-nightly): pr for manual/API runs, nightly when triggered by the nightly-packages pipeline (its trigger-benchmarks job sets it)."
 
 commands:
   # Same as in base_config.yml.
@@ -243,6 +249,7 @@ jobs:
       ANN_DATASET_CACHE: /tmp/ann-benchmarks-data
       PIP_CACHE_DIR: /tmp/ann-pip-cache
       ANN_STAMP: "<< pipeline.number >> << pipeline.git.revision >>"
+      ANN_GIT_BRANCH: << pipeline.git.branch >>
       # The store's TLS certificate is expired and won't be renewed.
       RESULTS_ARANGO_INSECURE: "1"
     steps:
@@ -299,25 +306,37 @@ jobs:
           path: /tmp/ann-output
           destination: ann-benchmark
 
+# One workflow per run-origin, so the name shows what started the run; the
+# -pr and -nightly variants share their job lists.
 workflows:
-  ann-benchmark-docker:
+  ann-benchmark-docker-pr:
     when:
       and:
         - equal: [ ann, << pipeline.parameters.benchmark >> ]
         - not: << pipeline.parameters.build-arango >>
-    jobs:
+        - equal: [ pr, << pipeline.parameters.run-origin >> ]
+    jobs: &ann-benchmark-docker-jobs
       - ann-benchmark:
           context: [ ann-benchmark-store ]
           matrix:
             parameters:
               dataset: &ann-datasets [ glove-100-angular, sift-128-euclidean ]
 
-  ann-benchmark-local:
+  ann-benchmark-docker-nightly:
+    when:
+      and:
+        - equal: [ ann, << pipeline.parameters.benchmark >> ]
+        - not: << pipeline.parameters.build-arango >>
+        - equal: [ nightly, << pipeline.parameters.run-origin >> ]
+    jobs: *ann-benchmark-docker-jobs
+
+  ann-benchmark-local-pr:
     when:
       and:
         - equal: [ ann, << pipeline.parameters.benchmark >> ]
         - << pipeline.parameters.build-arango >>
-    jobs:
+        - equal: [ pr, << pipeline.parameters.run-origin >> ]
+    jobs: &ann-benchmark-local-jobs
       - compile-arangod:
           context: [ sccache-aws-bucket ]
       - ann-benchmark-build:
@@ -326,3 +345,11 @@ workflows:
           matrix:
             parameters:
               dataset: *ann-datasets
+
+  ann-benchmark-local-nightly:
+    when:
+      and:
+        - equal: [ ann, << pipeline.parameters.benchmark >> ]
+        - << pipeline.parameters.build-arango >>
+        - equal: [ nightly, << pipeline.parameters.run-origin >> ]
+    jobs: *ann-benchmark-local-jobs
