@@ -103,9 +103,12 @@ bool detectFedRAMPHigh(std::optional<std::string> const& value) {
   return makeServer()->isFedRAMPHigh();
 }
 
-/// @brief the test logger writes to stdout, but death tests can only match
-/// stderr. to be called in the child process of a death test only.
-void alsoLogToStderr() { Logger::addAppender(Logger::defaultLogGroup(), "+"); }
+/// @brief puts the logger into the state it has during the early server
+/// startup, i.e. inactive. some logger settings can only be changed then, and
+/// an inactive logger writes to stderr, which is what death tests can match
+/// (the active test logger writes to stdout). to be called in the child process
+/// of a death test only.
+void deactivateLogger() { Logger::shutdown(); }
 
 /// @brief runs the option handling of the server startup and exits with
 /// EXIT_SUCCESS if the startup was not aborted. processing the options has
@@ -114,7 +117,7 @@ void alsoLogToStderr() { Logger::addAppender(Logger::defaultLogGroup(), "+"); }
 [[noreturn]] void startUpAndExit(std::optional<std::string> const& envValue,
                                  std::vector<std::string> args) {
   disableCoredump();
-  alsoLogToStderr();
+  deactivateLogger();
   ScopedFedRAMPHighEnv env(envValue);
   makeServer()->declareParseAndProcessOptions(std::move(args));
   std::_Exit(EXIT_SUCCESS);
@@ -225,7 +228,7 @@ TEST(ArangodServerFedRAMPDeathTest, invalid_value_aborts_startup) {
   EXPECT_EXIT(
       {
         disableCoredump();
-        alsoLogToStderr();
+        deactivateLogger();
         detectFedRAMPHigh("ON");
       },
       ::testing::ExitedWithCode(EXIT_FAILURE),
