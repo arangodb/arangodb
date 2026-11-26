@@ -320,7 +320,7 @@ class ExecContext {
   /// @brief the security category of an authorization decision, or
   /// std::nullopt if it is not a security event (see isSecurityRelevant()).
   /// Denied access is both an access control event and a violation.
-  [[nodiscard]] std::optional<Security> authorizationSecurityCategory(
+  [[nodiscard]] std::optional<LogSecurity> authorizationSecurityCategory(
       bool granted) const noexcept;
 
   /// @brief log message for an authorization decision about `permission`.
