@@ -428,7 +428,7 @@
       priority: 500
       type: cluster
       size: large
-      buckets: 4
+      buckets: 5
     args:
       dumpAgencyOnError: true
 - shell_client_transaction:
