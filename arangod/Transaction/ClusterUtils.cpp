@@ -79,8 +79,8 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  // transactions in use are waited for and soft-aborted if necessary, so that
-  // none of them keeps holding the shard's locks
+  // transactions in use are waited for and soft-aborted if necessary;
+  // otherwise we might have left behind locks with leadership change.
   bool didWork = mgr->abortFollowerTrxOnShard(cid).waitAndGet();
 
   LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork)

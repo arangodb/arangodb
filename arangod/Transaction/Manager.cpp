@@ -1564,7 +1564,7 @@ futures::Future<bool> Manager::abortFollowerTrxOnShard(DataSourceId cid) {
         continue;
       }
       // the recorded collections are accessible without the transaction's
-      // lock, so transactions in use are found, too
+      // lock, so transactions in use are found too
       bool onShard = std::ranges::find(mtrx.collections, cid) !=
                      mtrx.collections.end();
       if (!onShard) {
