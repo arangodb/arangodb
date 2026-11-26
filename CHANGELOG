@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Fixed `DATE_TRUNC()` with a timezone throwing an error when the truncated
+  local time is ambiguous or skipped due to a daylight saving time transition.
+  Results now match PostgreSQL's `date_trunc()`.
+
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
