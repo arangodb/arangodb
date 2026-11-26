@@ -675,7 +675,7 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
 void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
                  size_t topicId, std::string_view message,
-                 std::optional<Security> security) try {
+                 std::optional<LogSecurity> security) try {
   TRI_ASSERT(!logid.empty());
 
   // we only determine our pid once, as currentProcessId() will
@@ -729,7 +729,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::optional<Security> security,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // construct JSON output
@@ -892,7 +892,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::optional<Security> security,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, uint32_t& offset,
                                  bool& shrunk) {
   LogContext& logContext = LogContext::current();

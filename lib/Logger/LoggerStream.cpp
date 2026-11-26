@@ -36,7 +36,7 @@ LoggerStreamBase::LoggerStreamBase(bool enabled)
     : LoggerStreamBase(enabled, std::nullopt) {}
 
 LoggerStreamBase::LoggerStreamBase(bool enabled,
-                                   std::optional<Security> security)
+                                   std::optional<LogSecurity> security)
     : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
       _level(LogLevel::DEFAULT),
       _security(security),
@@ -48,13 +48,13 @@ LoggerStreamBase::LoggerStreamBase(bool enabled,
       _file(),
       _function() {
   // a security event must belong to at least one known category. an empty
-  // mask (e.g. the result of `s & Security::DataAccess` when `s` lacks that
+  // mask (e.g. the result of `s & LogSecurity::DataAccess` when `s` lacks that
   // bit) or one with only unknown bits would produce an empty classifier
   // label. use std::nullopt instead to mark a message as "not a security
   // event".
   TRI_ASSERT(!security.has_value() || isValidSecurity(*security))
       << "invalid security category mask "
-      << static_cast<std::uint16_t>(security.value_or(Security{}));
+      << static_cast<std::uint16_t>(security.value_or(LogSecurity{}));
 }
 
 LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
@@ -109,13 +109,13 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
 
-LoggerStream::LoggerStream(bool enabled, std::optional<Security> security)
+LoggerStream::LoggerStream(bool enabled, std::optional<LogSecurity> security)
     : LoggerStreamBase(enabled, security) {}
 #endif
 
 LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
 
-LoggerStream::LoggerStream(std::optional<Security> security)
+LoggerStream::LoggerStream(std::optional<LogSecurity> security)
     : LoggerStreamBase(true, security) {}
 
 LoggerStream::~LoggerStream() {

@@ -114,18 +114,18 @@ void restartLogger(bool useJson,
 }
 
 constexpr std::array kAllSecurityCategories = {
-    Security::Authentication,
-    Security::AccessControl,
-    Security::AccountManagement,
-    Security::SystemAccess,
-    Security::ConfigurationChanges,
-    Security::PrivilegedOperations,
-    Security::DataAccess,
-    Security::Violations,
-    Security::ApiCalls,
-    Security::SessionManagement,
-    Security::AuditLogAccess,
-    Security::SystemErrors,
+    LogSecurity::Authentication,
+    LogSecurity::AccessControl,
+    LogSecurity::AccountManagement,
+    LogSecurity::SystemAccess,
+    LogSecurity::ConfigurationChanges,
+    LogSecurity::PrivilegedOperations,
+    LogSecurity::DataAccess,
+    LogSecurity::Violations,
+    LogSecurity::ApiCalls,
+    LogSecurity::SessionManagement,
+    LogSecurity::AuditLogAccess,
+    LogSecurity::SystemErrors,
 };
 
 }  // namespace
@@ -526,10 +526,10 @@ TEST_F(LoggerSecurityTest, single_category_classifiers) {
 }
 
 TEST_F(LoggerSecurityTest, two_category_classifiers) {
-  auto s = Security::SessionManagement | Security::Authentication;
-  EXPECT_TRUE(hasSecurityCategory(s, Security::Authentication));
-  EXPECT_TRUE(hasSecurityCategory(s, Security::SessionManagement));
-  EXPECT_FALSE(hasSecurityCategory(s, Security::DataAccess));
+  auto s = LogSecurity::SessionManagement | LogSecurity::Authentication;
+  EXPECT_TRUE(hasSecurityCategory(s, LogSecurity::Authentication));
+  EXPECT_TRUE(hasSecurityCategory(s, LogSecurity::SessionManagement));
+  EXPECT_FALSE(hasSecurityCategory(s, LogSecurity::DataAccess));
   // ordered by bit position, not by order of OR-ing
   std::string_view expected =
       "arango-security-event-authentication,"
@@ -538,8 +538,8 @@ TEST_F(LoggerSecurityTest, two_category_classifiers) {
   EXPECT_EQ(classifier, expected);
   // the same combination in a different OR order is the same cache entry,
   // and the cached characters never move
-  auto again = securityClassifier(Security::Authentication |
-                                  Security::SessionManagement);
+  auto again = securityClassifier(LogSecurity::Authentication |
+                                  LogSecurity::SessionManagement);
   EXPECT_EQ(again.data(), classifier.data());
   std::ostringstream os;
   os << s;
@@ -547,7 +547,7 @@ TEST_F(LoggerSecurityTest, two_category_classifiers) {
 }
 
 TEST_F(LoggerSecurityTest, all_category_classifiers) {
-  Security all = kAllSecurityCategories[0];
+  LogSecurity all = kAllSecurityCategories[0];
   std::string expected;
   for (auto s : kAllSecurityCategories) {
     all |= s;
@@ -574,45 +574,46 @@ TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
 }
 
 TEST_F(LoggerSecurityTest, empty_and_unknown_bits) {
-  EXPECT_TRUE(securityClassifier(static_cast<Security>(0)).empty());
+  EXPECT_TRUE(securityClassifier(static_cast<LogSecurity>(0)).empty());
   // bits above the known categories are ignored
-  EXPECT_TRUE(securityClassifier(static_cast<Security>(1u << 15)).empty());
-  EXPECT_EQ(securityClassifier(Security::DataAccess |
-                               static_cast<Security>(1u << 15)),
-            securityClassifier(Security::DataAccess));
+  EXPECT_TRUE(securityClassifier(static_cast<LogSecurity>(1u << 15)).empty());
+  EXPECT_EQ(securityClassifier(LogSecurity::DataAccess |
+                               static_cast<LogSecurity>(1u << 15)),
+            securityClassifier(LogSecurity::DataAccess));
 }
 
 TEST_F(LoggerSecurityTest, is_valid_security) {
-  EXPECT_TRUE(isValidSecurity(Security::Authentication));
-  EXPECT_TRUE(isValidSecurity(Security::SystemErrors));
-  EXPECT_TRUE(isValidSecurity(Security::DataAccess | Security::ApiCalls));
-  EXPECT_TRUE(isValidSecurity(static_cast<Security>(kAllSecurityBits)));
-  EXPECT_FALSE(isValidSecurity(static_cast<Security>(0)));
-  EXPECT_FALSE(isValidSecurity(static_cast<Security>(1u << 12)));
-  EXPECT_FALSE(isValidSecurity(static_cast<Security>(1u << 15)));
-  EXPECT_FALSE(
-      isValidSecurity(Security::DataAccess | static_cast<Security>(1u << 15)));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::Authentication));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::SystemErrors));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::DataAccess | LogSecurity::ApiCalls));
+  EXPECT_TRUE(isValidSecurity(static_cast<LogSecurity>(kAllSecurityBits)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(0)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 12)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 15)));
+  EXPECT_FALSE(isValidSecurity(LogSecurity::DataAccess |
+                               static_cast<LogSecurity>(1u << 15)));
 }
 
 TEST_F(LoggerSecurityTest, combination_cache_is_stable_under_growth) {
   // populate the cache with many combinations (forcing rehashes) and check
   // that string_views handed out earlier are still valid and unchanged
-  auto first = securityClassifier(Security::ApiCalls | Security::Violations);
+  auto first =
+      securityClassifier(LogSecurity::ApiCalls | LogSecurity::Violations);
   std::string firstCopy(first);
   std::vector<std::string_view> views;
   for (std::uint16_t bits = 3; bits < (1u << 12); ++bits) {
     if (!std::has_single_bit(bits)) {
-      views.push_back(securityClassifier(static_cast<Security>(bits)));
+      views.push_back(securityClassifier(static_cast<LogSecurity>(bits)));
     }
   }
   EXPECT_EQ(first, firstCopy);
-  EXPECT_EQ(
-      securityClassifier(Security::ApiCalls | Security::Violations).data(),
-      first.data());
+  EXPECT_EQ(securityClassifier(LogSecurity::ApiCalls | LogSecurity::Violations)
+                .data(),
+            first.data());
   size_t i = 0;
   for (std::uint16_t bits = 3; bits < (1u << 12); ++bits) {
     if (!std::has_single_bit(bits)) {
-      EXPECT_EQ(securityClassifier(static_cast<Security>(bits)).data(),
+      EXPECT_EQ(securityClassifier(static_cast<LogSecurity>(bits)).data(),
                 views[i].data());
       ++i;
     }
@@ -628,7 +629,7 @@ TEST_F(LoggerSecurityTest, combination_cache_is_thread_safe) {
       for (std::uint16_t i = 0; i < kCombinations; ++i) {
         // two bits each: bit 11 plus a varying lower part
         auto bits = static_cast<std::uint16_t>((1u << 11) | (i + 1));
-        result.push_back(securityClassifier(static_cast<Security>(bits)));
+        result.push_back(securityClassifier(static_cast<LogSecurity>(bits)));
       }
     });
   }
@@ -649,7 +650,7 @@ TEST_F(LoggerSecurityTest, combination_cache_is_thread_safe) {
 TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
   startCapturing(/*useJson*/ false);
   LOG_SECURITY("8d2fd", INFO, Logger::FIXME,
-               Security::Authentication | Security::Violations)
+               LogSecurity::Authentication | LogSecurity::Violations)
       << "multi security test message";
 
   auto messages = collect();
@@ -663,7 +664,7 @@ TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
 TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
   startCapturing(/*useJson*/ true);
   LOG_SECURITY("8d2fe", INFO, Logger::FIXME,
-               Security::DataAccess | Security::AccessControl)
+               LogSecurity::DataAccess | LogSecurity::AccessControl)
       << "multi json security test message";
 
   auto messages = collect();
@@ -679,12 +680,14 @@ TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
 
 TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
   startCapturing(/*useJson*/ false);
-  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, LogSecurity::Authentication)
       << "security test message";
   LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
-  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, Security::AccessControl, true)
+  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, LogSecurity::AccessControl,
+                  true)
       << "conditional security test message";
-  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, Security::AccessControl, false)
+  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, LogSecurity::AccessControl,
+                  false)
       << "suppressed security test message";
 
   auto messages = collect();
@@ -709,7 +712,7 @@ TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
 
 TEST_F(LoggerSecurityTest, json_format_contains_classifier) {
   startCapturing(/*useJson*/ true);
-  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, Security::DataAccess)
+  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, LogSecurity::DataAccess)
       << "json \"security\" test message";
   LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
 
@@ -756,7 +759,7 @@ TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(false);
   // DEBUG is below the default level of both the topic and the appender
-  LOG_SECURITY("8d2f8", DEBUG, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f8", DEBUG, Logger::FIXME, LogSecurity::Authentication)
       << "debug security message";
   EXPECT_TRUE(collect().empty());
 }
@@ -765,12 +768,14 @@ TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(true);
   // DEBUG is below the default level of both the topic and the appender
-  LOG_SECURITY("8d2f9", DEBUG, Logger::FIXME, Security::Authentication)
+  LOG_SECURITY("8d2f9", DEBUG, Logger::FIXME, LogSecurity::Authentication)
       << "forced debug security message";
   LOG_TOPIC("8d2fa", DEBUG, Logger::FIXME) << "plain debug message";
-  LOG_SECURITY_IF("8d2fb", TRACE, Logger::FIXME, Security::AccessControl, true)
+  LOG_SECURITY_IF("8d2fb", TRACE, Logger::FIXME, LogSecurity::AccessControl,
+                  true)
       << "forced trace security message";
-  LOG_SECURITY_IF("8d2fc", TRACE, Logger::FIXME, Security::AccessControl, false)
+  LOG_SECURITY_IF("8d2fc", TRACE, Logger::FIXME, LogSecurity::AccessControl,
+                  false)
       << "suppressed trace security message";
 
   auto messages = collect();

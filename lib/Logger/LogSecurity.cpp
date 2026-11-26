@@ -52,12 +52,12 @@ constexpr std::array<std::string_view, 12> kClassifiers = {
     "arango-security-event-system-errors",
 };
 
-static_assert(static_cast<std::uint16_t>(Security::SystemErrors) ==
+static_assert(static_cast<std::uint16_t>(LogSecurity::SystemErrors) ==
                   (1u << (kClassifiers.size() - 1)),
-              "kClassifiers must have one entry per Security category");
+              "kClassifiers must have one entry per LogSecurity category");
 
 static_assert(kAllSecurityBits == (1u << kClassifiers.size()) - 1,
-              "kAllSecurityBits must cover exactly the Security categories");
+              "kAllSecurityBits must cover exactly the LogSecurity categories");
 
 // lazily populated cache of classifier strings for combinations of more
 // than one category. entries are never removed, and since std::unordered_map
@@ -90,7 +90,7 @@ std::string buildCombination(std::uint16_t bits) {
 
 }  // namespace
 
-std::string_view securityClassifier(Security security) {
+std::string_view securityClassifier(LogSecurity security) {
   auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
                                          kAllSecurityBits);
 
@@ -121,7 +121,7 @@ std::string_view securityClassifier(Security security) {
   return cache.classifiers.emplace(bits, buildCombination(bits)).first->second;
 }
 
-std::ostream& operator<<(std::ostream& out, Security security) {
+std::ostream& operator<<(std::ostream& out, LogSecurity security) {
   return out << securityClassifier(security);
 }
 
