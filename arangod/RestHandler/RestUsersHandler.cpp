@@ -64,7 +64,7 @@ void logAccountManagement(arangodb::GeneralRequest const& req,
   using namespace arangodb;
   if (result.ok()) {
     LOG_SECURITY_IF("b5bde", INFO, Logger::AUTHENTICATION,
-                    Security::AccountManagement, shouldLogSecurityEvents())
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
         << "account management: " << operation << " for user '" << user
         << "' succeeded" << (details.empty() ? "" : ", ") << details
         << ", actor='" << req.user()
@@ -73,7 +73,7 @@ void logAccountManagement(arangodb::GeneralRequest const& req,
         << " " << req.fullUrl();
   } else {
     LOG_SECURITY_IF("ff4bc", INFO, Logger::AUTHENTICATION,
-                    Security::AccountManagement, shouldLogSecurityEvents())
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
         << "account management: " << operation << " for user '" << user
         << "' failed: error=" << result.errorNumber() << ", reason='"
         << result.errorMessage() << "'" << (details.empty() ? "" : ", ")
@@ -476,8 +476,9 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     // than an account management activity. failed checks are in addition
     // security violations (e.g. password guessing).
     LOG_SECURITY_IF("c8b56", INFO, Logger::AUTHENTICATION,
-                    valid ? Security::Authentication
-                          : Security::Authentication | Security::Violations,
+                    valid
+                        ? LogSecurity::Authentication
+                        : LogSecurity::Authentication | LogSecurity::Violations,
                     shouldLogSecurityEvents())
         << "credential validation for user '" << user
         << (valid ? "' succeeded" : "' failed") << ", actor='"

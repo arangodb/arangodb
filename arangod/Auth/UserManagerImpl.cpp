@@ -423,7 +423,7 @@ void UserManagerImpl::createRootUser() {
   }
   TRI_ASSERT(_userCache.empty());
   LOG_SECURITY("857d7", DEBUG, Logger::AUTHENTICATION,
-               Security::AccountManagement)
+               LogSecurity::AccountManagement)
       << "Creating user \"root\"";
 
   try {
@@ -441,12 +441,12 @@ void UserManagerImpl::createRootUser() {
     storeUserInternal(user, false);
   } catch (std::exception const& ex) {
     LOG_SECURITY("0511c", ERR, Logger::AUTHENTICATION,
-                 Security::AccountManagement | Security::SystemErrors)
+                 LogSecurity::AccountManagement | LogSecurity::SystemErrors)
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
     LOG_SECURITY("268eb", ERR, Logger::AUTHENTICATION,
-                 Security::AccountManagement | Security::SystemErrors)
+                 LogSecurity::AccountManagement | LogSecurity::SystemErrors)
         << "unable to create user \"root\"";
   }
   readGuard.unlock();

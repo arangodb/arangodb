@@ -391,12 +391,14 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     Result res =
         um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.ok()) {
-      LOG_SECURITY("3e515", INFO, Logger::STARTUP, Security::AccountManagement)
+      LOG_SECURITY("3e515", INFO, Logger::STARTUP,
+                   LogSecurity::AccountManagement)
           << "added user '" << user << "' (active=" << std::boolalpha << active
           << ") on creation of database '" << vocbase.name() << "'";
     }
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
-      LOG_SECURITY("b5b8a", WARN, Logger::STARTUP, Security::AccountManagement)
+      LOG_SECURITY("b5b8a", WARN, Logger::STARTUP,
+                   LogSecurity::AccountManagement)
           << "could not add database user " << user << ": "
           << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
@@ -418,12 +420,14 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
         },
         auth::UserManager::RetryOnConflict::Yes);
     if (res.fail()) {
-      LOG_SECURITY("60019", WARN, Logger::STARTUP, Security::AccountManagement)
+      LOG_SECURITY("60019", WARN, Logger::STARTUP,
+                   LogSecurity::AccountManagement)
           << "could not set permissions for new user " << user << ": "
           << res.errorMessage();
       // this failure does not abort the operation or make it return an error.
     } else {
-      LOG_SECURITY("4df64", INFO, Logger::STARTUP, Security::AccountManagement)
+      LOG_SECURITY("4df64", INFO, Logger::STARTUP,
+                   LogSecurity::AccountManagement)
           << "granted permission 'rw' on database '" << vocbase.name()
           << "' and all its collections to user '" << user << "'";
     }

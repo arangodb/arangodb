@@ -147,12 +147,12 @@ void UpgradeFeature::start() {
         });
         if (res.fail()) {
           LOG_SECURITY("ce6bf", ERR, arangodb::Logger::FIXME,
-                       Security::AccountManagement)
+                       LogSecurity::AccountManagement)
               << "failed to set default password: " << res.errorMessage();
           *_result = EXIT_FAILURE;
         } else {
           LOG_SECURITY("43f84", INFO, arangodb::Logger::FIXME,
-                       Security::AccountManagement)
+                       LogSecurity::AccountManagement)
               << "password of user \"root\" set to the configured default "
                  "password";
         }
@@ -166,7 +166,7 @@ void UpgradeFeature::start() {
       Result res = um->removeAllUsers();
       if (res.fail()) {
         LOG_SECURITY("70922", ERR, arangodb::Logger::FIXME,
-                     Security::AccountManagement)
+                     LogSecurity::AccountManagement)
             << "failed to clear users: " << res.errorMessage();
         *_result = EXIT_FAILURE;
         return;
@@ -181,7 +181,7 @@ void UpgradeFeature::start() {
 
       if (res.fail()) {
         LOG_SECURITY("e9637", ERR, arangodb::Logger::FIXME,
-                     Security::AccountManagement)
+                     LogSecurity::AccountManagement)
             << "failed to create root user: " << res.errorMessage();
         *_result = EXIT_FAILURE;
         return;
@@ -189,7 +189,7 @@ void UpgradeFeature::start() {
       auto oldLevel = arangodb::Logger::FIXME.level();
       arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
       LOG_SECURITY("95cab", INFO, arangodb::Logger::FIXME,
-                   Security::AccountManagement)
+                   LogSecurity::AccountManagement)
           << "Password changed. All users have been removed and user "
              "\"root\" has been recreated with the given password.";
       arangodb::Logger::FIXME.setLogLevel(oldLevel);

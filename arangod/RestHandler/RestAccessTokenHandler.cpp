@@ -61,7 +61,7 @@ void logAccessTokenChange(GeneralRequest const& req, std::string_view operation,
                           std::string_view details) {
   if (result.ok()) {
     LOG_SECURITY_IF("39e78", INFO, Logger::AUTHENTICATION,
-                    Security::AccountManagement, shouldLogSecurityEvents())
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
         << "account management: " << operation << " for user '" << user
         << "' succeeded, " << details << ", actor='" << req.user()
         << "', client=" << req.connectionInfo().fullClient()
@@ -69,7 +69,7 @@ void logAccessTokenChange(GeneralRequest const& req, std::string_view operation,
         << " " << req.fullUrl();
   } else {
     LOG_SECURITY_IF("623b9", INFO, Logger::AUTHENTICATION,
-                    Security::AccountManagement, shouldLogSecurityEvents())
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
         << "account management: " << operation << " for user '" << user
         << "' failed: error=" << result.errorNumber() << ", reason='"
         << result.errorMessage() << "', " << details << ", actor='"
