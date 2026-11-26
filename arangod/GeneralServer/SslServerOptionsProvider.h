@@ -31,8 +31,8 @@ struct SslServerOptionsProvider
     : OptionsProviderImpl<SslServerOptionsProvider, SslServerOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           SslServerOptions& options);
-  void processOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      SslServerOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          SslServerOptions& options);
 
  private:
   std::string _cafile;
