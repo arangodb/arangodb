@@ -48,10 +48,9 @@ LoggerStreamBase::LoggerStreamBase(bool enabled,
       _file(),
       _function() {
   // a security event must belong to at least one known category. an empty
-  // mask (e.g. the result of `s & LogSecurity::DataAccess` when `s` lacks that
-  // bit) or one with only unknown bits would produce an empty classifier
-  // label. use std::nullopt instead to mark a message as "not a security
-  // event".
+  // mask (e.g. `LogSecurity{}`) or one with only unknown bits would produce an
+  // empty classifier label. use std::nullopt instead to mark a message as "not
+  // a security event".
   TRI_ASSERT(!security.has_value() || isValidSecurity(*security))
       << "invalid security category mask "
       << static_cast<std::uint16_t>(security.value_or(LogSecurity{}));
