@@ -473,9 +473,7 @@ full, log entries are written synchronously until the queue has space again.)");
           "Always log security events, regardless of the configured log "
           "levels.",
           new BooleanParameter(&options.alwaysLogSecurityMessages),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAll,
+          arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(40000)
       .setLongDescription(R"(Log messages can be marked as security events of

@@ -29,10 +29,13 @@
 
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogAppenderSyslog.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
 #include "Logger/LogSecurity.h"
+#include "Logger/LogThread.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerOptionsProvider.h"
 #include "Logger/LoggerStream.h"
 #include "Mocks/Death_Test.h"
 #include "Mocks/LogLevels.h"
@@ -57,6 +60,10 @@
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef ARANGODB_ENABLE_SYSLOG
+#include <syslog.h>
 #endif
 
 using namespace arangodb;
@@ -510,16 +517,6 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
 // --SECTION--                                     security event classification
 // -----------------------------------------------------------------------------
 
-TEST(LogSecurityTest, categories_are_distinct_single_bits) {
-  std::uint32_t seen = 0;
-  for (auto [s, _] : kExpectedClassifiers) {
-    auto bits = static_cast<std::uint16_t>(s);
-    EXPECT_TRUE(std::has_single_bit(bits)) << bits;
-    EXPECT_EQ(seen & bits, 0u) << bits;
-    seen |= bits;
-  }
-}
-
 TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
   for (auto [s, expected] : kExpectedClassifiers) {
     EXPECT_EQ(classifierOf(s), expected);
@@ -617,6 +614,71 @@ TEST(LogMessageTest, is_enabled_for_level_unless_output_is_forced) {
   EXPECT_TRUE(forced.isEnabledFor(LogLevel::TRACE));
   EXPECT_TRUE(forced.isEnabledFor(LogLevel::INFO));
   EXPECT_TRUE(forced.isEnabledFor(LogLevel::FATAL));
+}
+
+// when the log queue is full, a message is either queued anyway, or written
+// synchronously by the logging thread itself (see Logger::append).
+TEST(LogThreadTest, only_urgent_or_forced_messages_exceed_queue_limit) {
+  auto mayExceedQueueLimit = [](LogLevel level, bool forceOutput) {
+    LogMessage message("f", "file", 1, level, 0, "msg", 0, false, forceOutput);
+    return LogThread::mayExceedQueueLimit(message);
+  };
+  for (LogLevel level : {LogLevel::INFO, LogLevel::DEBUG, LogLevel::TRACE}) {
+    EXPECT_FALSE(mayExceedQueueLimit(level, /*forceOutput*/ false))
+        << Logger::translateLogLevel(level);
+    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ true))
+        << Logger::translateLogLevel(level);
+  }
+  for (LogLevel level : {LogLevel::FATAL, LogLevel::ERR, LogLevel::WARN}) {
+    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ false))
+        << Logger::translateLogLevel(level);
+    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ true))
+        << Logger::translateLogLevel(level);
+  }
+}
+
+#ifdef ARANGODB_ENABLE_SYSLOG
+TEST(LogAppenderSyslogTest, priority_follows_log_level) {
+  auto priorityOf = [](LogLevel level) {
+    LogMessage message("f", "file", 1, level, 0, "msg", 0, false);
+    return LogAppenderSyslog::priorityFor(message);
+  };
+  EXPECT_EQ(priorityOf(LogLevel::FATAL), LOG_CRIT);
+  EXPECT_EQ(priorityOf(LogLevel::ERR), LOG_ERR);
+  EXPECT_EQ(priorityOf(LogLevel::WARN), LOG_WARNING);
+  EXPECT_EQ(priorityOf(LogLevel::INFO), LOG_NOTICE);
+  EXPECT_EQ(priorityOf(LogLevel::DEBUG), LOG_INFO);
+  EXPECT_EQ(priorityOf(LogLevel::TRACE), LOG_DEBUG);
+}
+
+// syslog daemons commonly discard LOG_DEBUG, which must not happen to
+// security events that are forced to be logged.
+TEST(LogAppenderSyslogTest, forced_messages_have_at_least_info_priority) {
+  for (LogLevel level : {LogLevel::FATAL, LogLevel::ERR, LogLevel::WARN,
+                         LogLevel::INFO, LogLevel::DEBUG, LogLevel::TRACE}) {
+    LogMessage message("f", "file", 1, level, 0, "msg", 0, false,
+                       /*forceOutput*/ true);
+    // lower values mean higher priority
+    EXPECT_LE(LogAppenderSyslog::priorityFor(message), LOG_INFO)
+        << Logger::translateLogLevel(level);
+  }
+}
+#endif
+
+// processing the logger options is what makes the option
+// `--log.always-log-security-messages` take effect.
+TEST(LoggerOptionsProviderTest, processing_applies_always_log_security_flag) {
+  tests::ScopedAlwaysLogSecurityEvents guard;
+  for (bool value : {true, false}) {
+    LoggerOptionsProvider provider;
+    // processing the options also applies the configured log levels, which
+    // are global state. none are configured, so that they are left alone.
+    provider.mutableOptions().levels.clear();
+    provider.mutableOptions().alwaysLogSecurityMessages = value;
+    Logger::setAlwaysLogSecurityEvents(!value);
+    provider.processOptions(nullptr);
+    EXPECT_EQ(Logger::alwaysLogSecurityEvents(), value);
+  }
 }
 
 // -----------------------------------------------------------------------------

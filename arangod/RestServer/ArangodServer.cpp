@@ -30,6 +30,7 @@
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RestServer/FedRAMPHigh.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 
 // The list of includes for the features is defined in the following file -
@@ -74,23 +75,25 @@ void applyAgencyRocksDBMemoryLimits(
 }  // namespace
 
 namespace {
-/// @brief detects FedRAMP High mode from the environment.
-/// the variable ArangodServer::kFedRAMPHighEnvVar may be unset (mode off),
-/// "off" (mode off) or "on" (mode on). any other value, including the empty
-/// string, is rejected and aborts the startup, so that a mistyped value can
-/// never silently leave the mode in an unintended state.
+/// @brief detects FedRAMP High mode from the environment, and aborts the
+/// startup if the environment variable has an invalid value.
 bool detectFedRAMPHigh() {
   std::string value;
-  if (!TRI_GETENV(ArangodServer::kFedRAMPHighEnvVar, value) || value == "off") {
-    return false;
+  std::optional<std::string_view> envValue;
+  if (TRI_GETENV(kFedRAMPHighEnvVar, value)) {
+    envValue = value;
   }
-  if (value == "on") {
-    return true;
+  switch (parseFedRAMPHighSetting(envValue)) {
+    case FedRAMPHighSetting::kOff:
+      return false;
+    case FedRAMPHighSetting::kOn:
+      return true;
+    case FedRAMPHighSetting::kInvalid:
+      break;
   }
   LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP)
       << "invalid value '" << value << "' for environment variable '"
-      << ArangodServer::kFedRAMPHighEnvVar
-      << "'. allowed values are 'on' and 'off'";
+      << kFedRAMPHighEnvVar << "'. allowed values are 'on' and 'off'";
   FATAL_ERROR_EXIT();
 }
 }  // namespace
@@ -106,10 +109,9 @@ ArangodServer::ArangodServer(
       _dumpManager(dumpManager),
       _dataSourceRegistry(dataSourceRegistry) {
   if (_fedRAMPHigh) {
-    // change the defaults of options before they are declared, so that the
-    // FedRAMP High defaults are also shown in `--help` and `--dump-options`.
-    // the defaults are enforced later in processFedRAMPHighOptions().
-    mutableOptions<LoggerOptionsProvider>().alwaysLogSecurityMessages = true;
+    // options are declared after construction, so this is the place to change
+    // their defaults. they are checked in processFedRAMPHighOptions().
+    applyFedRAMPHighLoggerDefaults(mutableOptions<LoggerOptionsProvider>());
     // in FedRAMP High mode, security events must always be logged. turn this
     // on right away, so that it already applies to security events logged
     // during startup, before the options are processed.
@@ -126,26 +128,19 @@ void ArangodServer::processFedRAMPHighOptions() {
       << "FedRAMP High mode is enabled (environment variable '"
       << kFedRAMPHighEnvVar << "' is set to 'on')";
 
-  // security events must always be logged in FedRAMP High mode, so turning
-  // this off explicitly is an error.
-  auto& loggerOptions = mutableOptions<LoggerOptionsProvider>();
-  if (options()->processingResult().touched(
-          "--log.always-log-security-messages") &&
-      !loggerOptions.alwaysLogSecurityMessages) {
-    LOG_TOPIC("74d25", FATAL, Logger::STARTUP)
-        << "'--log.always-log-security-messages' must not be set to false "
-           "in FedRAMP High mode";
+  if (auto result =
+          checkFedRAMPHighLoggerOptions(getOptions<LoggerOptionsProvider>());
+      result.fail()) {
+    LOG_TOPIC("74d25", FATAL, Logger::STARTUP) << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
-  loggerOptions.alwaysLogSecurityMessages = true;
-  Logger::setAlwaysLogSecurityEvents(true);
 }
 
 void ArangodServer::processOptions() {
   OptionProvidingServer<ArangodOptionProviders>::processOptions();
 
   // must run after the OptionProvidingServer::processOptions() call above,
-  // so that the option providers cannot override the FedRAMP High settings.
+  // so that the final values of the options are checked.
   processFedRAMPHighOptions();
 
 #ifdef ARANGODB_HAVE_FORK

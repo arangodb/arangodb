@@ -117,34 +117,31 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogMessage const& message) {
-  int priority = LOG_ERR;
-
+int LogAppenderSyslog::priorityFor(LogMessage const& message) noexcept {
   switch (message._level) {
     case LogLevel::FATAL:
-      priority = LOG_CRIT;
-      break;
+      return LOG_CRIT;
     case LogLevel::ERR:
-      priority = LOG_ERR;
-      break;
+      return LOG_ERR;
     case LogLevel::WARN:
-      priority = LOG_WARNING;
-      break;
+      return LOG_WARNING;
     case LogLevel::DEFAULT:
     case LogLevel::INFO:
-      priority = LOG_NOTICE;
-      break;
+      return LOG_NOTICE;
     case LogLevel::DEBUG:
-      priority = LOG_INFO;
-      break;
+      return LOG_INFO;
     case LogLevel::TRACE:
-      // Need to have at least LOG_INFO for forced security messages:
-      priority = message.isForcedOutput() ? LOG_INFO : LOG_DEBUG;
-      break;
+      // syslog daemons commonly discard LOG_DEBUG, which must not happen to
+      // forced security messages
+      return message.isForcedOutput() ? LOG_INFO : LOG_DEBUG;
   }
+  return LOG_ERR;
+}
 
+void LogAppenderSyslog::logMessage(LogMessage const& message) {
   if (_opened) {
-    ::syslog(priority, "%s", message._message.c_str() + message._offset);
+    ::syslog(priorityFor(message), "%s",
+             message._message.c_str() + message._offset);
   }
 }
 

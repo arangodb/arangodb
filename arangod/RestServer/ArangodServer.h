@@ -38,18 +38,12 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
-  /// @brief name of the environment variable which enables FedRAMP High
-  /// mode. FedRAMP High mode is enabled if the variable is set to "on", and
-  /// disabled if it is unset or set to "off". Any other value (including
-  /// the empty string) is rejected and the server refuses to start
-  /// (FATAL_ERROR_EXIT), so that a mistyped or unexpected value can never go
-  /// unnoticed.
-  static constexpr char const* kFedRAMPHighEnvVar = "FEDRAMP_HIGH";
-
   /// @brief whether the server runs in FedRAMP High mode. this is detected
-  /// from the environment in the constructor, i.e. before any options are
-  /// declared or processed, so that processOptions() can adjust the
-  /// behavior of all features accordingly.
+  /// from the environment variable kFedRAMPHighEnvVar (see FedRAMPHigh.h) in
+  /// the constructor, i.e. before any options are declared or processed, so
+  /// that processOptions() can adjust the behavior of all features
+  /// accordingly. an invalid value of the variable makes the constructor
+  /// abort the startup (FATAL_ERROR_EXIT).
   bool isFedRAMPHigh() const noexcept { return _fedRAMPHigh; }
 
  protected:
@@ -64,8 +58,8 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
                                            AgencyOptions const& agencyOptions);
 
-  /// @brief applies the restrictions of FedRAMP High mode to the options.
-  /// called from processOptions().
+  /// @brief aborts the startup if the options violate the restrictions of
+  /// FedRAMP High mode. called from processOptions().
   void processFedRAMPHighOptions();
 
   bool const _fedRAMPHigh;

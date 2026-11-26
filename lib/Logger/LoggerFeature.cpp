@@ -96,7 +96,6 @@ void LoggerFeature::prepare() {
   Logger::setOutputPrefix(_options.prefix);
   Logger::setHostname(_options.hostname);
   Logger::setLogRequestParameters(_options.logRequestParameters);
-  Logger::setAlwaysLogSecurityEvents(_options.alwaysLogSecurityMessages);
   Logger::setUseJson(_options.useJson);
 
   bool shouldLogToStd = false;
