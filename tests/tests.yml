@@ -402,7 +402,7 @@
       priority: 1000
       size: small
       type: cluster
-      buckets: 4
+      buckets: 3
     args:
       dumpAgencyOnError: true
 - shell_client_aql_large:
@@ -420,7 +420,7 @@
       priority: 500
       type: cluster
       size: small
-      buckets: 5
+      buckets: 4
     args:
       dumpAgencyOnError: true
 - shell_client_large:
@@ -428,7 +428,7 @@
       priority: 500
       type: cluster
       size: large
-      buckets: 6
+      buckets: 5
     args:
       dumpAgencyOnError: true
 - shell_client_transaction:
@@ -656,7 +656,6 @@
     options:
       type: cluster
       priority: 500
-      buckets: 3
     requires:
       full: true
     args:
