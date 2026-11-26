@@ -59,7 +59,7 @@ bool shouldLogSecurityEvents() noexcept {
 void logLoginSuccess(GeneralRequest const& req, std::string_view action,
                      std::string_view username, double expirySeconds) {
   LOG_SECURITY_IF("a220f", INFO, Logger::AUTHENTICATION,
-                  Security::Authentication, shouldLogSecurityEvents())
+                  LogSecurity::Authentication, shouldLogSecurityEvents())
       << action << " succeeded for user '" << username
       << "', JWT issued with expiry time " << expirySeconds
       << "s, client=" << req.connectionInfo().fullClient()
@@ -70,7 +70,7 @@ void logLoginSuccess(GeneralRequest const& req, std::string_view action,
 void logLoginFailure(GeneralRequest const& req, std::string_view action,
                      std::string_view username, std::string_view reason) {
   LOG_SECURITY_IF("a210f", INFO, Logger::AUTHENTICATION,
-                  Security::Authentication | Security::Violations,
+                  LogSecurity::Authentication | LogSecurity::Violations,
                   shouldLogSecurityEvents())
       << action << " failed for user '" << username << "': reason='" << reason
       << "', client=" << req.connectionInfo().fullClient()
@@ -119,7 +119,7 @@ RestStatus RestAuthHandler::execute() {
     std::string msg = "This server does not support users";
     if (shouldLogSecurityEvents()) {
       LOG_SECURITY("2e7d4", WARN, Logger::AUTHENTICATION,
-                   Security::Authentication | Security::Violations)
+                   LogSecurity::Authentication | LogSecurity::Violations)
           << msg << ", login attempt rejected, client="
           << _request->connectionInfo().fullClient();
     } else {

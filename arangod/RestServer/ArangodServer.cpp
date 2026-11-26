@@ -27,8 +27,10 @@
 #include <type_traits>
 
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RestServer/FedRAMPHigh.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 
 // The list of includes for the features is defined in the following file -
@@ -70,10 +72,94 @@ void applyAgencyRocksDBMemoryLimits(
         rocksdbOptions.totalWriteBufferSize, uint64_t{512} << 20);  // 512 MiB
   }
 }
+
+void assertNoTLSWithFips(
+    [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
+    [[maybe_unused]] SslServerOptions const& sslServerOptions) {
+#ifdef USE_ENTERPRISE
+  if (fipsOptions.enableFips) {
+    bool const tlsRequested = sslServerOptions.cafile.has_value() ||
+                              sslServerOptions.keyfile.has_value();
+    if (tlsRequested) {
+      LOG_TOPIC("dfe35", FATAL, Logger::STARTUP)
+          << "--server.fips-enable was provided. "
+          << "Please remove everything related to TLS/SSL.";
+      FATAL_ERROR_EXIT();
+    }
+  }
+#endif  // USE_ENTERPRISE
+}
+
 }  // namespace
+
+namespace {
+/// @brief detects FedRAMP High mode from the environment, and aborts the
+/// startup if the environment variable has an invalid value.
+bool detectFedRAMPHigh() {
+  std::string value;
+  std::optional<std::string_view> envValue;
+  if (TRI_GETENV(kFedRAMPHighEnvVar, value)) {
+    envValue = value;
+  }
+  switch (parseFedRAMPHighSetting(envValue)) {
+    case FedRAMPHighSetting::kOff:
+      return false;
+    case FedRAMPHighSetting::kOn:
+      return true;
+    case FedRAMPHighSetting::kInvalid:
+      break;
+  }
+  LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP)
+      << "invalid value '" << value << "' for environment variable '"
+      << kFedRAMPHighEnvVar << "'. allowed values are 'on' and 'off'";
+  FATAL_ERROR_EXIT();
+}
+}  // namespace
+
+ArangodServer::ArangodServer(
+    std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
+    std::string binaryName, int* ret,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    : OptionProvidingServer<ArangodOptionProviders>(options, binaryPath,
+                                                    std::move(binaryName), ret),
+      _fedRAMPHigh(detectFedRAMPHigh()),
+      _dumpManager(dumpManager),
+      _dataSourceRegistry(dataSourceRegistry) {
+  if (_fedRAMPHigh) {
+    // options are declared after construction, so this is the place to change
+    // their defaults. they are checked in processFedRAMPHighOptions().
+    applyFedRAMPHighLoggerDefaults(mutableOptions<LoggerOptionsProvider>());
+    // in FedRAMP High mode, security events must always be logged. turn this
+    // on right away, so that it already applies to security events logged
+    // during startup, before the options are processed.
+    Logger::setAlwaysLogSecurityEvents(true);
+  }
+}
+
+void ArangodServer::processFedRAMPHighOptions() {
+  if (!_fedRAMPHigh) {
+    return;
+  }
+
+  LOG_TOPIC("7eed3", INFO, Logger::STARTUP)
+      << "FedRAMP High mode is enabled (environment variable '"
+      << kFedRAMPHighEnvVar << "' is set to 'on')";
+
+  if (auto result =
+          checkFedRAMPHighLoggerOptions(getOptions<LoggerOptionsProvider>());
+      result.fail()) {
+    LOG_TOPIC("74d25", FATAL, Logger::STARTUP) << result.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+}
 
 void ArangodServer::processOptions() {
   OptionProvidingServer<ArangodOptionProviders>::processOptions();
+
+  // must run after the OptionProvidingServer::processOptions() call above,
+  // so that the final values of the options are checked.
+  processFedRAMPHighOptions();
 
 #ifdef ARANGODB_HAVE_FORK
   if (getOptions<SupervisorOptionsProvider>().supervisor) {
@@ -128,6 +214,10 @@ void ArangodServer::processOptions() {
         options()->processingResult(),
         mutableOptions<RocksDBOptionFeatureOptionsProvider>());
   }
+
+  auto const& fipsOptions = getOptions<FipsFeatureOptionsProvider>();
+  auto const& sslServerOption = getOptions<SslServerOptionsProvider>();
+  assertNoTLSWithFips(fipsOptions, sslServerOption);
 }
 
 void ArangodServer::validateOptions() {

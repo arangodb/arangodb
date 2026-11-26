@@ -44,5 +44,6 @@ target_sources(arango_aql PRIVATE
   UpdateNode.cpp
   UpdateReplaceNode.cpp
   UpsertNode.cpp
+  WindowBounds.cpp
   WindowNode.cpp
 )

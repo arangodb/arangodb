@@ -65,8 +65,8 @@
       << ::arangodb::Logger::LOGID((id))
 
 /// @brief internal helper: logs a message for a topic given that a condition
-/// is true. `security` is a `std::optional<::arangodb::Security>`, which marks
-/// the log message as a security event of a specific category (or
+/// is true. `security` is a `std::optional<::arangodb::LogSecurity>`, which
+/// marks the log message as a security event of a specific category (or
 /// `std::nullopt` if it is not a security event). if
 /// Logger::alwaysLogSecurityEvents() is set (FedRAMP High mode), security
 /// events are logged regardless of the configured log levels.
@@ -104,7 +104,7 @@
 
 /// @brief logs a message for a topic given that a condition is true, and
 /// marks it as a security event. `security` is a value of the
-/// `::arangodb::Security` enum (possibly several categories OR-ed together).
+/// `::arangodb::LogSecurity` enum (possibly several categories OR-ed together).
 /// all other logging macros delegate to this one.
 /// note: `security` (and `topic`) may be evaluated more than once, so they
 /// must not have side effects. if computing `security` has side effects or
