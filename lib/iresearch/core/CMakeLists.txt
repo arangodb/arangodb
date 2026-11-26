@@ -151,7 +151,6 @@ set(IResearch_core_sources
   ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
-  ./utils/ctr_encryption.cpp
   ./utils/compression.cpp
   ./utils/delta_compression.cpp
   ./utils/lz4compression.cpp
