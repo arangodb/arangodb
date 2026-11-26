@@ -87,7 +87,7 @@ void logAuthenticationFailure(GeneralRequest const& req,
                               AuthenticationMethod method,
                               std::string_view reason) {
   LOG_SECURITY_IF("77749", DEBUG, Logger::AUTHENTICATION,
-                  Security::Authentication | Security::Violations,
+                  LogSecurity::Authentication | LogSecurity::Violations,
                   shouldLogSecurityEvents())
       << "authentication failed: reason='" << reason
       << "', method=" << authenticationMethodName(method) << ", user='"
@@ -976,7 +976,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
     // cluster-internal superuser JWT (which carries no user name and is
     // marked with superuser=true).
     LOG_SECURITY_IF("3669b", TRACE, Logger::AUTHENTICATION,
-                    Security::Authentication, shouldLogSecurityEvents())
+                    LogSecurity::Authentication, shouldLogSecurityEvents())
         << "authentication succeeded: method="
         << authenticationMethodName(authMethod) << ", user='" << req.user()
         << "', superuser=" << (req.user().empty() ? "true" : "false")

@@ -156,13 +156,13 @@ bool ExecContext::isSecurityRelevant() const noexcept {
          ServerState::instance()->isSingleServerOrCoordinator();
 }
 
-std::optional<Security> ExecContext::authorizationSecurityCategory(
+std::optional<LogSecurity> ExecContext::authorizationSecurityCategory(
     bool granted) const noexcept {
   if (!isSecurityRelevant()) {
     return std::nullopt;
   }
-  return granted ? Security::AccessControl
-                 : Security::AccessControl | Security::Violations;
+  return granted ? LogSecurity::AccessControl
+                 : LogSecurity::AccessControl | LogSecurity::Violations;
 }
 
 std::string ExecContext::authorizationMessage(

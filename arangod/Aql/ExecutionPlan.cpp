@@ -2628,6 +2628,10 @@ void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
   }
+  bool const wasValid = _planValid;
+  // The counts are inconsistent during a walk, so if it throws
+  // ~ExecutionPlan must skip its count check.
+  _planValid = false;
 
   // reset all counters
   for (auto& counter : _typeCounts) {
@@ -2638,6 +2642,7 @@ void ExecutionPlan::findVarUsage() {
   VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
 
+  _planValid = wasValid;
   setVarUsageComputed();
 }
 

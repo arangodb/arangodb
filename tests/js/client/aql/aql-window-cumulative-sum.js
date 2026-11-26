@@ -80,6 +80,14 @@ FOR i IN @from .. @to
     sizes.forEach((size) => sizedCumulativeSumTest(size, 42, preceding, following));
   };
 
+  // Window kinds that use different executors / code paths.
+  const windowKinds = [
+    "{preceding: 1, following: 1}",              // row-based
+    "{preceding: 10, following: 10}",            // row-based, wider
+    "value WITH {preceding: 1, following: 1}",   // range-based
+    "{preceding: 'unbounded', following: 1}",    // WindowExecutor, keeps all rows
+  ];
+
   return {
     testResultsPreceding0Following0 : function () {
       cumulativeSumTests(0, 0);
@@ -443,7 +451,41 @@ FOR i IN 1..10
             assertEqual(Math.min(index + from + 10, size + from), value.max, value);
           });
         });
-      });   
+      });
+    },
+
+    testCollectCountAfterWindow : function () {
+      // 2500 rows span several input blocks
+      [10, 2500].forEach((size) => {
+        windowKinds.forEach((kind) => {
+          const query = `
+            FOR i IN 1..@size
+              LET value = NOOPT(i)
+              WINDOW ${kind} AGGREGATE sum = SUM(value)
+              COLLECT WITH COUNT INTO n
+              RETURN n`;
+          assertEqual([size], db._query(query, { size }).toArray(), { kind, size });
+        });
+      });
+    },
+
+    testLimitOffsetAfterWindow : function () {
+      const size = 2500;
+      windowKinds.forEach((kind) => {
+        const base = `
+          FOR i IN 1..@size
+            LET value = NOOPT(i)
+            WINDOW ${kind} AGGREGATE sum = SUM(value)`;
+        const all = db._query(`${base} RETURN sum`, { size }).toArray();
+
+        [[2, 3], [999, 5], [1500, 10]].forEach(([offset, limit]) => {
+          const cursor = db._query(`${base} LIMIT @offset, @limit RETURN sum`,
+                                   { size, offset, limit }, { fullCount: true });
+          assertEqual(all.slice(offset, offset + limit), cursor.toArray(),
+                      { kind, offset, limit });
+          assertEqual(size, cursor.getExtra().stats.fullCount, { kind, offset, limit });
+        });
+      });
     },
   };
 }
