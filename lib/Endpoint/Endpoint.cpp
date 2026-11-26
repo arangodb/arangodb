@@ -163,6 +163,11 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
 }
 
+bool Endpoint::hasSslPrefix(std::string const& endpoint) {
+  auto const unified = unifiedForm(endpoint);
+  return unified.starts_with("http+ssl://");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////

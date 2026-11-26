@@ -41,21 +41,19 @@ class Endpoint {
  public:
   virtual ~Endpoint() = default;
 
- public:
   static std::string uriForm(std::string const&);
   static std::string unifiedForm(std::string const&);
+  static bool hasSslPrefix(std::string const& endpoint);
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
   static Endpoint* factory(EndpointType type, std::string const&, int, bool);
   static std::string defaultEndpoint();
 
- public:
   bool operator==(Endpoint const&) const;
   EndpointType type() const { return _type; }
   EncryptionType encryption() const { return _encryption; }
   std::string specification() const { return _specification; }
 
- public:
   virtual TRI_socket_t connect(double, double) = 0;
   virtual void disconnect() = 0;
 
@@ -72,7 +70,6 @@ class Endpoint {
 
   int listenBacklog() const { return _listenBacklog; }
 
- public:
   std::string _errorMessage;
 
  protected:
