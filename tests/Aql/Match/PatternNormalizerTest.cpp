@@ -392,14 +392,37 @@ TEST_F(PatternNormalizerTest, boundedRange) {
   EXPECT_EQ(5U, range.maxDepth());
 }
 
-TEST_F(PatternNormalizerTest, explicitFixedRangeIsNotDefault) {
+TEST_F(PatternNormalizerTest, zeroLowerBoundIsRejected) {
+  for (std::string_view query : {
+           "MATCH (v :vc) -[ e :ec * 0..0 ]-> (w :vc) RETURN 1",
+           "MATCH (v :vc) -[ e :ec * 0..1 ]-> (w :vc) RETURN 1",
+           "MATCH (v :vc) -[ e :ec * 0..2 ]-> (w :vc) RETURN 1",
+       }) {
+    auto parsed = parseMatch(query);
+    optimizeAst(parsed);
+    try {
+      (void)normalize(parsed);
+      FAIL() << "expected a parse error for query: " << query;
+    } catch (basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_QUERY_PARSE, ex.code()) << query;
+      EXPECT_EQ("zero-hop variable-length relationships are not supported",
+                ex.message())
+          << query;
+    }
+  }
+}
+
+TEST_F(PatternNormalizerTest, explicitOneToOneIsDefaultFixedOne) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec * 1..1 ]-> (w :vc) RETURN 1");
   auto statement = normalize(parsed);
   auto const& range = statement.patterns.front().segments.front().edge.range;
-  EXPECT_FALSE(range.isDefaultFixedOne());
+  EXPECT_TRUE(range.isDefaultFixedOne());
   EXPECT_TRUE(range.isFixedOne());
-  EXPECT_EQ(PathRange::Kind::kBounded, range.kind());
+  EXPECT_EQ(PathRange::Kind::kDefaultFixedOne, range.kind());
+  EXPECT_EQ(1U, range.minDepth());
+  ASSERT_TRUE(range.hasMaxDepth());
+  EXPECT_EQ(1U, range.maxDepth());
 }
 
 TEST_F(PatternNormalizerTest, unboundedRangeSemanticType) {
