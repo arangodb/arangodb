@@ -119,21 +119,6 @@ class CapturingLogAppender final : public LogAppender {
   std::vector<std::string> _messages;
 };
 
-/// @brief restarts the logger with the given output format. output format
-/// settings can only be changed while logging is inactive, and shutting
-/// down the logger removes all appenders, so they have to be re-added. this
-/// mirrors the logger setup in tests/main.cpp.
-void restartLogger(bool useJson,
-                   std::shared_ptr<LogAppender> const& captureAppender) {
-  Logger::shutdown();
-  Logger::setUseJson(useJson);
-  Logger::initialize(false, 10000);
-  Logger::addAppender(Logger::defaultLogGroup(), "-");
-  if (captureAppender != nullptr) {
-    Logger::addGlobalAppender(Logger::defaultLogGroup(), captureAppender);
-  }
-}
-
 // the classifiers are an external contract (ADR LOG-001), on which
 // downstream log processing relies, so they are spelled out literally here.
 constexpr std::array<std::pair<LogSecurity, std::string_view>, 12>
@@ -637,6 +622,31 @@ TEST(LogThreadTest, only_urgent_or_forced_messages_exceed_queue_limit) {
   }
 }
 
+// the LogThread used here is never started, so that its queue is not drained.
+// destroying a LogThread deactivates the logger, so the logger is shut down
+// during the test, and restarted afterwards.
+class LogThreadQueueTest : public ::testing::Test {
+ protected:
+  LogThreadQueueTest() { Logger::shutdown(); }
+  ~LogThreadQueueTest() { tests::restartLogger(/*useJson*/ false, nullptr); }
+};
+
+TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
+  LogThread thread("test-log-thread", /*maxQueuedLogMessages*/ 2);
+  auto log = [&thread](bool forceOutput) {
+    auto message = std::make_unique<LogMessage>(
+        "f", "file", 1, LogLevel::INFO, 0, "msg", 0, false, forceOutput);
+    return thread.log(Logger::defaultLogGroup(), message);
+  };
+
+  EXPECT_TRUE(log(/*forceOutput*/ false));
+  // the queue is full now
+  EXPECT_FALSE(log(/*forceOutput*/ false));
+  EXPECT_TRUE(log(/*forceOutput*/ true));
+  EXPECT_TRUE(log(/*forceOutput*/ true));
+  EXPECT_FALSE(log(/*forceOutput*/ false));
+}
+
 #ifdef ARANGODB_ENABLE_SYSLOG
 TEST(LogAppenderSyslogTest, priority_follows_log_level) {
   auto priorityOf = [](LogLevel level) {
@@ -691,7 +701,7 @@ class LoggerSecurityTest : public ::testing::Test {
 
   ~LoggerSecurityTest() {
     // restore the default test logger setup
-    restartLogger(/*useJson*/ false, nullptr);
+    tests::restartLogger(/*useJson*/ false, nullptr);
     Logger::FIXME.setLogLevel(_oldTopicLevel);
   }
 
@@ -699,7 +709,7 @@ class LoggerSecurityTest : public ::testing::Test {
   // so the level of the topic used in the tests is set afterwards.
   // messages at INFO pass the topic level, those at DEBUG do not.
   void startCapturing(bool useJson) {
-    restartLogger(useJson, appender);
+    tests::restartLogger(useJson, appender);
     Logger::FIXME.setLogLevel(LogLevel::INFO);
   }
 

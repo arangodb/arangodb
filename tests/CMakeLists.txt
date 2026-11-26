@@ -263,6 +263,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
   RestServer/FlushFeatureTest.cpp
+  RestServer/LogBufferFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   RestServer/ArangodServerFedRAMPTest.cpp
   Restore/CollectionRestoreOrder.cpp
