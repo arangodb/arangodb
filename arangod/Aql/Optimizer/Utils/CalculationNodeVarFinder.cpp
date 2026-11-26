@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/CalculationNodeVarFinder.h"
+#include "Aql/Optimizer/Utils/CalculationNodeVarFinder.h"
 
 namespace arangodb::aql {
 

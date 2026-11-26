@@ -23,7 +23,7 @@
 #include "LateDocumentMaterializationArangoSearch.h"
 
 #include "Aql/Ast.h"
-#include "Aql/CalculationNodeVarFinder.h"
+#include "Aql/Optimizer/Utils/CalculationNodeVarFinder.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
