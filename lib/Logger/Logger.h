@@ -350,7 +350,8 @@ class Logger {
 
   /// @brief if set, all log messages with a security category are logged,
   /// regardless of the configured log levels (of topics and appenders).
-  /// this is turned on in FedRAMP High mode (see ServerSecurityFeature).
+  /// this is controlled by the option `--log.always-log-security-messages`,
+  /// which is forced to true in FedRAMP High mode (see ArangodServer).
   static void setAlwaysLogSecurityEvents(bool value) noexcept {
     _alwaysLogSecurityEvents.store(value, std::memory_order_relaxed);
   }

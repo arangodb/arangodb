@@ -467,11 +467,35 @@ full, log entries are written synchronously until the queue has space again.)");
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&options.logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  opts->addOption(
+          "--log.always-log-security-messages",
+          "Always log security events, regardless of the configured log "
+          "levels.",
+          new BooleanParameter(&options.alwaysLogSecurityMessages),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAll,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(40000)
+      .setLongDescription(R"(Log messages can be marked as security events of
+one or more categories (e.g. authentication, access control, account
+management). Such messages carry the corresponding classifiers, e.g.
+`arango-security-event-authentication`, in their output.
+
+If you set this option to `true`, security events are logged regardless of the
+log level configured for their log topic and regardless of the log levels of
+the log outputs.
+
+In FedRAMP High mode (enabled by setting the environment variable `FedRAMPHigh`
+to a non-empty value), this option defaults to `true` and cannot be turned off:
+the server refuses to start if it is explicitly set to `false`.)");
 }
 
 void LoggerOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> /*progOpts*/, LoggerOptions& options) {
   Logger::setLogLevel(options.levels);
+  Logger::setAlwaysLogSecurityEvents(options.alwaysLogSecurityMessages);
 }
 
 void LoggerOptionsProvider::validateOptionsImpl(
