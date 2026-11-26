@@ -31,6 +31,7 @@ using std::unordered_map;
 
 #include <vector>
 #include <climits>
+#include <chrono>
 
 namespace fst {
 
@@ -157,7 +158,6 @@ template<class Label, class StringId> class StringRepository {
   std::vector<std::vector<Label>* > vec_;
   MapType map_;
 };
-
 template<class F> class DeterminizerStar {
   typedef typename F::Arc Arc;
  public:
@@ -176,7 +176,8 @@ template<class F> class DeterminizerStar {
   // Initializer.  After initializing the object you will typically call
   // Determinize() and then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
-                   int max_states = -1, bool allow_partial = false)
+                   int max_states = -1, bool allow_partial = false,
+                   const std::function<bool(void)>& isQueryKilled = []() { return false; })
     : ifst_(ifst.Copy()),
       delta_(delta),
       max_states_(max_states),
@@ -187,7 +188,8 @@ template<class F> class DeterminizerStar {
               down_cast<const ExpandedFst<Arc>*,
               const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
             SubsetKey(), SubsetEqual(delta_)),
-      epsilon_closure_(ifst_, max_states, &repository_, delta) {
+      isQueryKilled_(isQueryKilled),
+      epsilon_closure_(ifst_, max_states, &repository_, delta, isQueryKilled) {
   }
 
   void Determinize(bool *debug_ptr) {
@@ -206,6 +208,10 @@ template<class F> class DeterminizerStar {
     }
     closed_subset_.clear();
     while (!Q_.empty()) {
+      if (isQueryKilled_()) {
+        is_partial_ = true;
+        break;
+      }
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
       ProcessSubset(cur_pair);
@@ -228,6 +234,8 @@ template<class F> class DeterminizerStar {
   bool IsPartial() {
     return is_partial_;
   }
+
+  bool TimedOut() { return isQueryKilled_(); }
 
   // frees all except output_arcs_, which contains the important info
   // we need to output.
@@ -380,12 +388,14 @@ template<class F> class DeterminizerStar {
   class EpsilonClosure {
    public:
     EpsilonClosure(const Fst<Arc> *ifst, int max_states,
-        StringRepository<Label, StringId> *repository, float delta):
+        StringRepository<Label, StringId> *repository, float delta,
+        const std::function<bool(void)>& isQueryKilled = []() { return false; }):
       ifst_(ifst),
       max_states_(max_states),
       repository_(repository),
       delta_(delta),
-      sorted_(ifst->Properties(kILabelSorted, false) & kILabelSorted) {
+      sorted_(ifst->Properties(kILabelSorted, false) & kILabelSorted),
+      isQueryKilled_(isQueryKilled) {
     }
 
     bool FstSorted() const noexcept {
@@ -465,6 +475,7 @@ template<class F> class DeterminizerStar {
     StringRepository<Label, StringId> *repository_;
     float delta_;
     bool sorted_;
+    const std::function<bool(void)>& isQueryKilled_;
   };
 
 
@@ -685,18 +696,31 @@ template<class F> class DeterminizerStar {
 
   StringRepository<Label, StringId> repository_;  // associate integer id's with sequences of labels.
   EpsilonClosure epsilon_closure_;
+  const std::function<bool(void)>& isQueryKilled_;
 };
 
 
 template<class F>
 bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta, bool *debug_ptr, int max_states,
-                     bool allow_partial) {
+                     bool allow_partial, const std::function<bool(void)>& isQueryKilled,
+                     bool* timed_out) {
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial, isQueryKilled);
   det.Determinize(debug_ptr);
-  det.Output(ofst);
+  const bool did_time_out = det.TimedOut();
+
+  if (timed_out != nullptr) {
+    *timed_out = did_time_out;
+  }
+
+  // A timed-out determinization has no usable acceptor.
+  // Skip materializing it.
+  if (!did_time_out) {
+    det.Output(ofst);
+  }
+
   return det.IsPartial();
 }
 
@@ -704,13 +728,25 @@ bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
 template<class F>
 bool DeterminizeStar(F &ifst,
                      MutableFst<GallicArc<typename F::Arc> > *ofst, float delta,
-                     bool *debug_ptr, int max_states,
-                     bool allow_partial) {
+                     bool *debug_ptr, int max_states, bool allow_partial,
+                     const std::function<bool(void)>& isQueryKilled,
+                     bool* timed_out) {
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial, isQueryKilled);
   det.Determinize(debug_ptr);
-  det.Output(ofst);
+  const bool did_time_out = det.TimedOut();
+
+  if (timed_out != nullptr) {
+    *timed_out = did_time_out;
+  }
+
+  // A timed-out determinization has no usable acceptor.
+  // Skip materializing it.
+  if (!did_time_out) {
+    det.Output(ofst);
+  }
+
   return det.IsPartial();
 }
 
@@ -776,6 +812,10 @@ void DeterminizerStar<F>::EpsilonClosure::GetEpsilonClosure(
     if (max_states_ > 0 && counter++ > max_states_) {
       KALDI_ERR << "Determinization aborted since looped more than "
                 << max_states_ << " times during epsilon closure";
+    }
+    if ((counter % 1024) == 0 && isQueryKilled_()) {
+      KALDI_ERR << "Determinization exceeded the time budget";
+      return;
     }
 
     // generally we need to be careful about iterator-invalidation problem
