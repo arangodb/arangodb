@@ -16,6 +16,7 @@
       - version
       - shell_client_large
       - legacy
+      - shell_v8
 
 # Single Server Replication Tests
 - replication_shell:
@@ -378,6 +379,18 @@
           args:
             protocol: ssl
             suffix: ssl
+
+# the single server run is part of shell_api_multi_permissions;
+# each testfile starts its own cluster, so give it a separate job
+- server_permissions:
+    options:
+      priority: 1000
+      parallelity: 5
+      size: medium
+      buckets: 4
+      type: cluster
+    args:
+      dumpAgencyOnError: true
 
 # shell_client_multi tests run quite long, so want to have a
 # separate job for each protocol
