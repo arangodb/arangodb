@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* A MATCH edge with * 1..1 (e.g. -[e:knows * 1..1]-) is now treated as a single edge 
+ The edge variable holds the edge document, path variables contain one edge and one vertex, and undirected self-loops are matched only once. Previously, it was treated as a variable-length traversal, causing the edge variable to hold a path object and undirected self-loops to be matched twice.
+
 * COR-1016: Added query time budgeting to NFA to DFA pattern determinization.
 
 * COR-1234: Reject a MATCH variable-length relationship whose lower bound is
