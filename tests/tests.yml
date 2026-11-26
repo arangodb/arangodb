@@ -16,6 +16,7 @@
       - version
       - shell_client_large
       - legacy
+      - shell_v8
 
 # Single Server Replication Tests
 - replication_shell:
@@ -385,8 +386,8 @@
     options:
       priority: 1000
       parallelity: 5
-      size: small
-      buckets: 2
+      size: medium
+      buckets: 4
       type: cluster
     args:
       dumpAgencyOnError: true
