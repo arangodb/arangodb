@@ -819,9 +819,11 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   // events, regardless of any other log output options, so that security
   // events can be reliably identified by downstream log processing.
   if (security.has_value()) {
-    out.append(",\"security\":");
-    // value of the classifier is always safe to print
-    dumper.appendString(securityClassifier(*security));
+    // the classifier only consists of lowercase letters, dashes and commas,
+    // so it can be appended directly without JSON escaping
+    out.append(",\"security\":\"");
+    appendSecurityClassifier(out, *security);
+    out.push_back('"');
   }
 
   // the logid
@@ -971,7 +973,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   // the in-memory log buffer and in syslog output.
   if (security.has_value()) {
     out.push_back('[');
-    out.append(securityClassifier(*security));
+    appendSecurityClassifier(out, *security);
     out.append("] ");
   }
 

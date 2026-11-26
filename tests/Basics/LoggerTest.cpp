@@ -128,6 +128,12 @@ constexpr std::array kAllSecurityCategories = {
     LogSecurity::SystemErrors,
 };
 
+std::string classifierOf(LogSecurity security) {
+  std::string result;
+  appendSecurityClassifier(result, security);
+  return result;
+}
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -492,9 +498,9 @@ class LoggerSecurityTest : public ::testing::Test {
 };
 
 TEST_F(LoggerSecurityTest, classifiers_are_distinct_and_canonical) {
-  std::set<std::string_view> seen;
+  std::set<std::string> seen;
   for (auto s : kAllSecurityCategories) {
-    auto classifier = securityClassifier(s);
+    auto classifier = classifierOf(s);
     EXPECT_TRUE(classifier.starts_with("arango-security-event-")) << classifier;
     EXPECT_TRUE(seen.insert(classifier).second) << classifier;
   }
@@ -512,13 +518,9 @@ TEST_F(LoggerSecurityTest, categories_are_distinct_single_bits) {
 
 TEST_F(LoggerSecurityTest, single_category_classifiers) {
   for (auto s : kAllSecurityCategories) {
-    auto classifier = securityClassifier(s);
+    auto classifier = classifierOf(s);
     EXPECT_FALSE(classifier.empty());
-    // single categories are served from static storage, i.e. repeated
-    // lookups return the very same characters
-    EXPECT_EQ(securityClassifier(s).data(), classifier.data());
-    EXPECT_EQ(classifier.find(kSecurityClassifierSeparator),
-              std::string_view::npos);
+    EXPECT_EQ(classifier.find(kSecurityClassifierSeparator), std::string::npos);
     std::ostringstream os;
     os << s;
     EXPECT_EQ(os.str(), classifier);
@@ -534,13 +536,10 @@ TEST_F(LoggerSecurityTest, two_category_classifiers) {
   std::string_view expected =
       "arango-security-event-authentication,"
       "arango-security-event-session-management";
-  auto classifier = securityClassifier(s);
-  EXPECT_EQ(classifier, expected);
-  // the same combination in a different OR order is the same cache entry,
-  // and the cached characters never move
-  auto again = securityClassifier(LogSecurity::Authentication |
-                                  LogSecurity::SessionManagement);
-  EXPECT_EQ(again.data(), classifier.data());
+  EXPECT_EQ(classifierOf(s), expected);
+  EXPECT_EQ(classifierOf(LogSecurity::Authentication |
+                         LogSecurity::SessionManagement),
+            expected);
   std::ostringstream os;
   os << s;
   EXPECT_EQ(os.str(), expected);
@@ -554,9 +553,12 @@ TEST_F(LoggerSecurityTest, all_category_classifiers) {
     if (!expected.empty()) {
       expected += kSecurityClassifierSeparator;
     }
-    expected += securityClassifier(s);
+    expected += classifierOf(s);
   }
-  EXPECT_EQ(securityClassifier(all), expected);
+  EXPECT_EQ(classifierOf(all), expected);
+  std::ostringstream os;
+  os << all;
+  EXPECT_EQ(os.str(), expected);
 }
 
 TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
@@ -574,12 +576,16 @@ TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
 }
 
 TEST_F(LoggerSecurityTest, empty_and_unknown_bits) {
-  EXPECT_TRUE(securityClassifier(static_cast<LogSecurity>(0)).empty());
+  EXPECT_TRUE(classifierOf(static_cast<LogSecurity>(0)).empty());
   // bits above the known categories are ignored
-  EXPECT_TRUE(securityClassifier(static_cast<LogSecurity>(1u << 15)).empty());
-  EXPECT_EQ(securityClassifier(LogSecurity::DataAccess |
-                               static_cast<LogSecurity>(1u << 15)),
-            securityClassifier(LogSecurity::DataAccess));
+  EXPECT_TRUE(classifierOf(static_cast<LogSecurity>(1u << 15)).empty());
+  EXPECT_EQ(classifierOf(LogSecurity::DataAccess |
+                         static_cast<LogSecurity>(1u << 15)),
+            classifierOf(LogSecurity::DataAccess));
+  // appending does not touch existing content
+  std::string out = "prefix:";
+  appendSecurityClassifier(out, LogSecurity::Violations);
+  EXPECT_EQ(out, "prefix:arango-security-event-violations");
 }
 
 TEST_F(LoggerSecurityTest, is_valid_security) {
@@ -592,59 +598,6 @@ TEST_F(LoggerSecurityTest, is_valid_security) {
   EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 15)));
   EXPECT_FALSE(isValidSecurity(LogSecurity::DataAccess |
                                static_cast<LogSecurity>(1u << 15)));
-}
-
-TEST_F(LoggerSecurityTest, combination_cache_is_stable_under_growth) {
-  // populate the cache with many combinations (forcing rehashes) and check
-  // that string_views handed out earlier are still valid and unchanged
-  auto first =
-      securityClassifier(LogSecurity::ApiCalls | LogSecurity::Violations);
-  std::string firstCopy(first);
-  std::vector<std::string_view> views;
-  for (std::uint16_t bits = 3; bits < (1u << 12); ++bits) {
-    if (!std::has_single_bit(bits)) {
-      views.push_back(securityClassifier(static_cast<LogSecurity>(bits)));
-    }
-  }
-  EXPECT_EQ(first, firstCopy);
-  EXPECT_EQ(securityClassifier(LogSecurity::ApiCalls | LogSecurity::Violations)
-                .data(),
-            first.data());
-  size_t i = 0;
-  for (std::uint16_t bits = 3; bits < (1u << 12); ++bits) {
-    if (!std::has_single_bit(bits)) {
-      EXPECT_EQ(securityClassifier(static_cast<LogSecurity>(bits)).data(),
-                views[i].data());
-      ++i;
-    }
-  }
-}
-
-TEST_F(LoggerSecurityTest, combination_cache_is_thread_safe) {
-  constexpr std::uint16_t kCombinations = 64;
-  std::vector<std::thread> threads;
-  std::vector<std::vector<std::string_view>> results(8);
-  for (auto& result : results) {
-    threads.emplace_back([&result] {
-      for (std::uint16_t i = 0; i < kCombinations; ++i) {
-        // two bits each: bit 11 plus a varying lower part
-        auto bits = static_cast<std::uint16_t>((1u << 11) | (i + 1));
-        result.push_back(securityClassifier(static_cast<LogSecurity>(bits)));
-      }
-    });
-  }
-  for (auto& t : threads) {
-    t.join();
-  }
-  for (auto const& result : results) {
-    ASSERT_EQ(result.size(), kCombinations);
-    for (std::uint16_t i = 0; i < kCombinations; ++i) {
-      // all threads must observe the very same cached string
-      EXPECT_EQ(result[i].data(), results[0][i].data());
-      EXPECT_TRUE(result[i].ends_with("arango-security-event-system-errors"))
-          << result[i];
-    }
-  }
 }
 
 TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
@@ -748,7 +701,7 @@ TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
     auto messages = collect();
     ASSERT_EQ(messages.size(), kAllSecurityCategories.size());
     for (size_t i = 0; i < messages.size(); ++i) {
-      EXPECT_NE(messages[i].find(securityClassifier(kAllSecurityCategories[i])),
+      EXPECT_NE(messages[i].find(classifierOf(kAllSecurityCategories[i])),
                 std::string::npos)
           << "json: " << useJson << ", message: " << messages[i];
     }

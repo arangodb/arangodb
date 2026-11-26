@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -83,26 +84,17 @@ constexpr bool isValidSecurity(LogSecurity security) noexcept {
 /// belongs to more than one category.
 inline constexpr std::string_view kSecurityClassifierSeparator = ",";
 
-/// @brief returns the classifier of `security`, e.g.
+/// @brief appends the classifier of `security` to `out`, e.g.
 /// "arango-security-event-authentication" for a single category, or
 /// "arango-security-event-authentication,arango-security-event-session-management"
 /// for a combination of categories. Multiple classifiers are ordered by bit
 /// position (not by the order of OR-ing) and separated by
 /// kSecurityClassifierSeparator. Unknown bits are ignored; if no known bit is
-/// set, an empty string_view is returned.
-///
-/// The returned string_view stays valid for the lifetime of the process, so
-/// it can be stored and used without copying:
-/// - a single category (by far the most common case) is a lock-free lookup
-///   of a compile-time static literal.
-/// - a combination of categories is computed lazily on first use, under a
-///   write lock, and then cached forever in a process-global table which never
-///   frees or moves its strings. Subsequent lookups of the same combination
-///   only take a read lock. Since there are at most 2^12 combinations (and
-///   in practice only a handful are used), the cache is bounded.
-/// Thread-safe.
-std::string_view securityClassifier(LogSecurity security);
+/// set, nothing is appended.
+void appendSecurityClassifier(std::string& out, LogSecurity security);
 
+/// @brief writes the classifier of `security` to `out`, in the same format
+/// as appendSecurityClassifier().
 std::ostream& operator<<(std::ostream& out, LogSecurity security);
 
 }  // namespace arangodb
