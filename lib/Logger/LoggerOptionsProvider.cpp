@@ -487,8 +487,8 @@ If you set this option to `true`, security events are logged regardless of the
 log level configured for their log topic and regardless of the log levels of
 the log outputs.
 
-In FedRAMP High mode (enabled by setting the environment variable `FedRAMPHigh`
-to a non-empty value), this option defaults to `true` and cannot be turned off:
+In FedRAMP High mode (enabled by setting the environment variable
+`FEDRAMP_HIGH` to `on`), this option defaults to `true` and cannot be turned off:
 the server refuses to start if it is explicitly set to `false`.)");
 }
 

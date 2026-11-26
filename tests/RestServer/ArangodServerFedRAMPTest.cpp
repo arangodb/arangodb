@@ -22,7 +22,8 @@
 
 #include "gtest/gtest.h"
 
-#include "GeneralServer/ServerSecurityFeature.h"
+#include "Mocks/Death_Test.h"
+
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ArangodServer.h"
@@ -36,13 +37,12 @@ using namespace arangodb;
 
 namespace {
 
-/// @brief sets (or unsets) the FedRAMPHigh environment variable for the
+/// @brief sets (or unsets) the FEDRAMP_HIGH environment variable for the
 /// lifetime of the object, and restores the previous state afterwards.
 class ScopedFedRAMPHighEnv {
  public:
   explicit ScopedFedRAMPHighEnv(std::optional<std::string> const& value) {
-    if (char const* old =
-            std::getenv(ServerSecurityFeature::kFedRAMPHighEnvVar);
+    if (char const* old = std::getenv(ArangodServer::kFedRAMPHighEnvVar);
         old != nullptr) {
       _old = old;
     }
@@ -53,56 +53,76 @@ class ScopedFedRAMPHighEnv {
  private:
   static void set(std::optional<std::string> const& value) {
     if (value.has_value()) {
-      ::setenv(ServerSecurityFeature::kFedRAMPHighEnvVar, value->c_str(), 1);
+      ::setenv(ArangodServer::kFedRAMPHighEnvVar, value->c_str(), 1);
     } else {
-      ::unsetenv(ServerSecurityFeature::kFedRAMPHighEnvVar);
+      ::unsetenv(ArangodServer::kFedRAMPHighEnvVar);
     }
   }
 
   std::optional<std::string> _old;
 };
 
-bool detectFedRAMPHigh(std::optional<std::string> const& value) {
-  ScopedFedRAMPHighEnv env(value);
-  ArangodServer server(
+/// @brief restores the global "always log security events" flag of the
+/// Logger, which is modified by the ArangodServer constructor in FedRAMP High
+/// mode.
+struct ScopedAlwaysLogSecurityEvents {
+  ScopedAlwaysLogSecurityEvents() : _old(Logger::alwaysLogSecurityEvents()) {}
+  ~ScopedAlwaysLogSecurityEvents() { Logger::setAlwaysLogSecurityEvents(_old); }
+  bool _old;
+};
+
+std::unique_ptr<ArangodServer> makeServer() {
+  return std::make_unique<ArangodServer>(
       std::make_shared<options::ProgramOptions>("arangod", "", "", ""), "",
       "arangod", nullptr, nullptr, nullptr);
-  server.addFeature<ServerSecurityFeature>();
-  return ServerSecurityFeature::isFedRAMPHigh();
+}
+
+bool detectFedRAMPHigh(std::optional<std::string> const& value) {
+  ScopedFedRAMPHighEnv env(value);
+  return makeServer()->isFedRAMPHigh();
 }
 
 }  // namespace
 
-TEST(ServerSecurityFeatureTest, fedramp_high_is_off_if_variable_is_unset) {
+TEST(ArangodServerFedRAMPTest, fedramp_high_is_off_if_variable_is_unset) {
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
 }
 
-TEST(ServerSecurityFeatureTest, fedramp_high_is_off_if_variable_is_empty) {
-  EXPECT_FALSE(detectFedRAMPHigh(""));
+TEST(ArangodServerFedRAMPTest, fedramp_high_is_off_if_variable_is_off) {
+  EXPECT_FALSE(detectFedRAMPHigh("off"));
 }
 
-TEST(ServerSecurityFeatureTest, fedramp_high_is_on_if_variable_is_non_empty) {
-  EXPECT_TRUE(detectFedRAMPHigh("1"));
-  EXPECT_TRUE(detectFedRAMPHigh("true"));
+TEST(ArangodServerFedRAMPTest, fedramp_high_is_on_if_variable_is_on) {
+  ScopedAlwaysLogSecurityEvents guard;
   EXPECT_TRUE(detectFedRAMPHigh("on"));
-  // flag is re-detected on each construction
+  // flag is detected per server instance
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
+  EXPECT_FALSE(detectFedRAMPHigh("off"));
 }
 
-// intentionally, the value of the variable is not interpreted: any
-// non-empty value enables FedRAMP High mode, even values which look like
-// "off". this fails safe, so that the mode cannot be disabled by accident.
-TEST(ServerSecurityFeatureTest,
-     fedramp_high_is_on_even_if_variable_looks_like_false) {
-  for (char const* value : {"0", "false", "FALSE", "no", "off", " "}) {
-    EXPECT_TRUE(detectFedRAMPHigh(value)) << "value: '" << value << "'";
+// any value other than "on" or "off" (including the empty string) is
+// rejected, and the
+// server refuses to start. note: the FATAL log message goes to stdout in the
+// test environment, so we only check that the process dies.
+TEST(ArangodServerFedRAMPTest, fedramp_high_rejects_invalid_values) {
+  for (char const* value : {"", "1", "false", "ON", " on"}) {
+    EXPECT_DEATH_CORE_FREE(detectFedRAMPHigh(value), "")
+        << "value: '" << value << "'";
   }
-  EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
 }
 
-TEST(ServerSecurityFeatureTest, fedramp_high_forces_security_logging) {
-  EXPECT_TRUE(detectFedRAMPHigh("1"));
+// in FedRAMP High mode, security events are logged right from the
+// construction of the server, i.e. before options are processed.
+TEST(ArangodServerFedRAMPTest, fedramp_high_forces_security_logging_early) {
+  ScopedAlwaysLogSecurityEvents guard;
+  Logger::setAlwaysLogSecurityEvents(false);
+  EXPECT_TRUE(detectFedRAMPHigh("on"));
   EXPECT_TRUE(Logger::alwaysLogSecurityEvents());
+}
+
+TEST(ArangodServerFedRAMPTest, no_fedramp_high_keeps_security_logging) {
+  ScopedAlwaysLogSecurityEvents guard;
+  Logger::setAlwaysLogSecurityEvents(false);
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
   EXPECT_FALSE(Logger::alwaysLogSecurityEvents());
 }

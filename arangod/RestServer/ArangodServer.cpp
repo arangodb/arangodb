@@ -75,12 +75,23 @@ void applyAgencyRocksDBMemoryLimits(
 
 namespace {
 /// @brief detects FedRAMP High mode from the environment.
-/// note: any non-empty value enables the mode, regardless of its content
-/// (even "0" or "false"). this is intentional, see
-/// ArangodServer::kFedRAMPHighEnvVar.
+/// the variable ArangodServer::kFedRAMPHighEnvVar may be unset (mode off),
+/// "off" (mode off) or "on" (mode on). any other value, including the empty
+/// string, is rejected and aborts the startup, so that a mistyped value can
+/// never silently leave the mode in an unintended state.
 bool detectFedRAMPHigh() {
   std::string value;
-  return TRI_GETENV(ArangodServer::kFedRAMPHighEnvVar, value) && !value.empty();
+  if (!TRI_GETENV(ArangodServer::kFedRAMPHighEnvVar, value) || value == "off") {
+    return false;
+  }
+  if (value == "on") {
+    return true;
+  }
+  LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP)
+      << "invalid value '" << value << "' for environment variable '"
+      << ArangodServer::kFedRAMPHighEnvVar
+      << "'. allowed values are 'on' and 'off'";
+  FATAL_ERROR_EXIT();
 }
 }  // namespace
 
@@ -113,7 +124,7 @@ void ArangodServer::processFedRAMPHighOptions() {
 
   LOG_TOPIC("7eed3", INFO, Logger::STARTUP)
       << "FedRAMP High mode is enabled (environment variable '"
-      << kFedRAMPHighEnvVar << "' is set)";
+      << kFedRAMPHighEnvVar << "' is set to 'on')";
 
   // security events must always be logged in FedRAMP High mode, so turning
   // this off explicitly is an error.

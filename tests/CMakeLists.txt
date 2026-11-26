@@ -264,7 +264,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestViewHandlerTest.cpp
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
-  RestServer/ServerSecurityFeatureTest.cpp
+  RestServer/ArangodServerFedRAMPTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/ChecksumCalculatorTest.cpp

@@ -39,13 +39,12 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   /// @brief name of the environment variable which enables FedRAMP High
-  /// mode. FedRAMP High mode is enabled if the variable is set to *any*
-  /// non-empty value. This is intentional: the value is not interpreted,
-  /// so e.g. "0", "false" or "no" also enable FedRAMP High mode. This
-  /// fails safe, i.e. a mistyped or unexpected value can never accidentally
-  /// disable the mode. FedRAMP High mode is only off if the variable is
-  /// unset or set to the empty string.
-  static constexpr char const* kFedRAMPHighEnvVar = "FedRAMPHigh";
+  /// mode. FedRAMP High mode is enabled if the variable is set to "on", and
+  /// disabled if it is unset or set to "off". Any other value (including
+  /// the empty string) is rejected and the server refuses to start
+  /// (FATAL_ERROR_EXIT), so that a mistyped or unexpected value can never go
+  /// unnoticed.
+  static constexpr char const* kFedRAMPHighEnvVar = "FEDRAMP_HIGH";
 
   /// @brief whether the server runs in FedRAMP High mode. this is detected
   /// from the environment in the constructor, i.e. before any options are
