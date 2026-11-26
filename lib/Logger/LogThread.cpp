@@ -45,6 +45,24 @@ LogThread::~LogThread() {
   shutdown();
 }
 
+namespace {
+// messages of these levels are flushed right away, and are therefore never
+// held back by a full queue
+bool isDirectLogLevel(LogLevel level) noexcept {
+  return level == LogLevel::FATAL || level == LogLevel::ERR ||
+         level == LogLevel::WARN;
+}
+}  // namespace
+
+bool LogThread::mayExceedQueueLimit(LogMessage const& message) noexcept {
+  // forced messages (security events in FedRAMP High mode) are queued, too,
+  // so that a burst of them does not force the threads emitting them to
+  // write synchronously. the price is that the queue can grow beyond its limit
+  // while such a burst lasts. unlike urgent messages, they do not trigger a
+  // flush, as they are not about a crash.
+  return isDirectLogLevel(message._level) || message.isForcedOutput();
+}
+
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
 
@@ -53,9 +71,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     return true;
   }
 
-  bool isDirectLogLevel =
-      (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
-       message->_level == LogLevel::WARN);
+  bool const flushImmediately = isDirectLogLevel(message->_level);
 
   auto numMessages =
       _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -69,8 +85,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     Logger::onDroppedMessage();
   });
 
-  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel &&
-      !message->isForcedOutput()) {
+  if (numMessages >= _maxQueuedLogMessages && !mayExceedQueueLimit(*message)) {
     // log queue is full, and the message is not important enough
     // to push it anyway. this will execute the rollback.
     return false;
@@ -88,7 +103,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   // otherwise we would leak here
   std::ignore = message.release();
 
-  if (isDirectLogLevel) {
+  if (flushImmediately) {
     this->flush();
   }
   return true;

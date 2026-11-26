@@ -320,7 +320,7 @@ class Logger {
   static void log(std::string_view logid, std::string_view function,
                   std::string_view file, int line, LogLevel level,
                   size_t topicId, std::string_view message,
-                  std::optional<Security> security = std::nullopt);
+                  std::optional<LogSecurity> security = std::nullopt);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -338,19 +338,20 @@ class Logger {
   /// @brief like isEnabled(level, topic), but security events are always
   /// enabled if alwaysLogSecurityEvents() is set.
   static bool isEnabled(LogLevel level, LogTopic const& topic,
-                        std::optional<Security> security) {
+                        std::optional<LogSecurity> security) {
     return isEnabled(level, topic) || forceLogging(security);
   }
 
   /// @brief whether a message with the given security category must be
   /// logged regardless of any configured log levels.
-  static bool forceLogging(std::optional<Security> security) noexcept {
+  static bool forceLogging(std::optional<LogSecurity> security) noexcept {
     return security.has_value() && alwaysLogSecurityEvents();
   }
 
   /// @brief if set, all log messages with a security category are logged,
   /// regardless of the configured log levels (of topics and appenders).
-  /// this is turned on in FedRAMP High mode (see ServerSecurityFeature).
+  /// this is controlled by the option `--log.always-log-security-messages`,
+  /// which is forced to true in FedRAMP High mode (see ArangodServer).
   static void setAlwaysLogSecurityEvents(bool value) noexcept {
     _alwaysLogSecurityEvents.store(value, std::memory_order_relaxed);
   }
@@ -374,14 +375,14 @@ class Logger {
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  std::optional<Security> security,
+                                  std::optional<LogSecurity> security,
                                   std::string_view message, bool& shrunk);
 
   static void buildTextLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,
                                   std::string_view file, int line,
                                   LogLevel level, size_t topicId,
-                                  std::optional<Security> security,
+                                  std::optional<LogSecurity> security,
                                   std::string_view message, uint32_t& offset,
                                   bool& shrunk);
 

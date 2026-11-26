@@ -46,11 +46,18 @@ enum WildcardMatch : uint8_t {
 /// @brief instantiates minimal DFA from a specified UTF-8 encoded wildcard
 ///        sequence
 /// @returns DFA accpeting a specified wildcard expression
+/// @param isQueryKilled callback polled during determinization. If it returns
+///.       true it indicates to abort determinization.
 /// @note control symbols are WildcardMatch
 /// @note non UTF-8 bytes transition instatiated as bytes
 /// @note invalid last escape, instatiate transition as byte
+/// @note determinization is also aborted after a fixed wall-clock budget
+/// @throws irs::query_killed when determinization exceeds that budget or
+///         stop requests cancellation
 ////////////////////////////////////////////////////////////////////////////////
-automaton FromWildcard(bytes_view expr);
+automaton FromWildcard(
+  bytes_view expr,
+  const std::function<bool(void)>& isQueryKilled = []() { return false; });
 
 inline automaton FromWildcard(std::string_view expr) {
   return FromWildcard(ViewCast<byte_type>(expr));

@@ -675,7 +675,7 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
 void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
                  size_t topicId, std::string_view message,
-                 std::optional<Security> security) try {
+                 std::optional<LogSecurity> security) try {
   TRI_ASSERT(!logid.empty());
 
   // we only determine our pid once, as currentProcessId() will
@@ -729,7 +729,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::optional<Security> security,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // construct JSON output
@@ -819,9 +819,11 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   // events, regardless of any other log output options, so that security
   // events can be reliably identified by downstream log processing.
   if (security.has_value()) {
-    out.append(",\"security\":");
-    // value of the classifier is always safe to print
-    dumper.appendString(securityClassifier(*security));
+    // the classifier only consists of lowercase letters, dashes and commas,
+    // so it can be appended directly without JSON escaping
+    out.append(",\"security\":\"");
+    appendSecurityClassifier(out, *security);
+    out.push_back('"');
   }
 
   // the logid
@@ -892,7 +894,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
-                                 std::optional<Security> security,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, uint32_t& offset,
                                  bool& shrunk) {
   LogContext& logContext = LogContext::current();
@@ -971,7 +973,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   // the in-memory log buffer and in syslog output.
   if (security.has_value()) {
     out.push_back('[');
-    out.append(securityClassifier(*security));
+    appendSecurityClassifier(out, *security);
     out.append("] ");
   }
 

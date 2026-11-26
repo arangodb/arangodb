@@ -108,6 +108,29 @@ TEST_F(BuilderTest, simpleVertexEnumeratesCollection) {
   EXPECT_EQ(0U, countNodesOfType(*plan, ExecutionNode::TRAVERSAL));
 }
 
+TEST_F(BuilderTest, explicitOneToOneUsesEnumerateNotTraversal) {
+  auto parsed =
+      parseMatch("MATCH (v :vc) -[ e :ec * 1..1 ]-> (w :vc) RETURN [v, e, w]");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  EXPECT_GE(countNodesOfType(*plan, ExecutionNode::ENUMERATE_COLLECTION), 2U);
+  EXPECT_EQ(0U, countNodesOfType(*plan, ExecutionNode::TRAVERSAL));
+}
+
+TEST_F(BuilderTest, explicitOneToOneMultiCollectionUsesFixedTraversal) {
+  auto parsed = parseMatch(
+      "MATCH (v :vc) -[ e :ec|ec2 * 1..1 ]-> (w :vc) RETURN [v, e, w]");
+  auto plan = instantiatePlan(parsed);
+  ASSERT_NE(nullptr, plan);
+  auto* traversal = firstTraversal(*plan);
+  ASSERT_NE(nullptr, traversal);
+  ASSERT_NE(nullptr, traversal->options());
+  EXPECT_EQ(1U, traversal->options()->minDepth);
+  EXPECT_EQ(1U, traversal->options()->maxDepth);
+  // The edge variable is the edge document, not a path object.
+  EXPECT_EQ(nullptr, traversal->pathOutVariable());
+}
+
 TEST_F(BuilderTest, fixedLengthSingleCollectionUsesEnumerateNotTraversal) {
   auto parsed =
       parseMatch("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN [v, e, w]");

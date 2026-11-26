@@ -38,6 +38,9 @@ class LogAppenderSyslog final : public LogAppender {
 
   static void close();
 
+  /// @brief the syslog priority (e.g. LOG_ERR) to use for `message`.
+  static int priorityFor(LogMessage const& message) noexcept;
+
  private:
   std::string const _sysname;
 

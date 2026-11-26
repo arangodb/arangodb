@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -32,12 +33,12 @@ namespace arangodb {
 /// (see
 /// https://github.com/arangodb/platform-architecture/blob/main/adr/logging/LOG-001-security-log-event-categories.md).
 /// Whether or not a log message is a security event at all is expressed
-/// by passing a `std::optional<Security>` (`std::nullopt` meaning "not a
+/// by passing a `std::optional<LogSecurity>` (`std::nullopt` meaning "not a
 /// security event").
 /// The values are single bits, so that a log message can be assigned to
 /// multiple categories at once by OR-ing them, e.g.
-/// `Security::Authentication | Security::SessionManagement`.
-enum class Security : std::uint16_t {
+/// `LogSecurity::Authentication | LogSecurity::SessionManagement`.
+enum class LogSecurity : std::uint16_t {
   Authentication = 1 << 0,
   AccessControl = 1 << 1,
   AccountManagement = 1 << 2,
@@ -52,33 +53,22 @@ enum class Security : std::uint16_t {
   SystemErrors = 1 << 11,
 };
 
-constexpr Security operator|(Security lhs, Security rhs) noexcept {
-  return static_cast<Security>(static_cast<std::uint16_t>(lhs) |
-                               static_cast<std::uint16_t>(rhs));
+constexpr LogSecurity operator|(LogSecurity lhs, LogSecurity rhs) noexcept {
+  return static_cast<LogSecurity>(static_cast<std::uint16_t>(lhs) |
+                                  static_cast<std::uint16_t>(rhs));
 }
 
-constexpr Security operator&(Security lhs, Security rhs) noexcept {
-  return static_cast<Security>(static_cast<std::uint16_t>(lhs) &
-                               static_cast<std::uint16_t>(rhs));
-}
-
-constexpr Security& operator|=(Security& lhs, Security rhs) noexcept {
+constexpr LogSecurity& operator|=(LogSecurity& lhs, LogSecurity rhs) noexcept {
   return lhs = lhs | rhs;
-}
-
-/// @brief returns true if `security` contains all bits of `category`.
-constexpr bool hasSecurityCategory(Security security,
-                                   Security category) noexcept {
-  return (security & category) == category;
 }
 
 /// @brief bit mask of all known security categories.
 inline constexpr std::uint16_t kAllSecurityBits = static_cast<std::uint16_t>(
-    (static_cast<std::uint16_t>(Security::SystemErrors) << 1) - 1);
+    (static_cast<std::uint16_t>(LogSecurity::SystemErrors) << 1) - 1);
 
 /// @brief returns true if `security` contains at least one category and no
 /// bits other than those of known categories.
-constexpr bool isValidSecurity(Security security) noexcept {
+constexpr bool isValidSecurity(LogSecurity security) noexcept {
   auto bits = static_cast<std::uint16_t>(security);
   return bits != 0 && (bits & ~kAllSecurityBits) == 0;
 }
@@ -87,26 +77,17 @@ constexpr bool isValidSecurity(Security security) noexcept {
 /// belongs to more than one category.
 inline constexpr std::string_view kSecurityClassifierSeparator = ",";
 
-/// @brief returns the classifier of `security`, e.g.
+/// @brief appends the classifier of `security` to `out`, e.g.
 /// "arango-security-event-authentication" for a single category, or
 /// "arango-security-event-authentication,arango-security-event-session-management"
 /// for a combination of categories. Multiple classifiers are ordered by bit
 /// position (not by the order of OR-ing) and separated by
 /// kSecurityClassifierSeparator. Unknown bits are ignored; if no known bit is
-/// set, an empty string_view is returned.
-///
-/// The returned string_view stays valid for the lifetime of the process, so
-/// it can be stored and used without copying:
-/// - a single category (by far the most common case) is a lock-free lookup
-///   of a compile-time static literal.
-/// - a combination of categories is computed lazily on first use, under a
-///   write lock, and then cached forever in a process-global table which never
-///   frees or moves its strings. Subsequent lookups of the same combination
-///   only take a read lock. Since there are at most 2^12 combinations (and
-///   in practice only a handful are used), the cache is bounded.
-/// Thread-safe.
-std::string_view securityClassifier(Security security);
+/// set, nothing is appended.
+void appendSecurityClassifier(std::string& out, LogSecurity security);
 
-std::ostream& operator<<(std::ostream& out, Security security);
+/// @brief writes the classifier of `security` to `out`, in the same format
+/// as appendSecurityClassifier().
+std::ostream& operator<<(std::ostream& out, LogSecurity security);
 
 }  // namespace arangodb

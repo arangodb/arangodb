@@ -24,6 +24,7 @@ add_library(arango_rest_server STATIC
   EndpointFeatureOptions.cpp
   EndpointOptionsProvider.cpp
   EnvironmentFeature.cpp
+  FedRAMPHigh.cpp
   FileDescriptorsFeature.cpp
   FileDescriptorsOptionsProvider.cpp
   FlushFeature.cpp
