@@ -1,8 +1,16 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Allow indexed access in standalone AQL (Computed Values and aql Analyzer).
+  This adds NODE_TYPE_INDEXED_ACCESS to the accepted execution plan nodes so
+  that you can write e.g. `RETURN SPLIT(@param, " ")[-1]` in addition to
+  `RETURN LAST(SPLIT(@param, " ")) `.
+
 * A MATCH edge with * 1..1 (e.g. -[e:knows * 1..1]-) is now treated as a single edge 
- The edge variable holds the edge document, path variables contain one edge and one vertex, and undirected self-loops are matched only once. Previously, it was treated as a variable-length traversal, causing the edge variable to hold a path object and undirected self-loops to be matched twice.
+  The edge variable holds the edge document, path variables contain one edge and one vertex,
+  and undirected self-loops are matched only once. Previously, it was treated as a
+  variable-length traversal, causing the edge variable to hold a path object and undirected
+  self-loops to be matched twice.
 
 * COR-1016: Added query time budgeting to NFA to DFA pattern determinization.
 
