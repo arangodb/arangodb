@@ -77,7 +77,8 @@ static_assert(
     "allApiVersions must list every enumerator, in order and without gaps");
 
 // The list of all supported API versions (both stable and deprecated)
-inline constexpr std::array supportedApiVersions{ApiVersion::V0};
+inline constexpr std::array supportedApiVersions{ApiVersion::V0,
+                                                 ApiVersion::V1};
 
 // The list of deprecated API versions (subset of supportedApiVersions)
 inline constexpr std::array<ApiVersion, 0> deprecatedApiVersions{};
