@@ -81,7 +81,8 @@ class TestArangodServer final : public ArangodServer {
 
   void declareParseAndProcessOptions(std::vector<std::string> args) {
     declareOptions();
-    args.insert(args.begin(), "arangod");
+    // without this, a missing configuration file aborts the startup
+    args.insert(args.begin(), {"arangod", "--configuration", "none"});
     std::vector<char*> argv;
     for (auto& arg : args) {
       argv.push_back(arg.data());
