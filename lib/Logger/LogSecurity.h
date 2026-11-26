@@ -62,13 +62,6 @@ constexpr LogSecurity& operator|=(LogSecurity& lhs, LogSecurity rhs) noexcept {
   return lhs = lhs | rhs;
 }
 
-/// @brief returns true if `security` contains all bits of `category`.
-constexpr bool hasSecurityCategory(LogSecurity security,
-                                   LogSecurity category) noexcept {
-  auto bits = static_cast<std::uint16_t>(category);
-  return (static_cast<std::uint16_t>(security) & bits) == bits;
-}
-
 /// @brief bit mask of all known security categories.
 inline constexpr std::uint16_t kAllSecurityBits = static_cast<std::uint16_t>(
     (static_cast<std::uint16_t>(LogSecurity::SystemErrors) << 1) - 1);

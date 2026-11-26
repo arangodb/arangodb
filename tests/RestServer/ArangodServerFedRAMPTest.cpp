@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Mocks/Death_Test.h"
+#include "Mocks/LogLevels.h"
 
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -62,14 +63,9 @@ class ScopedFedRAMPHighEnv {
   std::optional<std::string> _old;
 };
 
-/// @brief restores the global "always log security events" flag of the
-/// Logger, which is modified by the ArangodServer constructor in FedRAMP High
-/// mode.
-struct ScopedAlwaysLogSecurityEvents {
-  ScopedAlwaysLogSecurityEvents() : _old(Logger::alwaysLogSecurityEvents()) {}
-  ~ScopedAlwaysLogSecurityEvents() { Logger::setAlwaysLogSecurityEvents(_old); }
-  bool _old;
-};
+// the ArangodServer constructor sets the global "always log security events"
+// flag in FedRAMP High mode
+using tests::ScopedAlwaysLogSecurityEvents;
 
 std::unique_ptr<ArangodServer> makeServer() {
   return std::make_unique<ArangodServer>(

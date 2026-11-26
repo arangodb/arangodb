@@ -24,6 +24,7 @@
 
 #include "Logger/LogLevel.h"
 #include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace tests {
@@ -43,6 +44,17 @@ class LogSuppressor {
 
  private:
   LogLevel const _oldLevel;
+};
+
+// restores the global "always log security events" flag of the Logger to its
+// previous value in destructor
+class ScopedAlwaysLogSecurityEvents {
+ public:
+  ScopedAlwaysLogSecurityEvents() : _old(Logger::alwaysLogSecurityEvents()) {}
+  ~ScopedAlwaysLogSecurityEvents() { Logger::setAlwaysLogSecurityEvents(_old); }
+
+ private:
+  bool const _old;
 };
 
 // suppresses the internal IResearch logging

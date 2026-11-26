@@ -34,7 +34,10 @@
 #include "Logger/LogSecurity.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Mocks/Death_Test.h"
+#include "Mocks/LogLevels.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
@@ -46,9 +49,10 @@
 #include <filesystem>
 #include <mutex>
 #include <regex>
-#include <set>
 #include <sstream>
+#include <string_view>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -77,7 +81,10 @@ struct Synchronizer {
   }
 };
 
-/// @brief log appender which captures all messages it receives.
+/// @brief log appender which captures the messages logged by the thread that
+/// created it. only the part from the message offset onwards is kept, i.e.
+/// without timestamp, process and thread identifiers, so that tests can
+/// compare complete messages.
 class CapturingLogAppender final : public LogAppender {
  public:
   std::vector<std::string> take() {
@@ -89,11 +96,18 @@ class CapturingLogAppender final : public LogAppender {
 
  protected:
   void logMessage(LogMessage const& message) override {
+    // global appenders receive messages from all threads, and leftover
+    // threads of other tests must not influence the captured messages
+    if (std::this_thread::get_id() != _owner) {
+      return;
+    }
     std::lock_guard guard(_mutex);
-    _messages.emplace_back(message._message);
+    _messages.emplace_back(
+        std::string_view(message._message).substr(message._offset));
   }
 
  private:
+  std::thread::id const _owner = std::this_thread::get_id();
   std::mutex _mutex;
   std::vector<std::string> _messages;
 };
@@ -113,25 +127,41 @@ void restartLogger(bool useJson,
   }
 }
 
-constexpr std::array kAllSecurityCategories = {
-    LogSecurity::Authentication,
-    LogSecurity::AccessControl,
-    LogSecurity::AccountManagement,
-    LogSecurity::SystemAccess,
-    LogSecurity::ConfigurationChanges,
-    LogSecurity::PrivilegedOperations,
-    LogSecurity::DataAccess,
-    LogSecurity::Violations,
-    LogSecurity::ApiCalls,
-    LogSecurity::SessionManagement,
-    LogSecurity::AuditLogAccess,
-    LogSecurity::SystemErrors,
-};
+// the classifiers are an external contract (ADR LOG-001), on which
+// downstream log processing relies, so they are spelled out literally here.
+constexpr std::array<std::pair<LogSecurity, std::string_view>, 12>
+    kExpectedClassifiers = {{
+        {LogSecurity::Authentication, "arango-security-event-authentication"},
+        {LogSecurity::AccessControl, "arango-security-event-access-control"},
+        {LogSecurity::AccountManagement,
+         "arango-security-event-account-management"},
+        {LogSecurity::SystemAccess, "arango-security-event-system-access"},
+        {LogSecurity::ConfigurationChanges,
+         "arango-security-event-configuration-changes"},
+        {LogSecurity::PrivilegedOperations,
+         "arango-security-event-privileged-operations"},
+        {LogSecurity::DataAccess, "arango-security-event-data-access"},
+        {LogSecurity::Violations, "arango-security-event-violations"},
+        {LogSecurity::ApiCalls, "arango-security-event-api-calls"},
+        {LogSecurity::SessionManagement,
+         "arango-security-event-session-management"},
+        {LogSecurity::AuditLogAccess, "arango-security-event-audit-log-access"},
+        {LogSecurity::SystemErrors, "arango-security-event-system-errors"},
+    }};
+static_assert(kExpectedClassifiers.size() == std::popcount(kAllSecurityBits),
+              "kExpectedClassifiers must list every LogSecurity category");
 
 std::string classifierOf(LogSecurity security) {
   std::string result;
   appendSecurityClassifier(result, security);
   return result;
+}
+
+/// @brief parses a captured JSON log message, which must be an object.
+std::shared_ptr<velocypack::Builder> parseJsonObject(std::string const& json) {
+  auto builder = velocypack::Parser::fromJson(json);
+  EXPECT_TRUE(builder->slice().isObject()) << json;
+  return builder;
 }
 
 }  // namespace
@@ -477,38 +507,12 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            security event logging
+// --SECTION--                                     security event classification
 // -----------------------------------------------------------------------------
 
-class LoggerSecurityTest : public ::testing::Test {
- protected:
-  LoggerSecurityTest() : appender(std::make_shared<CapturingLogAppender>()) {}
-
-  ~LoggerSecurityTest() {
-    Logger::setAlwaysLogSecurityEvents(false);
-    // restore the default test logger setup
-    restartLogger(/*useJson*/ false, nullptr);
-  }
-
-  void startCapturing(bool useJson) { restartLogger(useJson, appender); }
-
-  std::vector<std::string> collect() { return appender->take(); }
-
-  std::shared_ptr<CapturingLogAppender> appender;
-};
-
-TEST_F(LoggerSecurityTest, classifiers_are_distinct_and_canonical) {
-  std::set<std::string> seen;
-  for (auto s : kAllSecurityCategories) {
-    auto classifier = classifierOf(s);
-    EXPECT_TRUE(classifier.starts_with("arango-security-event-")) << classifier;
-    EXPECT_TRUE(seen.insert(classifier).second) << classifier;
-  }
-}
-
-TEST_F(LoggerSecurityTest, categories_are_distinct_single_bits) {
+TEST(LogSecurityTest, categories_are_distinct_single_bits) {
   std::uint32_t seen = 0;
-  for (auto s : kAllSecurityCategories) {
+  for (auto [s, _] : kExpectedClassifiers) {
     auto bits = static_cast<std::uint16_t>(s);
     EXPECT_TRUE(std::has_single_bit(bits)) << bits;
     EXPECT_EQ(seen & bits, 0u) << bits;
@@ -516,52 +520,92 @@ TEST_F(LoggerSecurityTest, categories_are_distinct_single_bits) {
   }
 }
 
-TEST_F(LoggerSecurityTest, single_category_classifiers) {
-  for (auto s : kAllSecurityCategories) {
-    auto classifier = classifierOf(s);
-    EXPECT_FALSE(classifier.empty());
-    EXPECT_EQ(classifier.find(kSecurityClassifierSeparator), std::string::npos);
+TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
+  for (auto [s, expected] : kExpectedClassifiers) {
+    EXPECT_EQ(classifierOf(s), expected);
     std::ostringstream os;
     os << s;
-    EXPECT_EQ(os.str(), classifier);
+    EXPECT_EQ(os.str(), expected);
   }
 }
 
-TEST_F(LoggerSecurityTest, two_category_classifiers) {
-  auto s = LogSecurity::SessionManagement | LogSecurity::Authentication;
-  EXPECT_TRUE(hasSecurityCategory(s, LogSecurity::Authentication));
-  EXPECT_TRUE(hasSecurityCategory(s, LogSecurity::SessionManagement));
-  EXPECT_FALSE(hasSecurityCategory(s, LogSecurity::DataAccess));
-  // ordered by bit position, not by order of OR-ing
+TEST(LogSecurityTest, multiple_categories_are_joined_in_bit_order) {
   std::string_view expected =
       "arango-security-event-authentication,"
       "arango-security-event-session-management";
-  EXPECT_EQ(classifierOf(s), expected);
+  // the order of OR-ing does not matter
+  EXPECT_EQ(classifierOf(LogSecurity::SessionManagement |
+                         LogSecurity::Authentication),
+            expected);
   EXPECT_EQ(classifierOf(LogSecurity::Authentication |
                          LogSecurity::SessionManagement),
             expected);
   std::ostringstream os;
-  os << s;
+  os << (LogSecurity::SessionManagement | LogSecurity::Authentication);
   EXPECT_EQ(os.str(), expected);
 }
 
-TEST_F(LoggerSecurityTest, all_category_classifiers) {
-  LogSecurity all = kAllSecurityCategories[0];
-  std::string expected;
-  for (auto s : kAllSecurityCategories) {
-    all |= s;
-    if (!expected.empty()) {
-      expected += kSecurityClassifierSeparator;
-    }
-    expected += classifierOf(s);
-  }
+TEST(LogSecurityTest, all_categories_are_joined_in_bit_order) {
+  auto all = static_cast<LogSecurity>(kAllSecurityBits);
+  std::string_view expected =
+      "arango-security-event-authentication,"
+      "arango-security-event-access-control,"
+      "arango-security-event-account-management,"
+      "arango-security-event-system-access,"
+      "arango-security-event-configuration-changes,"
+      "arango-security-event-privileged-operations,"
+      "arango-security-event-data-access,"
+      "arango-security-event-violations,"
+      "arango-security-event-api-calls,"
+      "arango-security-event-session-management,"
+      "arango-security-event-audit-log-access,"
+      "arango-security-event-system-errors";
   EXPECT_EQ(classifierOf(all), expected);
   std::ostringstream os;
   os << all;
   EXPECT_EQ(os.str(), expected);
 }
 
-TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
+TEST(LogSecurityTest, classifier_is_empty_without_known_category) {
+  EXPECT_EQ(classifierOf(static_cast<LogSecurity>(0)), "");
+  EXPECT_EQ(classifierOf(static_cast<LogSecurity>(1u << 15)), "");
+}
+
+TEST(LogSecurityTest, classifier_ignores_unknown_bits) {
+  EXPECT_EQ(classifierOf(LogSecurity::DataAccess |
+                         static_cast<LogSecurity>(1u << 15)),
+            "arango-security-event-data-access");
+}
+
+TEST(LogSecurityTest, append_security_classifier_keeps_existing_content) {
+  std::string out = "prefix:";
+  appendSecurityClassifier(out, LogSecurity::Violations);
+  EXPECT_EQ(out, "prefix:arango-security-event-violations");
+}
+
+TEST(LogSecurityTest, valid_security_requires_nonempty_mask_of_known_bits) {
+  EXPECT_TRUE(isValidSecurity(LogSecurity::Authentication));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::SystemErrors));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::DataAccess | LogSecurity::ApiCalls));
+  EXPECT_TRUE(isValidSecurity(static_cast<LogSecurity>(kAllSecurityBits)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(0)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 12)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 15)));
+  EXPECT_FALSE(isValidSecurity(LogSecurity::DataAccess |
+                               static_cast<LogSecurity>(1u << 15)));
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// an empty mask would produce an empty classifier. std::nullopt is the way to
+// mark a message as "not a security event".
+TEST(LogSecurityDeathTest, empty_security_mask_is_rejected) {
+  EXPECT_DEATH_CORE_FREE(
+      LOG_SECURITY("8d304", INFO, Logger::FIXME, LogSecurity{}) << "invalid",
+      "invalid security category mask");
+}
+#endif
+
+TEST(LogMessageTest, is_enabled_for_level_unless_output_is_forced) {
   LogMessage plain("f", "file", 1, LogLevel::DEBUG, 0, "msg", 0, false);
   EXPECT_TRUE(plain.isEnabledFor(LogLevel::TRACE));
   EXPECT_TRUE(plain.isEnabledFor(LogLevel::DEBUG));
@@ -575,46 +619,103 @@ TEST_F(LoggerSecurityTest, message_is_enabled_for_level) {
   EXPECT_TRUE(forced.isEnabledFor(LogLevel::FATAL));
 }
 
-TEST_F(LoggerSecurityTest, empty_and_unknown_bits) {
-  EXPECT_TRUE(classifierOf(static_cast<LogSecurity>(0)).empty());
-  // bits above the known categories are ignored
-  EXPECT_TRUE(classifierOf(static_cast<LogSecurity>(1u << 15)).empty());
-  EXPECT_EQ(classifierOf(LogSecurity::DataAccess |
-                         static_cast<LogSecurity>(1u << 15)),
-            classifierOf(LogSecurity::DataAccess));
-  // appending does not touch existing content
-  std::string out = "prefix:";
-  appendSecurityClassifier(out, LogSecurity::Violations);
-  EXPECT_EQ(out, "prefix:arango-security-event-violations");
+// -----------------------------------------------------------------------------
+// --SECTION--                                            security event logging
+// -----------------------------------------------------------------------------
+
+class LoggerSecurityTest : public ::testing::Test {
+ protected:
+  LoggerSecurityTest() : appender(std::make_shared<CapturingLogAppender>()) {}
+
+  ~LoggerSecurityTest() {
+    // restore the default test logger setup
+    restartLogger(/*useJson*/ false, nullptr);
+    Logger::FIXME.setLogLevel(_oldTopicLevel);
+  }
+
+  // restarting the logger resets the topic levels to those of the appenders,
+  // so the level of the topic used in the tests is set afterwards.
+  // messages at INFO pass the topic level, those at DEBUG do not.
+  void startCapturing(bool useJson) {
+    restartLogger(useJson, appender);
+    Logger::FIXME.setLogLevel(LogLevel::INFO);
+  }
+
+  std::vector<std::string> collect() { return appender->take(); }
+
+  tests::ScopedAlwaysLogSecurityEvents _alwaysLogSecurityEventsGuard;
+  LogLevel const _oldTopicLevel = Logger::FIXME.level();
+  std::shared_ptr<CapturingLogAppender> appender;
+};
+
+TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_text) {
+  startCapturing(/*useJson*/ false);
+  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "security test message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "security test message\n"});
 }
 
-TEST_F(LoggerSecurityTest, is_valid_security) {
-  EXPECT_TRUE(isValidSecurity(LogSecurity::Authentication));
-  EXPECT_TRUE(isValidSecurity(LogSecurity::SystemErrors));
-  EXPECT_TRUE(isValidSecurity(LogSecurity::DataAccess | LogSecurity::ApiCalls));
-  EXPECT_TRUE(isValidSecurity(static_cast<LogSecurity>(kAllSecurityBits)));
-  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(0)));
-  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 12)));
-  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 15)));
-  EXPECT_FALSE(isValidSecurity(LogSecurity::DataAccess |
-                               static_cast<LogSecurity>(1u << 15)));
+TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_text) {
+  startCapturing(/*useJson*/ false);
+  LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
+  EXPECT_EQ(collect(),
+            std::vector<std::string>{"{general} plain test message\n"});
 }
 
-TEST_F(LoggerSecurityTest, text_format_contains_multiple_classifiers) {
+TEST_F(LoggerSecurityTest, multiple_classifiers_in_text) {
   startCapturing(/*useJson*/ false);
   LOG_SECURITY("8d2fd", INFO, Logger::FIXME,
                LogSecurity::Authentication | LogSecurity::Violations)
       << "multi security test message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication,"
+                           "arango-security-event-violations] "
+                           "multi security test message\n"});
+}
+
+TEST_F(LoggerSecurityTest, log_security_if_emits_only_if_condition_holds) {
+  startCapturing(/*useJson*/ false);
+  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, LogSecurity::AccessControl,
+                  true)
+      << "conditional security test message";
+  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, LogSecurity::AccessControl,
+                  false)
+      << "suppressed security test message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-access-control] "
+                           "conditional security test message\n"});
+}
+
+TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_json) {
+  startCapturing(/*useJson*/ true);
+  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, LogSecurity::DataAccess)
+      << "json \"security\" test message";
 
   auto messages = collect();
   ASSERT_EQ(messages.size(), 1);
-  EXPECT_NE(messages[0].find("[arango-security-event-authentication,"
-                             "arango-security-event-violations] "),
-            std::string::npos)
-      << messages[0];
+  auto builder = parseJsonObject(messages[0]);
+  auto slice = builder->slice();
+  ASSERT_TRUE(slice.get("security").isString()) << messages[0];
+  EXPECT_EQ(slice.get("security").stringView(),
+            "arango-security-event-data-access");
+  EXPECT_EQ(slice.get("message").stringView(),
+            "json \"security\" test message");
 }
 
-TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
+TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_json) {
+  startCapturing(/*useJson*/ true);
+  LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = parseJsonObject(messages[0]);
+  EXPECT_TRUE(builder->slice().get("security").isNone()) << messages[0];
+  EXPECT_EQ(messages[0].find("arango-security-event-"), std::string::npos);
+}
+
+TEST_F(LoggerSecurityTest, multiple_classifiers_in_json) {
   startCapturing(/*useJson*/ true);
   LOG_SECURITY("8d2fe", INFO, Logger::FIXME,
                LogSecurity::DataAccess | LogSecurity::AccessControl)
@@ -622,88 +723,34 @@ TEST_F(LoggerSecurityTest, json_format_contains_multiple_classifiers) {
 
   auto messages = collect();
   ASSERT_EQ(messages.size(), 1);
-  auto builder = velocypack::Parser::fromJson(messages[0]);
-  auto slice = builder->slice();
-  ASSERT_TRUE(slice.isObject()) << messages[0];
-  ASSERT_TRUE(slice.get("security").isString()) << messages[0];
-  EXPECT_EQ(slice.get("security").stringView(),
+  auto builder = parseJsonObject(messages[0]);
+  auto security = builder->slice().get("security");
+  ASSERT_TRUE(security.isString()) << messages[0];
+  EXPECT_EQ(security.stringView(),
             "arango-security-event-access-control,"
             "arango-security-event-data-access");
-}
-
-TEST_F(LoggerSecurityTest, text_format_contains_classifier) {
-  startCapturing(/*useJson*/ false);
-  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, LogSecurity::Authentication)
-      << "security test message";
-  LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
-  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, LogSecurity::AccessControl,
-                  true)
-      << "conditional security test message";
-  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, LogSecurity::AccessControl,
-                  false)
-      << "suppressed security test message";
-
-  auto messages = collect();
-  ASSERT_EQ(messages.size(), 3);
-
-  EXPECT_NE(messages[0].find("security test message"), std::string::npos);
-  EXPECT_NE(
-      messages[0].find("{general} [arango-security-event-authentication] "),
-      std::string::npos)
-      << messages[0];
-
-  EXPECT_NE(messages[1].find("plain test message"), std::string::npos);
-  EXPECT_EQ(messages[1].find("arango-security-event-"), std::string::npos)
-      << messages[1];
-
-  EXPECT_NE(messages[2].find("conditional security test message"),
-            std::string::npos);
-  EXPECT_NE(messages[2].find("[arango-security-event-access-control] "),
-            std::string::npos)
-      << messages[2];
-}
-
-TEST_F(LoggerSecurityTest, json_format_contains_classifier) {
-  startCapturing(/*useJson*/ true);
-  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, LogSecurity::DataAccess)
-      << "json \"security\" test message";
-  LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
-
-  auto messages = collect();
-  ASSERT_EQ(messages.size(), 2);
-
-  {
-    auto builder = velocypack::Parser::fromJson(messages[0]);
-    auto slice = builder->slice();
-    ASSERT_TRUE(slice.isObject()) << messages[0];
-    ASSERT_TRUE(slice.get("security").isString()) << messages[0];
-    EXPECT_EQ(slice.get("security").stringView(),
-              "arango-security-event-data-access");
-    EXPECT_EQ(slice.get("message").stringView(),
-              "json \"security\" test message");
-  }
-  {
-    auto builder = velocypack::Parser::fromJson(messages[1]);
-    auto slice = builder->slice();
-    ASSERT_TRUE(slice.isObject()) << messages[1];
-    EXPECT_TRUE(slice.get("security").isNone()) << messages[1];
-    EXPECT_EQ(messages[1].find("arango-security-event-"), std::string::npos);
-  }
 }
 
 TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
   for (bool useJson : {false, true}) {
     startCapturing(useJson);
-    for (auto s : kAllSecurityCategories) {
+    for (auto [s, _] : kExpectedClassifiers) {
       Logger::log("8d2f7", __FUNCTION__, __FILE__, __LINE__, LogLevel::INFO,
                   Logger::FIXME.id(), "category test message", s);
     }
     auto messages = collect();
-    ASSERT_EQ(messages.size(), kAllSecurityCategories.size());
+    ASSERT_EQ(messages.size(), kExpectedClassifiers.size());
     for (size_t i = 0; i < messages.size(); ++i) {
-      EXPECT_NE(messages[i].find(classifierOf(kAllSecurityCategories[i])),
-                std::string::npos)
-          << "json: " << useJson << ", message: " << messages[i];
+      auto expected = kExpectedClassifiers[i].second;
+      if (useJson) {
+        auto builder = parseJsonObject(messages[i]);
+        auto security = builder->slice().get("security");
+        ASSERT_TRUE(security.isString()) << messages[i];
+        EXPECT_EQ(security.stringView(), expected);
+      } else {
+        EXPECT_EQ(messages[i], absl::StrCat("{general} [", expected,
+                                            "] category test message\n"));
+      }
     }
   }
 }
@@ -711,16 +758,19 @@ TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
 TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(false);
-  // DEBUG is below the default level of both the topic and the appender
   LOG_SECURITY("8d2f8", DEBUG, Logger::FIXME, LogSecurity::Authentication)
       << "debug security message";
-  EXPECT_TRUE(collect().empty());
+  // proves that capturing works, so that the filtering above is meaningful
+  LOG_SECURITY("8d2ff", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "info security message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "info security message\n"});
 }
 
 TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
   startCapturing(/*useJson*/ false);
   Logger::setAlwaysLogSecurityEvents(true);
-  // DEBUG is below the default level of both the topic and the appender
   LOG_SECURITY("8d2f9", DEBUG, Logger::FIXME, LogSecurity::Authentication)
       << "forced debug security message";
   LOG_TOPIC("8d2fa", DEBUG, Logger::FIXME) << "plain debug message";
@@ -731,13 +781,38 @@ TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
                   false)
       << "suppressed trace security message";
 
-  auto messages = collect();
-  ASSERT_EQ(messages.size(), 2);
-  EXPECT_NE(messages[0].find("forced debug security message"),
-            std::string::npos);
-  EXPECT_NE(messages[0].find("[arango-security-event-authentication] "),
-            std::string::npos)
-      << messages[0];
-  EXPECT_NE(messages[1].find("forced trace security message"),
-            std::string::npos);
+  EXPECT_EQ(collect(), (std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "forced debug security message\n",
+                           "{general} [arango-security-event-access-control] "
+                           "forced trace security message\n"}));
+}
+
+// the topic level and the appender level are separate filters. here only the
+// appender is stricter than the message level, so the topic level does not
+// interfere.
+TEST_F(LoggerSecurityTest, forced_security_events_bypass_appender_level) {
+  startCapturing(/*useJson*/ false);
+  appender->setLogLevel(Logger::FIXME, LogLevel::ERR);
+  Logger::setAlwaysLogSecurityEvents(true);
+  LOG_SECURITY("8d300", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "forced security message";
+  LOG_TOPIC("8d301", INFO, Logger::FIXME) << "plain info message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "forced security message\n"});
+}
+
+TEST_F(LoggerSecurityTest, security_events_respect_appender_level_by_default) {
+  startCapturing(/*useJson*/ false);
+  appender->setLogLevel(Logger::FIXME, LogLevel::ERR);
+  Logger::setAlwaysLogSecurityEvents(false);
+  LOG_SECURITY("8d302", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "filtered security message";
+  // proves that capturing works, so that the filtering above is meaningful
+  LOG_SECURITY("8d303", ERR, Logger::FIXME, LogSecurity::Authentication)
+      << "error security message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "error security message\n"});
 }
