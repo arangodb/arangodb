@@ -117,8 +117,8 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-int LogAppenderSyslog::priorityFor(LogMessage const& message) noexcept {
-  switch (message._level) {
+int arangodb::syslogPriorityFor(LogLevel level, bool isForcedOutput) noexcept {
+  switch (level) {
     case LogLevel::FATAL:
       return LOG_CRIT;
     case LogLevel::ERR:
@@ -133,14 +133,14 @@ int LogAppenderSyslog::priorityFor(LogMessage const& message) noexcept {
     case LogLevel::TRACE:
       // syslog daemons commonly discard LOG_DEBUG, which must not happen to
       // forced security messages
-      return message.isForcedOutput() ? LOG_INFO : LOG_DEBUG;
+      return isForcedOutput ? LOG_INFO : LOG_DEBUG;
   }
   return LOG_ERR;
 }
 
 void LogAppenderSyslog::logMessage(LogMessage const& message) {
   if (_opened) {
-    ::syslog(priorityFor(message), "%s",
+    ::syslog(syslogPriorityFor(message._level, message.isForcedOutput()), "%s",
              message._message.c_str() + message._offset);
   }
 }

@@ -650,8 +650,7 @@ TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
 #ifdef ARANGODB_ENABLE_SYSLOG
 TEST(LogAppenderSyslogTest, priority_follows_log_level) {
   auto priorityOf = [](LogLevel level) {
-    LogMessage message("f", "file", 1, level, 0, "msg", 0, false);
-    return LogAppenderSyslog::priorityFor(message);
+    return syslogPriorityFor(level, /*isForcedOutput*/ false);
   };
   EXPECT_EQ(priorityOf(LogLevel::FATAL), LOG_CRIT);
   EXPECT_EQ(priorityOf(LogLevel::ERR), LOG_ERR);
@@ -666,10 +665,8 @@ TEST(LogAppenderSyslogTest, priority_follows_log_level) {
 TEST(LogAppenderSyslogTest, forced_messages_have_at_least_info_priority) {
   for (LogLevel level : {LogLevel::FATAL, LogLevel::ERR, LogLevel::WARN,
                          LogLevel::INFO, LogLevel::DEBUG, LogLevel::TRACE}) {
-    LogMessage message("f", "file", 1, level, 0, "msg", 0, false,
-                       /*forceOutput*/ true);
     // lower values mean higher priority
-    EXPECT_LE(LogAppenderSyslog::priorityFor(message), LOG_INFO)
+    EXPECT_LE(syslogPriorityFor(level, /*isForcedOutput*/ true), LOG_INFO)
         << Logger::translateLogLevel(level);
   }
 }
