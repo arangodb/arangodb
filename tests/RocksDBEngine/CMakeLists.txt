@@ -9,7 +9,8 @@ add_library(arango_tests_rocksdb_engine OBJECT
   CollectionTest.cpp
   LogicalCollectionDescriptorTest.cpp
   DocumentTest.cpp
-  IndexTest.cpp)
+  IndexTest.cpp
+  VectorIndexTest.cpp)
 
 target_include_directories(arango_tests_rocksdb_engine PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
