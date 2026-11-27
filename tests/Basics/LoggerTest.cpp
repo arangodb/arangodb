@@ -581,7 +581,7 @@ TEST(LoggerOptionsProviderTest, processing_applies_always_log_security_flag) {
     // processing the options also applies the configured log levels, which
     // are global state. none are configured, so that they are left alone.
     provider.mutableOptions().levels.clear();
-    provider.mutableOptions().alwaysLogSecurityMessages = value;
+    provider.mutableOptions().alwaysLogSecurityEvents = value;
     Logger::setAlwaysLogSecurityEvents(!value);
     provider.processOptions(nullptr);
     EXPECT_EQ(Logger::alwaysLogSecurityEvents(), value);

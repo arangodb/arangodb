@@ -472,7 +472,7 @@ full, log entries are written synchronously until the queue has space again.)");
           "--log.always-log-security-messages",
           "Always log security events, regardless of the configured log "
           "levels.",
-          new BooleanParameter(&options.alwaysLogSecurityMessages),
+          new BooleanParameter(&options.alwaysLogSecurityEvents),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(40000)
@@ -493,7 +493,7 @@ the server refuses to start if it is explicitly set to `false`.)");
 void LoggerOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> /*progOpts*/, LoggerOptions& options) {
   Logger::setLogLevel(options.levels);
-  Logger::setAlwaysLogSecurityEvents(options.alwaysLogSecurityMessages);
+  Logger::setAlwaysLogSecurityEvents(options.alwaysLogSecurityEvents);
 }
 
 void LoggerOptionsProvider::validateOptionsImpl(

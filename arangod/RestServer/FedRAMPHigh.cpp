@@ -42,11 +42,11 @@ ResultT<bool> isFedRAMPHighEnabled(std::string_view value) {
 }
 
 void applyFedRAMPHighLoggerDefaults(LoggerOptions& options) noexcept {
-  options.alwaysLogSecurityMessages = true;
+  options.alwaysLogSecurityEvents = true;
 }
 
 Result checkFedRAMPHighLoggerOptions(LoggerOptions const& options) {
-  if (!options.alwaysLogSecurityMessages) {
+  if (!options.alwaysLogSecurityEvents) {
     return {TRI_ERROR_BAD_PARAMETER,
             "'--log.always-log-security-messages' must not be set to false "
             "in FedRAMP High mode"};

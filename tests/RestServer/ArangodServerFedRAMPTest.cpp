@@ -138,15 +138,15 @@ TEST(FedRAMPHighEnabledTest, any_other_value_is_invalid) {
 TEST(FedRAMPHighLoggerOptionsTest, option_forces_security_messages) {
   // the default is false, so that true can only come from the option
   EXPECT_TRUE(parseLoggerOptions({"--log.always-log-security-messages", "true"})
-                  .alwaysLogSecurityMessages);
+                  .alwaysLogSecurityEvents);
 }
 
 TEST(FedRAMPHighLoggerOptionsTest, check_requires_forced_security_messages) {
   LoggerOptions options;
-  options.alwaysLogSecurityMessages = true;
+  options.alwaysLogSecurityEvents = true;
   EXPECT_TRUE(checkFedRAMPHighLoggerOptions(options).ok());
 
-  options.alwaysLogSecurityMessages = false;
+  options.alwaysLogSecurityEvents = false;
   auto result = checkFedRAMPHighLoggerOptions(options);
   EXPECT_TRUE(result.fail());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
@@ -160,13 +160,13 @@ TEST(ArangodServerFedRAMPTest, fedramp_high_changes_logger_option_defaults) {
   ScopedAlwaysLogSecurityEvents guard;
   EXPECT_TRUE(makeServer(true)
                   ->getOptions<LoggerOptionsProvider>()
-                  .alwaysLogSecurityMessages);
+                  .alwaysLogSecurityEvents);
 }
 
 TEST(ArangodServerFedRAMPTest, no_fedramp_high_keeps_logger_option_defaults) {
   EXPECT_FALSE(makeServer(false)
                    ->getOptions<LoggerOptionsProvider>()
-                   .alwaysLogSecurityMessages);
+                   .alwaysLogSecurityEvents);
 }
 
 TEST(ArangodServerFedRAMPDeathTest,

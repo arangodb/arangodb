@@ -57,7 +57,7 @@ struct LoggerOptions {
   /// @brief log security events (log messages marked with a security
   /// category) regardless of the configured log levels. this is forced to
   /// true in FedRAMP High mode (see ArangodServer).
-  bool alwaysLogSecurityMessages = false;
+  bool alwaysLogSecurityEvents = false;
 
   LoggerOptions();
 };
