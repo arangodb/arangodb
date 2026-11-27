@@ -79,10 +79,4 @@ void appendSecurityClassifier(std::string& out, LogSecurity security) {
                         [&out](std::string_view part) { out.append(part); });
 }
 
-std::ostream& operator<<(std::ostream& out, LogSecurity security) {
-  forEachClassifierPart(security,
-                        [&out](std::string_view part) { out << part; });
-  return out;
-}
-
 }  // namespace arangodb

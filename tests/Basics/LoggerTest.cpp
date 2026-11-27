@@ -505,9 +505,9 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
 TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
   for (auto [s, expected] : kExpectedClassifiers) {
     EXPECT_EQ(classifierOf(s), expected);
-    std::ostringstream os;
-    os << s;
-    EXPECT_EQ(os.str(), expected);
+    std::string st;
+    appendSecurityClassifier(st, s);
+    EXPECT_EQ(st, expected);
   }
 }
 
@@ -522,9 +522,10 @@ TEST(LogSecurityTest, multiple_categories_are_joined_in_bit_order) {
   EXPECT_EQ(classifierOf(LogSecurity::Authentication |
                          LogSecurity::SessionManagement),
             expected);
-  std::ostringstream os;
-  os << (LogSecurity::SessionManagement | LogSecurity::Authentication);
-  EXPECT_EQ(os.str(), expected);
+  std::string st;
+  appendSecurityClassifier(
+      st, LogSecurity::SessionManagement | LogSecurity::Authentication);
+  EXPECT_EQ(st, expected);
 }
 
 TEST(LogSecurityTest, all_categories_are_joined_in_bit_order) {
@@ -543,9 +544,9 @@ TEST(LogSecurityTest, all_categories_are_joined_in_bit_order) {
       "arango-security-event-audit-log-access,"
       "arango-security-event-system-errors";
   EXPECT_EQ(classifierOf(all), expected);
-  std::ostringstream os;
-  os << all;
-  EXPECT_EQ(os.str(), expected);
+  std::string st;
+  appendSecurityClassifier(st, all);
+  EXPECT_EQ(st, expected);
 }
 
 TEST(LogSecurityTest, classifier_is_empty_without_known_category) {

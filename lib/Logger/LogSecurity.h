@@ -58,10 +58,6 @@ constexpr LogSecurity operator|(LogSecurity lhs, LogSecurity rhs) noexcept {
                                   static_cast<std::uint16_t>(rhs));
 }
 
-constexpr LogSecurity& operator|=(LogSecurity& lhs, LogSecurity rhs) noexcept {
-  return lhs = lhs | rhs;
-}
-
 /// @brief bit mask of all known security categories.
 inline constexpr std::uint16_t kAllSecurityBits = static_cast<std::uint16_t>(
     (static_cast<std::uint16_t>(LogSecurity::SystemErrors) << 1) - 1);
@@ -85,9 +81,5 @@ inline constexpr std::string_view kSecurityClassifierSeparator = ",";
 /// kSecurityClassifierSeparator. Unknown bits are ignored; if no known bit is
 /// set, nothing is appended.
 void appendSecurityClassifier(std::string& out, LogSecurity security);
-
-/// @brief writes the classifier of `security` to `out`, in the same format
-/// as appendSecurityClassifier().
-std::ostream& operator<<(std::ostream& out, LogSecurity security);
 
 }  // namespace arangodb
