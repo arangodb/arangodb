@@ -1031,8 +1031,13 @@ TEST_F(TransactionManagerTest, soft_aborted_transaction_cannot_be_committed) {
   beginWriteTransaction(vocbase, *mgr, tid);
   ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(tid));
 
-  std::ignore = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
-  // the commit request turned into an abort
+  {
+    auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+    // the commit request turned into an abort, and is reported as failed
+    EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+    EXPECT_NE(res.errorMessage().find("soft-aborted"), std::string::npos)
+        << res.errorMessage();
+  }
   EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 
   // the transaction is now a tombstone, and the tombstone is not marked
@@ -1142,6 +1147,28 @@ TEST_F(TransactionManagerTest, expired_transaction_is_not_soft_aborted) {
   EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
   EXPECT_NE(res.errorMessage().find("expired"), std::string::npos)
       << res.errorMessage();
+}
+
+TEST_F(TransactionManagerTest, commit_of_expired_transaction_fails) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+  arangodb::ExecContextSuperuserScope exeScope;
+
+  // disables garbage-collection
+  TRI_AddFailurePointDebugging("transaction::Manager::noGC");
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  beginWriteTransaction(vocbase, *mgr, tid);
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // the expired transaction is aborted instead, which must not be reported
+  // as a successful commit
+  auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+  EXPECT_NE(res.errorMessage().find("expired"), std::string::npos)
+      << res.errorMessage();
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 #endif
 
@@ -1311,3 +1338,21 @@ TEST_F(TransactionManagerFollowerTrxOnShardTest,
             transaction::Status::RUNNING);
 }
 #endif
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       commit_of_soft_aborted_follower_transaction_fails) {
+  auto followerOnA = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(followerOnA));
+
+  // a leader committing the transaction must learn that the follower did not
+  // commit it, so that it drops the follower
+  auto res = mgr->commitManagedTrx(followerOnA, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+
+  // a repeated commit is refused as well
+  res = mgr->commitManagedTrx(followerOnA, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+}

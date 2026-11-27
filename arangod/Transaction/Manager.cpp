@@ -1148,6 +1148,11 @@ Result Manager::updateTransactionIf(
   Result res;
   size_t bucket = getBucket(tid);
   bool wasExpired = false;
+
+  // a commit of an expired or soft-aborted must not silently fail. keep the
+  // status to correctly report to caller in case.
+  transaction::Status const requestedStatus = status;
+
   auto buildErrorMessage = [](TransactionId tid, transaction::Status status,
                               bool found) -> std::string {
     std::string msg = absl::StrCat("transaction ", tid.id());
@@ -1336,6 +1341,15 @@ Result Manager::updateTransactionIf(
       // makes the leader drop us as a follower for all shards in the
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
+    }
+    if (requestedStatus == transaction::Status::COMMITTED &&
+        (res.ok() ||
+         res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED))) {
+      // the commit was done for a now aborted transaction we must report
+      // to not silently get out of sync
+      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                absl::StrCat("transaction ", tid.id(), " was ",
+                             (wasExpired ? "expired" : "soft-aborted"));
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
