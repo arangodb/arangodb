@@ -118,7 +118,8 @@ void ArangodServer::processFedRAMPHighOptions() {
     return;
   }
 
-  LOG_TOPIC("7eed3", INFO, Logger::STARTUP)
+  LOG_SECURITY("7eed3", INFO, Logger::STARTUP,
+               LogSecurity::ConfigurationChanges)
       << "FedRAMP High mode is enabled (environment variable '"
       << kFedRAMPHighEnvVar << "' is set to 'on')";
 
