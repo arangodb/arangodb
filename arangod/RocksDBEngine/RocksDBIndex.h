@@ -105,6 +105,10 @@ class RocksDBIndex : public Index {
   virtual Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                               rocksdb::Slice upper, RocksDBMethods* methods);
 
+  /// @brief Checks that the document can be indexed, independent of the
+  /// index contents. Default implementation accepts every document.
+  virtual Result validateDocument(velocypack::Slice doc) const;
+
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
   /// the default implementation does nothing. indexes can override this and

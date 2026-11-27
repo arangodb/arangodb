@@ -244,7 +244,7 @@ function testSuite() {
         let result = arango.GET("/_admin/cluster/numberOfServers");
         assertTrue(result.error);
         assertEqual(403, result.code);
-        assertEqual("forbidden", result.errorMessage);
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code, result.errorNum);
       } else {
         let result = arango.GET("/_admin/cluster/numberOfServers");
         assertTrue(result.error);
@@ -275,7 +275,7 @@ function testSuite() {
         let result = arango.PUT("/_admin/cluster/numberOfServers", data);
         assertTrue(result.error);
         assertEqual(403, result.code);
-        assertEqual("forbidden", result.errorMessage);
+        assertEqual(require("internal").errors.ERROR_FORBIDDEN.code, result.errorNum);
       } else {
         let result = arango.PUT("/_admin/cluster/numberOfServers", data);
         assertTrue(result.error);

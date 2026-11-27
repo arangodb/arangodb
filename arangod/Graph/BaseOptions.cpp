@@ -26,7 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ConditionCoverage.h"
+#include "Aql/Optimizer/Utils/ConditionCoverage.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"

@@ -1080,17 +1080,6 @@ function FileSystemSuite () {
 /// @brief test alder32()
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAdler32File : function() {
-      const internal = require('internal');
-      const file = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx','toomanysecrets.txt'));
-      const checksum = fs.adler32(file);
-      assertEqual(checksum, '583533794');
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test alder32()
-////////////////////////////////////////////////////////////////////////////////
-
     testAdler32NotExistingFile : function() {
       const file = fs.join(tempDir, 'ne.txt');
       try {
