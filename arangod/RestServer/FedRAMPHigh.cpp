@@ -24,7 +24,22 @@
 
 #include "Logger/LoggerOptions.h"
 
+#include <string>
+
 namespace arangodb {
+
+ResultT<bool> isFedRAMPHighEnabled(std::string_view value) {
+  if (value == "on") {
+    return true;
+  }
+  if (value == "off") {
+    return false;
+  }
+  return Result{TRI_ERROR_BAD_PARAMETER,
+                "invalid value '" + std::string{value} +
+                    "' for environment variable '" + kFedRAMPHighEnvVar +
+                    "'. allowed values are 'on' and 'off'"};
+}
 
 void applyFedRAMPHighLoggerDefaults(LoggerOptions& options) noexcept {
   options.alwaysLogSecurityMessages = true;

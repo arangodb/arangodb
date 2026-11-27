@@ -97,22 +97,15 @@ namespace {
 /// startup if the environment variable has an invalid value.
 bool detectFedRAMPHigh() {
   std::string value;
-  std::optional<std::string_view> envValue;
-  if (TRI_GETENV(kFedRAMPHighEnvVar, value)) {
-    envValue = value;
+  if (!TRI_GETENV(kFedRAMPHighEnvVar, value)) {
+    return false;
   }
-  switch (parseFedRAMPHighSetting(envValue)) {
-    case FedRAMPHighSetting::kOff:
-      return false;
-    case FedRAMPHighSetting::kOn:
-      return true;
-    case FedRAMPHighSetting::kInvalid:
-      break;
+  auto enabled = isFedRAMPHighEnabled(value);
+  if (enabled.fail()) {
+    LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP) << enabled.errorMessage();
+    FATAL_ERROR_EXIT();
   }
-  LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP)
-      << "invalid value '" << value << "' for environment variable '"
-      << kFedRAMPHighEnvVar << "'. allowed values are 'on' and 'off'";
-  FATAL_ERROR_EXIT();
+  return enabled.get();
 }
 }  // namespace
 

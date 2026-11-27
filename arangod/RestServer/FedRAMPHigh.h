@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include <optional>
 #include <string_view>
 
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 
 namespace arangodb {
 
@@ -34,22 +34,11 @@ struct LoggerOptions;
 /// @brief name of the environment variable which enables FedRAMP High mode.
 inline constexpr char const* kFedRAMPHighEnvVar = "FEDRAMP_HIGH";
 
-enum class FedRAMPHighSetting { kOff, kOn, kInvalid };
-
-/// @brief interprets the value of the environment variable kFedRAMPHighEnvVar
-/// (`std::nullopt` if it is unset). Unset or "off" mean kOff, "on" means kOn.
-/// Any other value, including the empty string, is kInvalid, so that a
-/// mistyped value can never silently select a mode.
-constexpr FedRAMPHighSetting parseFedRAMPHighSetting(
-    std::optional<std::string_view> value) noexcept {
-  if (!value.has_value() || *value == "off") {
-    return FedRAMPHighSetting::kOff;
-  }
-  if (*value == "on") {
-    return FedRAMPHighSetting::kOn;
-  }
-  return FedRAMPHighSetting::kInvalid;
-}
+/// @brief interprets the value of the environment variable kFedRAMPHighEnvVar.
+/// "on" means enabled, "off" means disabled. Any other value, including the
+/// empty string, is an error, so that a mistyped value can never silently
+/// select a mode.
+[[nodiscard]] ResultT<bool> isFedRAMPHighEnabled(std::string_view value);
 
 /// @brief changes the defaults of the logger options for FedRAMP High mode.
 /// must be called before the options are declared, so that the changed

@@ -148,24 +148,26 @@ LoggerOptions parseLoggerOptions(bool fedRAMPHigh,
 
 }  // namespace
 
-TEST(FedRAMPHighSettingTest, unset_variable_means_off) {
-  EXPECT_EQ(parseFedRAMPHighSetting(std::nullopt), FedRAMPHighSetting::kOff);
+TEST(FedRAMPHighEnabledTest, off_means_disabled) {
+  auto result = isFedRAMPHighEnabled("off");
+  ASSERT_TRUE(result.ok());
+  EXPECT_FALSE(result.get());
 }
 
-TEST(FedRAMPHighSettingTest, off_means_off) {
-  EXPECT_EQ(parseFedRAMPHighSetting("off"), FedRAMPHighSetting::kOff);
-}
-
-TEST(FedRAMPHighSettingTest, on_means_on) {
-  EXPECT_EQ(parseFedRAMPHighSetting("on"), FedRAMPHighSetting::kOn);
+TEST(FedRAMPHighEnabledTest, on_means_enabled) {
+  auto result = isFedRAMPHighEnabled("on");
+  ASSERT_TRUE(result.ok());
+  EXPECT_TRUE(result.get());
 }
 
 // a mistyped value must never silently select a mode, so everything except
 // the exact spellings "on" and "off" is invalid.
-TEST(FedRAMPHighSettingTest, any_other_value_is_invalid) {
+TEST(FedRAMPHighEnabledTest, any_other_value_is_invalid) {
   for (std::string_view value :
        {"", "1", "0", "true", "false", "ON", "Off", " on", "on ", "onn"}) {
-    EXPECT_EQ(parseFedRAMPHighSetting(value), FedRAMPHighSetting::kInvalid)
+    auto result = isFedRAMPHighEnabled(value);
+    EXPECT_TRUE(result.fail()) << "value: '" << value << "'";
+    EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER)
         << "value: '" << value << "'";
   }
 }
@@ -222,7 +224,7 @@ TEST(ArangodServerFedRAMPTest, fedramp_high_is_detected_per_server_instance) {
   EXPECT_FALSE(detectFedRAMPHigh(std::nullopt));
 }
 
-// which values are invalid is covered by FedRAMPHighSettingTest. here we only
+// which values are invalid is covered by FedRAMPHighEnabledTest. here we only
 // check that the server refuses to start on an invalid value.
 TEST(ArangodServerFedRAMPDeathTest, invalid_value_aborts_startup) {
   EXPECT_EXIT(
