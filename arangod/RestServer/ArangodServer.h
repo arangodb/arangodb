@@ -39,11 +39,6 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
       bool fedRAMPHigh);
 
-  /// @brief whether the server runs in FedRAMP High mode. this is fixed at
-  /// construction, i.e. before any options are declared or processed, so that
-  /// processOptions() can adjust the behavior of all features accordingly.
-  bool isFedRAMPHigh() const noexcept { return _fedRAMPHigh; }
-
  protected:
   // Called by server::run() after collect & validate.
   void addFeatures() final;

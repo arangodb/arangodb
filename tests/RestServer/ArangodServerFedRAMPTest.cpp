@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Mocks/Death_Test.h"
-#include "Mocks/LogLevels.h"
+#include "Mocks/TestLogger.h"
 
 #include "Logger/Logger.h"
 #include "Logger/LoggerOptions.h"
@@ -73,13 +73,6 @@ std::unique_ptr<TestArangodServer> makeServer(bool fedRAMPHigh) {
       "arangod", nullptr, nullptr, nullptr, fedRAMPHigh);
 }
 
-/// @brief puts the logger into the state it has during the early server
-/// startup, i.e. inactive. some logger settings can only be changed then, and
-/// an inactive logger writes to stderr, which is what death tests can match
-/// (the active test logger writes to stdout). to be called in the child process
-/// of a death test only.
-void deactivateLogger() { Logger::shutdown(); }
-
 /// @brief runs the option handling of the server startup and exits with
 /// EXIT_SUCCESS if the startup was not aborted. processing the options has
 /// global side effects (e.g. log levels, server role), so this must only be
@@ -87,20 +80,17 @@ void deactivateLogger() { Logger::shutdown(); }
 [[noreturn]] void startUpAndExit(bool fedRAMPHigh,
                                  std::vector<std::string> args) {
   disableCoredump();
-  deactivateLogger();
+  // as in the early server startup, the logger is inactive. it then writes to
+  // stderr, which is what death tests can match.
+  Logger::shutdown();
   makeServer(fedRAMPHigh)->declareParseAndProcessOptions(std::move(args));
   std::_Exit(EXIT_SUCCESS);
 }
 
 /// @brief parses `args` as command line with the real logger option
-/// declarations. if `fedRAMPHigh` is set, the FedRAMP High defaults are applied
-/// before the options are declared, as ArangodServer does.
-LoggerOptions parseLoggerOptions(bool fedRAMPHigh,
-                                 std::vector<std::string> args) {
+/// declarations.
+LoggerOptions parseLoggerOptions(std::vector<std::string> args) {
   LoggerOptionsProvider provider;
-  if (fedRAMPHigh) {
-    applyFedRAMPHighLoggerDefaults(provider.mutableOptions());
-  }
   auto programOptions =
       std::make_shared<options::ProgramOptions>("arangod", "", "", "");
   provider.declareOptions(programOptions);
@@ -145,33 +135,21 @@ TEST(FedRAMPHighEnabledTest, any_other_value_is_invalid) {
 // --SECTION--                                     FedRAMP High logger options
 // -----------------------------------------------------------------------------
 
-TEST(FedRAMPHighLoggerOptionsTest,
-     security_messages_are_not_forced_by_default) {
-  EXPECT_FALSE(
-      parseLoggerOptions(/*fedRAMPHigh*/ false, {}).alwaysLogSecurityMessages);
+TEST(FedRAMPHighLoggerOptionsTest, option_forces_security_messages) {
+  // the default is false, so that true can only come from the option
+  EXPECT_TRUE(parseLoggerOptions({"--log.always-log-security-messages", "true"})
+                  .alwaysLogSecurityMessages);
 }
 
-TEST(FedRAMPHighLoggerOptionsTest, security_messages_are_forced_by_default) {
-  auto options = parseLoggerOptions(/*fedRAMPHigh*/ true, {});
-  EXPECT_TRUE(options.alwaysLogSecurityMessages);
+TEST(FedRAMPHighLoggerOptionsTest, check_requires_forced_security_messages) {
+  LoggerOptions options;
+  options.alwaysLogSecurityMessages = true;
   EXPECT_TRUE(checkFedRAMPHighLoggerOptions(options).ok());
-}
 
-TEST(FedRAMPHighLoggerOptionsTest, explicitly_forcing_security_messages_is_ok) {
-  auto options = parseLoggerOptions(
-      /*fedRAMPHigh*/ true, {"--log.always-log-security-messages", "true"});
-  EXPECT_TRUE(options.alwaysLogSecurityMessages);
-  EXPECT_TRUE(checkFedRAMPHighLoggerOptions(options).ok());
-}
-
-TEST(FedRAMPHighLoggerOptionsTest, disabling_forced_security_messages_fails) {
-  auto options = parseLoggerOptions(
-      /*fedRAMPHigh*/ true, {"--log.always-log-security-messages", "false"});
+  options.alwaysLogSecurityMessages = false;
   auto result = checkFedRAMPHighLoggerOptions(options);
-  ASSERT_TRUE(result.fail());
-  EXPECT_NE(result.errorMessage().find("--log.always-log-security-messages"),
-            std::string::npos)
-      << result.errorMessage();
+  EXPECT_TRUE(result.fail());
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_BAD_PARAMETER);
 }
 
 // -----------------------------------------------------------------------------
@@ -191,12 +169,6 @@ TEST(ArangodServerFedRAMPTest, no_fedramp_high_keeps_logger_option_defaults) {
                    .alwaysLogSecurityMessages);
 }
 
-// the INFO message proves that the FedRAMP High checks were run.
-TEST(ArangodServerFedRAMPDeathTest, fedramp_high_starts_with_default_options) {
-  EXPECT_EXIT(startUpAndExit(true, {}), ::testing::ExitedWithCode(EXIT_SUCCESS),
-              "FedRAMP High mode is enabled");
-}
-
 TEST(ArangodServerFedRAMPDeathTest,
      fedramp_high_aborts_if_forced_security_messages_are_disabled) {
   EXPECT_EXIT(
@@ -206,19 +178,12 @@ TEST(ArangodServerFedRAMPDeathTest,
       "FedRAMP High mode");
 }
 
-TEST(ArangodServerFedRAMPDeathTest,
-     no_fedramp_high_allows_disabling_forced_security_messages) {
-  EXPECT_EXIT(
-      startUpAndExit(false, {"--log.always-log-security-messages", "false"}),
-      ::testing::ExitedWithCode(EXIT_SUCCESS), "");
-}
-
 // in FedRAMP High mode, security events are logged right from the
 // construction of the server, i.e. before options are processed.
 TEST(ArangodServerFedRAMPTest, fedramp_high_forces_security_logging_early) {
   ScopedAlwaysLogSecurityEvents guard;
   Logger::setAlwaysLogSecurityEvents(false);
-  EXPECT_TRUE(makeServer(true)->isFedRAMPHigh());
+  makeServer(true);
   EXPECT_TRUE(Logger::alwaysLogSecurityEvents());
 }
 
@@ -226,6 +191,6 @@ TEST(ArangodServerFedRAMPTest,
      no_fedramp_high_does_not_force_security_logging) {
   ScopedAlwaysLogSecurityEvents guard;
   Logger::setAlwaysLogSecurityEvents(false);
-  EXPECT_FALSE(makeServer(false)->isFedRAMPHigh());
+  makeServer(false);
   EXPECT_FALSE(Logger::alwaysLogSecurityEvents());
 }

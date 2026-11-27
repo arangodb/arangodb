@@ -56,11 +56,6 @@ class LogThread final : public BasicThread {
   void run() override;
 
   bool log(LogGroup&, std::unique_ptr<LogMessage>&);
-
-  /// @brief whether `message` is queued even if the queue already holds the
-  /// maximum number of messages. otherwise, log() refuses it, and the caller
-  /// writes it synchronously instead.
-  static bool mayExceedQueueLimit(LogMessage const& message) noexcept;
   // flush all pending log messages
   void flush() noexcept;
 

@@ -24,22 +24,9 @@
 
 #include "Logger/LogLevel.h"
 #include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-
-#include <memory>
 
 namespace arangodb {
-class LogAppender;
-
 namespace tests {
-
-/// @brief restarts the logger with the given output format, and optionally
-/// with an additional global appender. output format settings can only be
-/// changed while logging is inactive, and shutting down the logger removes all
-/// appenders (also global ones), so the default ones have to be re-added. this
-/// mirrors the logger setup in tests/main.cpp.
-void restartLogger(bool useJson,
-                   std::shared_ptr<LogAppender> const& globalAppender);
 
 // sets specified topic to specified level in constructor, resets to previous
 // value in destructor
@@ -56,17 +43,6 @@ class LogSuppressor {
 
  private:
   LogLevel const _oldLevel;
-};
-
-// restores the global "always log security events" flag of the Logger to its
-// previous value in destructor
-class ScopedAlwaysLogSecurityEvents {
- public:
-  ScopedAlwaysLogSecurityEvents() : _old(Logger::alwaysLogSecurityEvents()) {}
-  ~ScopedAlwaysLogSecurityEvents() { Logger::setAlwaysLogSecurityEvents(_old); }
-
- private:
-  bool const _old;
 };
 
 // suppresses the internal IResearch logging

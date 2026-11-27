@@ -22,24 +22,12 @@
 
 #include "LogLevels.h"
 
-#include "Logger/LogAppender.h"
 #include "utils/log.hpp"
 
 #include <iostream>
 
 namespace arangodb {
 namespace tests {
-
-void restartLogger(bool useJson,
-                   std::shared_ptr<LogAppender> const& globalAppender) {
-  Logger::shutdown();
-  Logger::setUseJson(useJson);
-  Logger::initialize(false, 10000);
-  Logger::addAppender(Logger::defaultLogGroup(), "-");
-  if (globalAppender != nullptr) {
-    Logger::addGlobalAppender(Logger::defaultLogGroup(), globalAppender);
-  }
-}
 
 static void LogCallback(irs::SourceLocation&& source,
                         std::string_view message) {

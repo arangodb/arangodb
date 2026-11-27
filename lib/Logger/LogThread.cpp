@@ -52,9 +52,11 @@ bool isDirectLogLevel(LogLevel level) noexcept {
   return level == LogLevel::FATAL || level == LogLevel::ERR ||
          level == LogLevel::WARN;
 }
-}  // namespace
 
-bool LogThread::mayExceedQueueLimit(LogMessage const& message) noexcept {
+// whether `message` is queued even if the queue already holds the maximum
+// number of messages. otherwise, log() refuses it, and the caller writes it
+// synchronously instead.
+bool mayExceedQueueLimit(LogMessage const& message) noexcept {
   // forced messages (security events in FedRAMP High mode) are queued, too,
   // so that a burst of them does not force the threads emitting them to
   // write synchronously. the price is that the queue can grow beyond its limit
@@ -62,6 +64,7 @@ bool LogThread::mayExceedQueueLimit(LogMessage const& message) noexcept {
   // flush, as they are not about a crash.
   return isDirectLogLevel(message._level) || message.isForcedOutput();
 }
+}  // namespace
 
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);

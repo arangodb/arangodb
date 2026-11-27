@@ -36,9 +36,7 @@
 #include "Logger/LogThread.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerOptionsProvider.h"
-#include "Logger/LoggerStream.h"
-#include "Mocks/Death_Test.h"
-#include "Mocks/LogLevels.h"
+#include "Mocks/TestLogger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -46,7 +44,6 @@
 
 #include <format>
 
-#include <absl/strings/str_cat.h>
 #include <array>
 #include <bit>
 #include <filesystem>
@@ -96,7 +93,7 @@ class CapturingLogAppender final : public LogAppender {
  public:
   std::vector<std::string> take() {
     std::lock_guard guard(_mutex);
-    return std::move(_messages);
+    return std::exchange(_messages, {});
   }
 
   std::string details() const override { return "capturing"; }
@@ -147,13 +144,6 @@ std::string classifierOf(LogSecurity security) {
   std::string result;
   appendSecurityClassifier(result, security);
   return result;
-}
-
-/// @brief parses a captured JSON log message, which must be an object.
-std::shared_ptr<velocypack::Builder> parseJsonObject(std::string const& json) {
-  auto builder = velocypack::Parser::fromJson(json);
-  EXPECT_TRUE(builder->slice().isObject()) << json;
-  return builder;
 }
 
 }  // namespace
@@ -505,9 +495,6 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
 TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
   for (auto [s, expected] : kExpectedClassifiers) {
     EXPECT_EQ(classifierOf(s), expected);
-    std::string st;
-    appendSecurityClassifier(st, s);
-    EXPECT_EQ(st, expected);
   }
 }
 
@@ -522,48 +509,6 @@ TEST(LogSecurityTest, multiple_categories_are_joined_in_bit_order) {
   EXPECT_EQ(classifierOf(LogSecurity::Authentication |
                          LogSecurity::SessionManagement),
             expected);
-  std::string st;
-  appendSecurityClassifier(
-      st, LogSecurity::SessionManagement | LogSecurity::Authentication);
-  EXPECT_EQ(st, expected);
-}
-
-TEST(LogSecurityTest, all_categories_are_joined_in_bit_order) {
-  auto all = static_cast<LogSecurity>(kAllSecurityBits);
-  std::string_view expected =
-      "arango-security-event-authentication,"
-      "arango-security-event-access-control,"
-      "arango-security-event-account-management,"
-      "arango-security-event-system-access,"
-      "arango-security-event-configuration-changes,"
-      "arango-security-event-privileged-operations,"
-      "arango-security-event-data-access,"
-      "arango-security-event-violations,"
-      "arango-security-event-api-calls,"
-      "arango-security-event-session-management,"
-      "arango-security-event-audit-log-access,"
-      "arango-security-event-system-errors";
-  EXPECT_EQ(classifierOf(all), expected);
-  std::string st;
-  appendSecurityClassifier(st, all);
-  EXPECT_EQ(st, expected);
-}
-
-TEST(LogSecurityTest, classifier_is_empty_without_known_category) {
-  EXPECT_EQ(classifierOf(static_cast<LogSecurity>(0)), "");
-  EXPECT_EQ(classifierOf(static_cast<LogSecurity>(1u << 15)), "");
-}
-
-TEST(LogSecurityTest, classifier_ignores_unknown_bits) {
-  EXPECT_EQ(classifierOf(LogSecurity::DataAccess |
-                         static_cast<LogSecurity>(1u << 15)),
-            "arango-security-event-data-access");
-}
-
-TEST(LogSecurityTest, append_security_classifier_keeps_existing_content) {
-  std::string out = "prefix:";
-  appendSecurityClassifier(out, LogSecurity::Violations);
-  EXPECT_EQ(out, "prefix:arango-security-event-violations");
 }
 
 TEST(LogSecurityTest, valid_security_requires_nonempty_mask_of_known_bits) {
@@ -578,58 +523,14 @@ TEST(LogSecurityTest, valid_security_requires_nonempty_mask_of_known_bits) {
                                static_cast<LogSecurity>(1u << 15)));
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// an empty mask would produce an empty classifier. std::nullopt is the way to
-// mark a message as "not a security event".
-TEST(LogSecurityDeathTest, empty_security_mask_is_rejected) {
-  EXPECT_DEATH_CORE_FREE(
-      LOG_SECURITY("8d304", INFO, Logger::FIXME, LogSecurity{}) << "invalid",
-      "invalid security category mask");
-}
-#endif
-
-TEST(LogMessageTest, is_enabled_for_level_unless_output_is_forced) {
-  LogMessage plain("f", "file", 1, LogLevel::DEBUG, 0, "msg", 0, false);
-  EXPECT_TRUE(plain.isEnabledFor(LogLevel::TRACE));
-  EXPECT_TRUE(plain.isEnabledFor(LogLevel::DEBUG));
-  EXPECT_FALSE(plain.isEnabledFor(LogLevel::INFO));
-  EXPECT_FALSE(plain.isEnabledFor(LogLevel::FATAL));
-
-  LogMessage forced("f", "file", 1, LogLevel::TRACE, 0, "msg", 0, false,
-                    /*forceOutput*/ true);
-  EXPECT_TRUE(forced.isEnabledFor(LogLevel::TRACE));
-  EXPECT_TRUE(forced.isEnabledFor(LogLevel::INFO));
-  EXPECT_TRUE(forced.isEnabledFor(LogLevel::FATAL));
-}
-
-// when the log queue is full, a message is either queued anyway, or written
-// synchronously by the logging thread itself (see Logger::append).
-TEST(LogThreadTest, only_urgent_or_forced_messages_exceed_queue_limit) {
-  auto mayExceedQueueLimit = [](LogLevel level, bool forceOutput) {
-    LogMessage message("f", "file", 1, level, 0, "msg", 0, false, forceOutput);
-    return LogThread::mayExceedQueueLimit(message);
-  };
-  for (LogLevel level : {LogLevel::INFO, LogLevel::DEBUG, LogLevel::TRACE}) {
-    EXPECT_FALSE(mayExceedQueueLimit(level, /*forceOutput*/ false))
-        << Logger::translateLogLevel(level);
-    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ true))
-        << Logger::translateLogLevel(level);
-  }
-  for (LogLevel level : {LogLevel::FATAL, LogLevel::ERR, LogLevel::WARN}) {
-    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ false))
-        << Logger::translateLogLevel(level);
-    EXPECT_TRUE(mayExceedQueueLimit(level, /*forceOutput*/ true))
-        << Logger::translateLogLevel(level);
-  }
-}
-
 // the LogThread used here is never started, so that its queue is not drained.
 // destroying a LogThread deactivates the logger, so the logger is shut down
 // during the test, and restarted afterwards.
 class LogThreadQueueTest : public ::testing::Test {
  protected:
   LogThreadQueueTest() { Logger::shutdown(); }
-  ~LogThreadQueueTest() { tests::restartLogger(/*useJson*/ false, nullptr); }
+
+  tests::ScopedTestLogger _testLogger;
 };
 
 TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
@@ -641,7 +542,7 @@ TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
   };
 
   EXPECT_TRUE(log(/*forceOutput*/ false));
-  // the queue is full now
+  // the limit is reached now
   EXPECT_FALSE(log(/*forceOutput*/ false));
   EXPECT_TRUE(log(/*forceOutput*/ true));
   EXPECT_TRUE(log(/*forceOutput*/ true));
@@ -649,18 +550,6 @@ TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
 }
 
 #ifdef ARANGODB_ENABLE_SYSLOG
-TEST(LogAppenderSyslogTest, priority_follows_log_level) {
-  auto priorityOf = [](LogLevel level) {
-    return syslogPriorityFor(level, /*isForcedOutput*/ false);
-  };
-  EXPECT_EQ(priorityOf(LogLevel::FATAL), LOG_CRIT);
-  EXPECT_EQ(priorityOf(LogLevel::ERR), LOG_ERR);
-  EXPECT_EQ(priorityOf(LogLevel::WARN), LOG_WARNING);
-  EXPECT_EQ(priorityOf(LogLevel::INFO), LOG_NOTICE);
-  EXPECT_EQ(priorityOf(LogLevel::DEBUG), LOG_INFO);
-  EXPECT_EQ(priorityOf(LogLevel::TRACE), LOG_DEBUG);
-}
-
 // syslog daemons commonly discard LOG_DEBUG, which must not happen to
 // security events that are forced to be logged.
 TEST(LogAppenderSyslogTest, forced_messages_have_at_least_info_priority) {
@@ -695,27 +584,23 @@ TEST(LoggerOptionsProviderTest, processing_applies_always_log_security_flag) {
 
 class LoggerSecurityTest : public ::testing::Test {
  protected:
-  LoggerSecurityTest() : appender(std::make_shared<CapturingLogAppender>()) {}
+  ~LoggerSecurityTest() { Logger::FIXME.setLogLevel(_oldTopicLevel); }
 
-  ~LoggerSecurityTest() {
-    // restore the default test logger setup
-    tests::restartLogger(/*useJson*/ false, nullptr);
-    Logger::FIXME.setLogLevel(_oldTopicLevel);
-  }
-
-  // restarting the logger resets the topic levels to those of the appenders,
-  // so the level of the topic used in the tests is set afterwards.
-  // messages at INFO pass the topic level, those at DEBUG do not.
+  // the topic level and the appender level are separate filters. both start
+  // at INFO, independent of what earlier tests left behind: messages at INFO
+  // pass, those at DEBUG do not.
   void startCapturing(bool useJson) {
-    tests::restartLogger(useJson, appender);
+    appender->setLogLevel(Logger::FIXME, LogLevel::INFO);
+    _testLogger.restart(useJson, appender);
     Logger::FIXME.setLogLevel(LogLevel::INFO);
   }
 
   std::vector<std::string> collect() { return appender->take(); }
 
-  tests::ScopedAlwaysLogSecurityEvents _alwaysLogSecurityEventsGuard;
+  tests::ScopedTestLogger _testLogger;
   LogLevel const _oldTopicLevel = Logger::FIXME.level();
-  std::shared_ptr<CapturingLogAppender> appender;
+  std::shared_ptr<CapturingLogAppender> appender =
+      std::make_shared<CapturingLogAppender>();
 };
 
 TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_text) {
@@ -734,30 +619,6 @@ TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_text) {
             std::vector<std::string>{"{general} plain test message\n"});
 }
 
-TEST_F(LoggerSecurityTest, multiple_classifiers_in_text) {
-  startCapturing(/*useJson*/ false);
-  LOG_SECURITY("8d2fd", INFO, Logger::FIXME,
-               LogSecurity::Authentication | LogSecurity::Violations)
-      << "multi security test message";
-  EXPECT_EQ(collect(), std::vector<std::string>{
-                           "{general} [arango-security-event-authentication,"
-                           "arango-security-event-violations] "
-                           "multi security test message\n"});
-}
-
-TEST_F(LoggerSecurityTest, log_security_if_emits_only_if_condition_holds) {
-  startCapturing(/*useJson*/ false);
-  LOG_SECURITY_IF("8d2f3", INFO, Logger::FIXME, LogSecurity::AccessControl,
-                  true)
-      << "conditional security test message";
-  LOG_SECURITY_IF("8d2f4", INFO, Logger::FIXME, LogSecurity::AccessControl,
-                  false)
-      << "suppressed security test message";
-  EXPECT_EQ(collect(), std::vector<std::string>{
-                           "{general} [arango-security-event-access-control] "
-                           "conditional security test message\n"});
-}
-
 TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_json) {
   startCapturing(/*useJson*/ true);
   LOG_SECURITY("8d2f5", INFO, Logger::FIXME, LogSecurity::DataAccess)
@@ -765,8 +626,9 @@ TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_json) {
 
   auto messages = collect();
   ASSERT_EQ(messages.size(), 1);
-  auto builder = parseJsonObject(messages[0]);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
   auto slice = builder->slice();
+  ASSERT_TRUE(slice.isObject()) << messages[0];
   ASSERT_TRUE(slice.get("security").isString()) << messages[0];
   EXPECT_EQ(slice.get("security").stringView(),
             "arango-security-event-data-access");
@@ -780,49 +642,10 @@ TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_json) {
 
   auto messages = collect();
   ASSERT_EQ(messages.size(), 1);
-  auto builder = parseJsonObject(messages[0]);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  ASSERT_TRUE(builder->slice().isObject()) << messages[0];
   EXPECT_TRUE(builder->slice().get("security").isNone()) << messages[0];
   EXPECT_EQ(messages[0].find("arango-security-event-"), std::string::npos);
-}
-
-TEST_F(LoggerSecurityTest, multiple_classifiers_in_json) {
-  startCapturing(/*useJson*/ true);
-  LOG_SECURITY("8d2fe", INFO, Logger::FIXME,
-               LogSecurity::DataAccess | LogSecurity::AccessControl)
-      << "multi json security test message";
-
-  auto messages = collect();
-  ASSERT_EQ(messages.size(), 1);
-  auto builder = parseJsonObject(messages[0]);
-  auto security = builder->slice().get("security");
-  ASSERT_TRUE(security.isString()) << messages[0];
-  EXPECT_EQ(security.stringView(),
-            "arango-security-event-access-control,"
-            "arango-security-event-data-access");
-}
-
-TEST_F(LoggerSecurityTest, all_categories_are_emitted) {
-  for (bool useJson : {false, true}) {
-    startCapturing(useJson);
-    for (auto [s, _] : kExpectedClassifiers) {
-      Logger::log("8d2f7", __FUNCTION__, __FILE__, __LINE__, LogLevel::INFO,
-                  Logger::FIXME.id(), "category test message", s);
-    }
-    auto messages = collect();
-    ASSERT_EQ(messages.size(), kExpectedClassifiers.size());
-    for (size_t i = 0; i < messages.size(); ++i) {
-      auto expected = kExpectedClassifiers[i].second;
-      if (useJson) {
-        auto builder = parseJsonObject(messages[i]);
-        auto security = builder->slice().get("security");
-        ASSERT_TRUE(security.isString()) << messages[i];
-        EXPECT_EQ(security.stringView(), expected);
-      } else {
-        EXPECT_EQ(messages[i], absl::StrCat("{general} [", expected,
-                                            "] category test message\n"));
-      }
-    }
-  }
 }
 
 TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {

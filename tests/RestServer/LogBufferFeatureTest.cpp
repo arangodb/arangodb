@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Mocks/FakeRegistry.h"
-#include "Mocks/LogLevels.h"
+#include "Mocks/TestLogger.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
@@ -53,11 +53,8 @@ class LogBufferFeatureTest : public ::testing::Test {
     feature->prepare();
   }
 
-  // the feature registers global appenders and a dropped-message callback,
-  // which refer to `registry`. restarting the logger removes the appenders.
   ~LogBufferFeatureTest() {
     Logger::setOnDroppedMessage(nullptr);
-    tests::restartLogger(/*useJson*/ false, nullptr);
     Logger::FIXME.setLogLevel(_oldTopicLevel);
   }
 
@@ -70,11 +67,13 @@ class LogBufferFeatureTest : public ::testing::Test {
     return result;
   }
 
-  tests::ScopedAlwaysLogSecurityEvents _alwaysLogSecurityEventsGuard;
   LogLevel const _oldTopicLevel = Logger::FIXME.level();
   metrics::FakeRegistry registry;
   application_features::ApplicationServer server;
   LogBufferFeature* feature = nullptr;
+  // the feature registers global appenders, which refer to `registry`.
+  // restarting the logger removes them, so this must be destroyed first.
+  tests::ScopedTestLogger _testLogger;
 };
 
 }  // namespace
