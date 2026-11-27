@@ -116,15 +116,17 @@ TEST(GraphViewBFSTest, single_edge) {
   }
 
   pathGeneratorIterator++;
-  // ASSERT_NE(pathGeneratorIterator, std::end(pathGenerator));  // TODO
+  ASSERT_NE(pathGeneratorIterator, std::end(pathGenerator));
 
-  // {
-  //   auto path = *pathGeneratorIterator;
-  //   ASSERT_EQ(path, std::vector<EdgeId>{EdgeId{0}});
-  // }
+  {
+    auto path = *pathGeneratorIterator;
+    auto edgeId = graphView->queryEdge(EdgeIdLabel{"e/0"});
+    ASSERT_TRUE(edgeId.has_value());
+    ASSERT_EQ(path, std::vector<EdgeId>{edgeId.value()});
+  }
 
-  // pathGeneratorIterator++;
-  // ASSERT_EQ(pathGeneratorIterator, std::end(pathGenerator));
+  pathGeneratorIterator++;
+  ASSERT_EQ(pathGeneratorIterator, std::end(pathGenerator));
 }
 
 #if 0

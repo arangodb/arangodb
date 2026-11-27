@@ -51,7 +51,6 @@ namespace arangodb::graph::experimental {
 
 auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
     -> std::generator<std::vector<EdgeId>> {
-  Interior interior;
   // queue contains Interior::Entry, because the queue contains candidates for
   // extensions of an already found path; the entry on the queue points to the
   // end of the path that is being extended.
@@ -61,33 +60,26 @@ auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
 
   // TODO: possibly this should be a single command for the GraphView
   auto startId = view->ensureVertex(start);
-  interior._startVertex = startId;
 
-  std::cerr << "suspend 1";
+  Interior interior{startId};
+
   co_yield {};  // path that only contains the start vertex!
-  std::cerr << "resume 1";
 
   auto initialEdges = view->outEdges(startId);
   std::cerr << inspection::json(initialEdges);
 
   for (auto&& ie : initialEdges) {
-    queue.emplace_back(Interior::Entry{-1, std::move(ie)});
-    std::cerr << "Added edge to queue";
+    queue.emplace_back(Interior::Entry{Interior::Root{}, std::move(ie)});
   }
 
   // TODO: definitely one command (i.e. this needs to be a hand rolled queue
   while (!queue.empty()) {
-    std::cerr << "Pop from queue";
     auto nextItem = queue.front();
     queue.pop_front();
 
-    std::cerr << "Before emplacing to screamerr";
-    interior._screamer.emplace_back(nextItem);
-    std::cerr << "Before tracing";
-    auto path = interior.trace(nextItem.first);
-    std::cerr << "suspend 2";
+    auto loc = interior.add(nextItem);
+    auto path = interior.trace(loc).value();
     co_yield path;
-    std::cerr << "resume 2";
 
     auto const outEdges = view->outEdges(nextItem.second);
     for (auto&& ie : outEdges) {
