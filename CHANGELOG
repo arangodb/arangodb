@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-1287: Documents with a missing or malformed vector attribute are now
+  rejected while a vector index is ingesting, instead of being accepted and
+  making the index build fail. Addresses GitHub issue #23696.
 
 * Allow indexed access in standalone AQL (Computed Values and aql Analyzer).
   This adds NODE_TYPE_INDEXED_ACCESS to the accepted execution plan nodes so
@@ -29,6 +32,8 @@
 
 * Rebuilt included rclone v1.75.1 with go1.26.11 and non-vulnerable
   dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-22.
 
 * BTS-2098: Fix arangorestore failing with "duplicate value for `id` or
   `name`" when restoring a dump that contains arangosearch views into a single
