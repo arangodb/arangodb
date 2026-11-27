@@ -25,6 +25,7 @@
 #include "fakeit.hpp"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
 #include "IResearch/common.h"
@@ -1252,4 +1253,100 @@ TEST_F(
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
     VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0, -1.0);
   }
+}
+
+// The shards of a smart edge collection belong to its shadow collections,
+// which also hold their Current entries; realNames() names those.
+class ShadowedTestCollection : public LogicalCollection {
+ public:
+  using LogicalCollection::LogicalCollection;
+
+  std::vector<std::string> realNames() const override {
+    return {"_local_" + name(), "_from_" + name()};
+  }
+};
+
+TEST_F(ShardDistributionReporterTest,
+       a_smart_edge_collection_takes_current_from_its_shadow_collections) {
+  auto virtualCol = std::make_unique<ShadowedTestCollection>(
+      *vocbase,
+      arangodb::CollectionDescriptor::fromVelocyPack(
+          velocypack::Parser::fromJson(
+              R"({ "cid" : "2000", "name": "UnitTestSmartEdges" })")
+              ->slice()),
+      true);
+  auto localCol = std::make_shared<LogicalCollection>(
+      *vocbase,
+      arangodb::CollectionDescriptor::fromVelocyPack(
+          velocypack::Parser::fromJson(
+              R"({ "cid" : "2001", "name": "_local_UnitTestSmartEdges" })")
+              ->slice()),
+      true);
+  auto fromCol = std::make_shared<LogicalCollection>(
+      *vocbase,
+      arangodb::CollectionDescriptor::fromVelocyPack(
+          velocypack::Parser::fromJson(
+              R"({ "cid" : "2002", "name": "_from_UnitTestSmartEdges" })")
+              ->slice()),
+      true);
+
+  // the virtual collection reports the shards of both shadow collections
+  shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2});
+  shards->emplace(s2, std::vector<ServerID>{dbserver2, dbserver3});
+  virtualCol->setShardMap(shards);
+  allCollections.emplace_back(std::shared_ptr<LogicalCollection>(
+      virtualCol.get(), [](LogicalCollection*) {}));
+
+  fakeit::Mock<CollectionInfoCurrent> fromCurrentMock;
+  std::shared_ptr<CollectionInfoCurrent> fromCurrent(
+      &fromCurrentMock.get(), [](CollectionInfoCurrent*) {});
+
+  fakeit::When(Method(infoMock, getCollectionNT))
+      .AlwaysDo([&](std::string_view dbId, std::string_view name) {
+        EXPECT_EQ(dbId, dbname);
+        if (name == localCol->name()) {
+          return localCol;
+        }
+        EXPECT_EQ(name, fromCol->name());
+        return fromCol;
+      });
+  // there is no Current entry for the virtual collection id 2000, looking
+  // it up would fail the test
+  fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, "2001"))
+      .AlwaysReturn(cic);
+  fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, "2002"))
+      .AlwaysReturn(fromCurrent);
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        return sid == s1 ? std::vector<ServerID>{dbserver1, dbserver2}
+                         : std::vector<ServerID>{};
+      });
+  fakeit::When(Method(fromCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        return sid == s2 ? std::vector<ServerID>{dbserver2, dbserver3}
+                         : std::vector<ServerID>{};
+      });
+
+  auto sender = [](network::DestinationId const&, arangodb::fuerte::RestVerb,
+                   std::string const&, velocypack::Buffer<uint8_t>,
+                   network::RequestOptions const&,
+                   network::Headers) -> network::FutureRes {
+    // all shards are in sync, there is nothing to count
+    EXPECT_TRUE(false);
+    return futures::makeFuture(network::Response{});
+  };
+
+  VPackBuilder resultBuilder;
+  ShardDistributionReporter testee(&ci, sender);
+  testee.getDistributionForDatabase(dbname, resultBuilder);
+
+  VPackSlice col = resultBuilder.slice().get("UnitTestSmartEdges");
+  ASSERT_TRUE(col.isObject());
+  VPackSlice current = col.get("Current");
+  ASSERT_TRUE(current.isObject());
+  EXPECT_EQ(current.length(), 2);
+  EXPECT_EQ(current.get(std::vector<std::string>{s1, "leader"}).stringView(),
+            dbserver1short);
+  EXPECT_EQ(current.get(std::vector<std::string>{s2, "leader"}).stringView(),
+            dbserver2short);
 }
