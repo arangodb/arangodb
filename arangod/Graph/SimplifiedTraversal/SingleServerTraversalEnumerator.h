@@ -71,10 +71,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
       auto ne = _edgeQueue.front();
       _edgeQueue.pop_front();
 
-      _graph.outEdges(ne);
-
-      auto to = _graph.ensureEdgeToVertex(ne);
-      auto ee = _graph.outEdges(to);
+      auto ee = _graph.outEdges(ne);
       for (auto&& ei : ee) {
         _edgeQueue.emplace_back(ei);
       }

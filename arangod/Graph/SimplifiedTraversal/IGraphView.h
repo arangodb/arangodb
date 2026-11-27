@@ -111,15 +111,10 @@ struct IGraphView {
   // returns edges whose _from is equal to _to of the edge with id EdgeId
   virtual auto outEdges(EdgeId edge) -> std::vector<EdgeId> = 0;
 
-  // TODO needs to return at some point Vertex data
   virtual auto ensureVertex(VertexIdLabel const& vertex) -> VertexId = 0;
-  virtual auto queryVertex(VertexIdLabel const& vertex)
-      -> std::optional<VertexId> = 0;
-  virtual auto ensureEdgeToVertex(EdgeId const& edge) -> VertexId = 0;
-  virtual auto retrieveDocument(VertexId const& id)
-      -> std::optional<VertexIdLabel> = 0;
-
-  virtual auto queryEdgeLabel(EdgeId const& edge) -> EdgeIdLabel = 0;
+  virtual auto getToVertex(EdgeId const& edge) -> VertexId = 0;
+  // virtual auto retrieveDocument(VertexId const& id)
+  //     -> std::optional<VertexIdLabel> = 0;
 
   // -----------------------------
   // // Hausmeisterschrott
