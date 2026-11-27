@@ -36,14 +36,12 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
       std::string binaryName, int* ret,
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      bool fedRAMPHigh);
 
-  /// @brief whether the server runs in FedRAMP High mode. this is detected
-  /// from the environment variable kFedRAMPHighEnvVar (see FedRAMPHigh.h) in
-  /// the constructor, i.e. before any options are declared or processed, so
-  /// that processOptions() can adjust the behavior of all features
-  /// accordingly. an invalid value of the variable makes the constructor
-  /// abort the startup (FATAL_ERROR_EXIT).
+  /// @brief whether the server runs in FedRAMP High mode. this is fixed at
+  /// construction, i.e. before any options are declared or processed, so that
+  /// processOptions() can adjust the behavior of all features accordingly.
   bool isFedRAMPHigh() const noexcept { return _fedRAMPHigh; }
 
  protected:

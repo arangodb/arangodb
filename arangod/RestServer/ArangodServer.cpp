@@ -27,7 +27,6 @@
 #include <type_traits>
 
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RestServer/FedRAMPHigh.h"
@@ -92,31 +91,15 @@ void assertNoTLSWithFips(
 
 }  // namespace
 
-namespace {
-/// @brief detects FedRAMP High mode from the environment, and aborts the
-/// startup if the environment variable has an invalid value.
-bool detectFedRAMPHigh() {
-  std::string value;
-  if (!TRI_GETENV(kFedRAMPHighEnvVar, value)) {
-    return false;
-  }
-  auto enabled = isFedRAMPHighEnabled(value);
-  if (enabled.fail()) {
-    LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP) << enabled.errorMessage();
-    FATAL_ERROR_EXIT();
-  }
-  return enabled.get();
-}
-}  // namespace
-
 ArangodServer::ArangodServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret,
     std::shared_ptr<crash_handler::DumpManager> dumpManager,
-    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    bool fedRAMPHigh)
     : OptionProvidingServer<ArangodOptionProviders>(options, binaryPath,
                                                     std::move(binaryName), ret),
-      _fedRAMPHigh(detectFedRAMPHigh()),
+      _fedRAMPHigh(fedRAMPHigh),
       _dumpManager(dumpManager),
       _dataSourceRegistry(dataSourceRegistry) {
   if (_fedRAMPHigh) {
