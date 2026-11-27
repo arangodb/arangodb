@@ -27,6 +27,7 @@
 #include "Auth/Permissions.h"
 #include "Basics/ApiVersion.h"
 #include "Basics/Result.h"
+#include "Logger/LogSecurity.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -131,8 +132,13 @@ class ExecContext {
   //   if (auto r = ec.can(SeeCollection{.db = db, .name = coll});
   //       !r.ok()) { /* ... */ }
   //
-  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE);
-  // see tests/js/client/server_permissions/authorization-questions.js.
+  // Every question asked here is traced on `Logger::AUTHORIZATION` (TRACE),
+  // together with its outcome; see
+  // tests/js/client/server_permissions/authorization-questions.js.
+  // On coordinators and single servers, questions asked on behalf of a
+  // request are security events (category "access control", plus
+  // "violations" if denied), which are logged regardless of the log level in
+  // FedRAMP High mode.
   [[nodiscard]] Result can(auth::Permission permission) const;
 
   // The server-wide read-only gate, which every modifying operation has to
@@ -303,6 +309,24 @@ class ExecContext {
 #endif
 
  private:
+  /// @brief whether authorization decisions of this context are security
+  /// events (see LogMessagesFedRAMP.md, "Authorization and access control
+  /// events"). This is only the case for contexts created from a request
+  /// (and not for internal ones, e.g. of background threads), and only on
+  /// coordinators and single servers, since DB-servers and agents only see
+  /// cluster-internal traffic executed with superuser rights.
+  [[nodiscard]] bool isSecurityRelevant() const noexcept;
+
+  /// @brief the security category of an authorization decision, or
+  /// std::nullopt if it is not a security event (see isSecurityRelevant()).
+  /// Denied access is both an access control event and a violation.
+  [[nodiscard]] std::optional<LogSecurity> authorizationSecurityCategory(
+      bool granted) const noexcept;
+
+  /// @brief log message for an authorization decision about `permission`.
+  [[nodiscard]] std::string authorizationMessage(
+      Result const& result, std::string_view permission) const;
+
   AuthMode _authMode;
   bool const _isRestApiHardened;
   VocbasePtr _vocbase;

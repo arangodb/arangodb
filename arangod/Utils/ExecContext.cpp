@@ -33,6 +33,7 @@
 #include "VocBase/vocbase.h"
 
 #include <ranges>
+#include <sstream>
 
 using namespace arangodb;
 
@@ -150,23 +151,75 @@ std::string ExecContext::requestUrl() const { return _requestUrl; }
 std::string ExecContext::authMethod() const { return _authMethod; }
 #endif
 
+bool ExecContext::isSecurityRelevant() const noexcept {
+  return _hasRequestInfo &&
+         ServerState::instance()->isSingleServerOrCoordinator();
+}
+
+std::optional<LogSecurity> ExecContext::authorizationSecurityCategory(
+    bool granted) const noexcept {
+  if (!isSecurityRelevant()) {
+    return std::nullopt;
+  }
+  return granted ? LogSecurity::AccessControl
+                 : LogSecurity::AccessControl | LogSecurity::Violations;
+}
+
+std::string ExecContext::authorizationMessage(
+    Result const& result, std::string_view permission) const {
+  std::ostringstream out;
+  if (result.ok()) {
+    out << "authorization granted: ";
+  } else {
+    out << "authorization denied: reason='" << result.errorMessage() << "', ";
+  }
+  out << "user='" << user()
+      << "', superuser=" << (isSuperuser() ? "true" : "false");
+  if (_hasRequestInfo) {
+    out << ", client=" << _clientAddress << ", url=" << _requestUrl;
+  }
+  // Note that the permission must come last: the permissions observer
+  // (js/client/modules/@arangodb/testutils/permissions-observer.js) takes
+  // everything after the `AUTHZ-CHECK ` marker up to the end of the line.
+  out << ", AUTHZ-CHECK " << permission;
+  return std::move(out).str();
+}
+
 Result ExecContext::can(auth::Permission permission) const {
-  // Note that the log message is built before the check, because `check()`
+  // Every authorization question is traced on `Logger::AUTHORIZATION`. On
+  // coordinators and single servers, questions asked on behalf of a request
+  // are additionally security events of the category "access control" (and,
+  // if denied, also "violations"), which are always logged in FedRAMP High
+  // mode, regardless of the log level.
+  // Whether the decision is logged at all does not depend on the outcome, so
+  // that we can check this before doing the work.
+  if (!Logger::isEnabled(LogLevel::TRACE, Logger::AUTHORIZATION,
+                         authorizationSecurityCategory(true))) {
+    return _authMode.getIAuth().check(std::move(permission));
+  }
+  // Note that the permission is rendered before the check, because `check()`
   // consumes `permission`.
-  LOG_TOPIC("7e3f1", TRACE, Logger::AUTHORIZATION)
-      << "AUTHZ-CHECK " << permission;
-  return _authMode.getIAuth().check(std::move(permission));
+  std::ostringstream description;
+  description << permission;
+  Result result = _authMode.getIAuth().check(std::move(permission));
+  LOG_SECURITY_IF("7e3f1", TRACE, Logger::AUTHORIZATION,
+                  authorizationSecurityCategory(result.ok()), true)
+      << authorizationMessage(result, std::move(description).str());
+  return result;
 }
 
 Result ExecContext::checkNotReadOnly() const {
   // Note that this is logged unconditionally, i.e. also when the gate lets
   // the operation pass: the trace documents that the question was asked, in
   // the same way `can()` does.
-  LOG_TOPIC("5f9c2", TRACE, Logger::AUTHORIZATION) << "AUTHZ-CHECK IsReadOnly";
+  Result result;
   if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+    result = {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
   }
-  return {};
+  LOG_SECURITY_IF("5f9c2", TRACE, Logger::AUTHORIZATION,
+                  authorizationSecurityCategory(result.ok()), true)
+      << authorizationMessage(result, "IsReadOnly");
+  return result;
 }
 
 Result ExecContext::canSeeDatabase(std::string_view db) const {
