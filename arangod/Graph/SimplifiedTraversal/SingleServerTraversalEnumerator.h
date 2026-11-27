@@ -133,7 +133,7 @@ struct SingleServerTraversalEnumerator : ITraversalEnumerator {
   std::optional<VertexId> _startVertex;
   std::deque<VertexId> _queue;  // BFS
   std::deque<EdgeId> _edgeQueue;
-  containers::HashSet<EdgeId> _seenEdges;
+  std::unordered_set<EdgeId> _seenEdges;
 
   size_t _state = 0;
 };

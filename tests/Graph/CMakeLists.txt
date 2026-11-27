@@ -16,8 +16,7 @@ add_library(arango_tests_graph OBJECT
         KShortestPathsFinderTest.cpp
         WeightedShortestPathTest.cpp
         SingleServerProviderTest.cpp
-        SingleServerNeighbourCacheTest.cpp
-        SingleServerTraversalEnumeratorTest.cpp)
+        SingleServerNeighbourCacheTest.cpp)
 
 target_link_libraries(arango_tests_graph
         PRIVATE
@@ -37,11 +36,4 @@ add_test(test_all_graphs arango_tests_graph)
 add_test(NAME graph
         COMMAND arangodbtests_graph)
 
-
-add_executable(arangodbtests_simple_traversal
-EXCLUDE_FROM_ALL
-GraphViewBFSTest.cpp)
-
-target_link_libraries(arangodbtests_simple_traversal
-arango_lightweight
-gtest_main)
+add_subdirectory(SimplifiedTraversals)
