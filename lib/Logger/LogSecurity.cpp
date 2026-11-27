@@ -54,29 +54,20 @@ static_assert(static_cast<std::uint16_t>(LogSecurity::SystemErrors) ==
 static_assert(kAllSecurityBits == (1u << kClassifiers.size()) - 1,
               "kAllSecurityBits must cover exactly the LogSecurity categories");
 
-// calls `append(part)` for each classifier of `security` and for each
-// separator between them, in order of ascending bit position. unknown bits
-// are ignored.
-template<typename F>
-void forEachClassifierPart(LogSecurity security, F&& append) {
+}  // namespace
+
+void appendSecurityClassifier(std::string& out, LogSecurity security) {
   auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
                                          kAllSecurityBits);
   bool first = true;
   while (bits != 0) {
     if (!first) {
-      append(kSecurityClassifierSeparator);
+      out.append(kSecurityClassifierSeparator);
     }
     first = false;
-    append(kClassifiers[std::countr_zero(bits)]);
+    out.append(kClassifiers[std::countr_zero(bits)]);
     bits &= bits - 1;  // clear lowest set bit
   }
-}
-
-}  // namespace
-
-void appendSecurityClassifier(std::string& out, LogSecurity security) {
-  forEachClassifierPart(security,
-                        [&out](std::string_view part) { out.append(part); });
 }
 
 }  // namespace arangodb
