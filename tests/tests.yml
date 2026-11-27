@@ -50,6 +50,7 @@
             suffix: ssl
           requires:
             coverage: false
+            fips: false
       - endpoints:
           args:
             skipEndpointsIpv6: true
@@ -289,6 +290,8 @@
             suffix: cluster
             dumpAgencyOnError: true
             cluster: true
+          requires:
+            fips: false
       - audit_client:
           args:
             cluster: true
@@ -298,6 +301,8 @@
       - server_secrets:
           args:
             suffix: single
+          requires:
+            fips: false
 
 - restart:
     options:
@@ -379,6 +384,8 @@
           args:
             protocol: ssl
             suffix: ssl
+          requires:
+            fips: false
 
 # the single server run is part of shell_api_multi_permissions;
 # each testfile starts its own cluster, so give it a separate job
