@@ -53,17 +53,6 @@ bool isDirectLogLevel(LogLevel level) noexcept {
          level == LogLevel::WARN;
 }
 
-// whether `message` is queued even if the queue already holds the maximum
-// number of messages. otherwise, log() refuses it, and the caller writes it
-// synchronously instead.
-bool mayExceedQueueLimit(LogMessage const& message) noexcept {
-  // forced messages (security events in FedRAMP High mode) are queued, too,
-  // so that a burst of them does not force the threads emitting them to
-  // write synchronously. the price is that the queue can grow beyond its limit
-  // while such a burst lasts. unlike urgent messages, they do not trigger a
-  // flush, as they are not about a crash.
-  return isDirectLogLevel(message._level) || message.isForcedOutput();
-}
 }  // namespace
 
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
@@ -88,15 +77,17 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     Logger::onDroppedMessage();
   });
 
-  if (numMessages >= _maxQueuedLogMessages && !mayExceedQueueLimit(*message)) {
+  if (numMessages >= _maxQueuedLogMessages) {
     // log queue is full, and the message is not important enough
     // to push it anyway. this will execute the rollback.
+    // Note that we will instead log the message synchronously!
     return false;
   }
 
   if (!_messages.push({&group, message.get()})) {
     // unable to push message onto the queue.
     // this will also execute the rollback.
+    // Note that we will instead log the message synchronously!
     return false;
   }
 
