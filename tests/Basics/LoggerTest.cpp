@@ -543,7 +543,9 @@ class LogThreadQueueTest : public ::testing::Test {
   tests::ScopedTestLogger _testLogger;
 };
 
-TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
+// a refused message is not lost: the caller writes it synchronously instead.
+// so forced messages need no exemption from the queue limit.
+TEST_F(LogThreadQueueTest, forced_messages_respect_the_limit) {
   LogThread thread("test-log-thread", /*maxQueuedLogMessages*/ 2);
   auto log = [&thread](bool forceOutput) {
     auto message = std::make_unique<LogMessage>(
@@ -551,11 +553,9 @@ TEST_F(LogThreadQueueTest, forced_messages_are_queued_beyond_the_limit) {
     return thread.log(Logger::defaultLogGroup(), message);
   };
 
-  EXPECT_TRUE(log(/*forceOutput*/ false));
+  EXPECT_TRUE(log(/*forceOutput*/ true));
   // the limit is reached now
-  EXPECT_FALSE(log(/*forceOutput*/ false));
-  EXPECT_TRUE(log(/*forceOutput*/ true));
-  EXPECT_TRUE(log(/*forceOutput*/ true));
+  EXPECT_FALSE(log(/*forceOutput*/ true));
   EXPECT_FALSE(log(/*forceOutput*/ false));
 }
 
