@@ -32,9 +32,6 @@
 
 namespace arangodb {
 
-LoggerStreamBase::LoggerStreamBase(bool enabled)
-    : LoggerStreamBase(enabled, std::nullopt) {}
-
 LoggerStreamBase::LoggerStreamBase(bool enabled,
                                    std::optional<LogSecurity> security)
     : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
@@ -56,7 +53,7 @@ LoggerStreamBase::LoggerStreamBase(bool enabled,
       << static_cast<std::uint16_t>(security.value_or(LogSecurity{}));
 }
 
-LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
+LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true, std::nullopt) {}
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
   _level = level;
@@ -106,13 +103,14 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
+LoggerStream::LoggerStream(bool enabled)
+    : LoggerStreamBase(enabled, std::nullopt) {}
 
 LoggerStream::LoggerStream(bool enabled, std::optional<LogSecurity> security)
     : LoggerStreamBase(enabled, security) {}
 #endif
 
-LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
+LoggerStream::LoggerStream() : LoggerStreamBase(true, std::nullopt) {}
 
 LoggerStream::LoggerStream(std::optional<LogSecurity> security)
     : LoggerStreamBase(true, security) {}

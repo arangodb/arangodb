@@ -41,8 +41,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
-  explicit LoggerStreamBase(bool enabled);
-  LoggerStreamBase(bool enabled, std::optional<LogSecurity> security);
+  explicit LoggerStreamBase(bool enabled, std::optional<LogSecurity> security);
 
   // intentionally not virtual, as such objects can be created _very_ often!
   ~LoggerStreamBase() = default;
