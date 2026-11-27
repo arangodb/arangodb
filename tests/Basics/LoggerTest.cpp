@@ -559,6 +559,25 @@ TEST_F(LogThreadQueueTest, forced_messages_respect_the_limit) {
   EXPECT_FALSE(log(/*forceOutput*/ false));
 }
 
+// messages of urgent levels are flushed right away, so they never wait in a
+// full queue.
+TEST_F(LogThreadQueueTest, urgent_messages_are_queued_beyond_the_limit) {
+  LogThread thread("test-log-thread", /*maxQueuedLogMessages*/ 2);
+  auto log = [&thread](LogLevel level) {
+    auto message = std::make_unique<LogMessage>("f", "file", 1, level, 0, "msg",
+                                                0, false, false);
+    return thread.log(Logger::defaultLogGroup(), message);
+  };
+
+  EXPECT_TRUE(log(LogLevel::INFO));
+  // the limit is reached now
+  EXPECT_FALSE(log(LogLevel::INFO));
+  EXPECT_TRUE(log(LogLevel::WARN));
+  EXPECT_TRUE(log(LogLevel::ERR));
+  EXPECT_TRUE(log(LogLevel::FATAL));
+  EXPECT_FALSE(log(LogLevel::INFO));
+}
+
 #ifdef ARANGODB_ENABLE_SYSLOG
 // syslog daemons commonly discard LOG_DEBUG, which must not happen to
 // security events that are forced to be logged.
