@@ -915,7 +915,7 @@ futures::Future<futures::Unit> Query::execute(
         // We should do this only once
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
-                              !_ast->root()->isCacheable())) {
+                              !_ast->isCacheable())) {
           useQueryCache = false;
         }
 
@@ -1360,7 +1360,7 @@ QueryResult Query::explain() {
 
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
-                       _warnings.empty() && _ast->root()->isCacheable());
+                       _warnings.empty() && _ast->isCacheable());
 
       if (_planCacheKey.has_value()) {
         // if query parsing/optimization produces warnings. we must disable
