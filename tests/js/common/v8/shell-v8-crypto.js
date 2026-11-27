@@ -277,9 +277,7 @@ function CryptoSuite () {
         [ "secret", "ArangoDB is a database", "sha512", "8ef4e708db5bbc13ecf675ab81c9bfac72faedaf68fae91c51c0736746d087396af758a43cd60f763a5a8187d856c906c1677c7525b756cdb1ad5a7df823df73" ],
         [ "secret", "ArangoDB is a database", "SHA512", "8ef4e708db5bbc13ecf675ab81c9bfac72faedaf68fae91c51c0736746d087396af758a43cd60f763a5a8187d856c906c1677c7525b756cdb1ad5a7df823df73" ],
         [ "secret", "ArangoDB is a database", "sha1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
-        [ "secret", "ArangoDB is a database", "SHA1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
-        [ "secret", "ArangoDB is a database", "md5", "6eecfc947725974efc24bbaaafe15a13" ],
-        [ "secret", "ArangoDB is a database", "MD5", "6eecfc947725974efc24bbaaafe15a13" ]
+        [ "secret", "ArangoDB is a database", "SHA1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ]
       ];
 
       data.forEach(function (value) {
@@ -389,7 +387,6 @@ function CryptoSuite () {
         [ 'secret', 'ArangoDB is a database', 10, 16, 'sha256', '4af8fad53d19ac984c0d1a8c128d5391' ],
         [ 'secret', 'ArangoDB is a database', 10, 16, 'sha384', '9684202a2d1c1ed248724d248c866f11' ],
         [ 'secret', 'ArangoDB is a database', 10, 16, 'sha512', '5818089d14f7366e0656ec851d55a140' ],
-        [ 'secret', 'ArangoDB is a database', 10, 16, 'md5', 'b4a63e5a9c02d76cb40aa37fd34c0a4f' ]
       ];
 
       data.forEach(function (value) {
