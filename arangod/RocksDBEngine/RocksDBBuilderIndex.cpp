@@ -275,11 +275,6 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
-  // WAL catch-up replays this insert into the wrapped index, so reject now
-  // what the wrapped index would reject later.
-  if (auto res = _wrapped->validateDocument(slice); res.fail()) {
-    return res;
-  }
   RocksDBLogValue val =
       RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
   mthd->PutLogData(val.slice());

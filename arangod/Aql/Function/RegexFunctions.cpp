@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/IcuRegexMatcher.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/Utf8Helper.h"
 #include "Transaction/Helpers.h"
@@ -50,12 +51,25 @@ using namespace arangodb;
 namespace arangodb::aql {
 namespace {
 
-void registerICUWarning(ExpressionContext* expressionContext,
-                        std::string_view functionName, UErrorCode status) {
+basics::IcuRegexMatcher* regexMatcherOrWarn(ExpressionContext* ctx,
+                                            char const* AFN,
+                                            std::string_view pattern,
+                                            bool caseInsensitive) {
+  auto* matcher = ctx->buildIcuRegexMatcher(pattern, caseInsensitive);
+  if (matcher == nullptr) {
+    functions::registerWarning(ctx, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    return nullptr;
+  }
+  matcher->abortWhenKilled(ctx);
+  return matcher;
+}
+
+void registerICUWarning(ExpressionContext* ctx, std::string_view functionName,
+                        std::string_view icuErrorName) {
   std::string msg = absl::StrCat("in function '", functionName, "()': ");
-  msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
-                                                    u_errorName_64_64(status)));
-  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
+  msg.append(basics::Exception::FillExceptionString(
+      TRI_ERROR_ARANGO_ICU_ERROR, std::string(icuErrorName).c_str()));
+  ctx->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
 }
 
 }  // namespace
@@ -89,45 +103,37 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 1);
   appendAsString(vopts, adapter, regex);
 
-  // the matcher is owned by the context!
-  icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
-
+  basics::IcuRegexMatcher* matcher =
+      regexMatcherOrWarn(expressionContext, AFN, *buffer, caseInsensitive);
   if (matcher == nullptr) {
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   appendAsString(vopts, adapter, value);
-  icu_64_64::UnicodeString valueToMatch(
-      buffer->data(), static_cast<uint32_t>(buffer->length()));
 
-  auto result = ThreadLocalBuilderLeaser::lease();
-  result->openArray();
-
-  UErrorCode status = U_ZERO_ERROR;
-
-  matcher->reset(valueToMatch);
-  bool find = matcher->find();
-  if (!find) {
+  auto found = matcher->find(*buffer);
+  if (found.fail()) {
+    registerICUWarning(expressionContext, AFN, found.errorMessage());
+    return AqlValue(AqlValueHintNull());
+  }
+  if (!found.get()) {
     functions::throwIfKilled(expressionContext);
     return AqlValue(AqlValueHintNull());
   }
 
+  auto result = ThreadLocalBuilderLeaser::lease();
+  result->openArray();
+
   for (int i = 0; i <= matcher->groupCount(); i++) {
-    icu_64_64::UnicodeString match = matcher->group(i, status);
-    if (U_FAILURE(status)) {
-      registerICUWarning(expressionContext, AFN, status);
+    auto groupRes = matcher->group(i);
+    if (groupRes.fail()) {
+      registerICUWarning(expressionContext, AFN, groupRes.errorMessage());
       return AqlValue(AqlValueHintNull());
-    } else {
-      std::string s;
-      match.toUTF8String(s);
-      result->add(VPackValue(s));
     }
+    result->add(VPackValue(groupRes.get()));
   }
 
   result->close();
@@ -184,15 +190,11 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   appendAsString(vopts, adapter, regex);
   bool isEmptyExpression = (buffer->length() == 0);
 
-  // the matcher is owned by the context!
-  icu_64_64::RegexMatcher* matcher =
-      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
-
-  if (matcher == nullptr) {
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+  basics::IcuRegexMatcher* matcher =
+      regexMatcherOrWarn(expressionContext, AFN, *buffer, caseInsensitive);
+    if (matcher == nullptr) {
     return AqlValue(AqlValueHintNull());
   }
-  basics::abortMatchWhenKilled(*matcher, expressionContext);
 
   buffer->clear();
   AqlValue const& value =
@@ -216,15 +218,14 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   icu_64_64::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
-    UErrorCode errorCode = U_ZERO_ERROR;
-    auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    auto splitRes = matcher->split(valueToSplit, uResults, nrResults);
     functions::throwIfKilled(expressionContext);
-    uint16_t copyThisTime = uCount;
-
-    if (U_FAILURE(errorCode)) {
+    if (splitRes.fail()) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
+    int32_t const uCount = splitRes.get();
+    uint16_t copyThisTime = uCount;
 
     if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent

@@ -95,12 +95,11 @@ void SslServerFeature::unprepare() {
 
 void SslServerFeature::verifySslOptions() {
   // check keyfile
-  if (!_options.keyfile.has_value()) {
+  if (_options.keyfile.empty()) {
     LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
         << "no value specified for '--tls.keyfile'";
     FATAL_ERROR_EXIT();
   }
-  auto keyfile = _options.keyfile.value();
 
   // validate protocol
   // cppcheck-suppress unsignedLessThanZero
@@ -114,15 +113,15 @@ void SslServerFeature::verifySslOptions() {
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
       << "using TLS protocol version '"
       << protocolName(SslProtocol(_options.sslProtocol)) << "'";
-  if (!std::filesystem::exists(keyfile)) {
+  if (!std::filesystem::exists(_options.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
-        << "unable to find TLS keyfile '" << keyfile << "'";
+        << "unable to find TLS keyfile '" << _options.keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
   // Set up first _sniEntry:
   _sniEntries.clear();
-  _sniEntries.emplace_back("", keyfile);
+  _sniEntries.emplace_back("", _options.keyfile);
 
   try {
     createSslContexts();  // just to test if everything works
@@ -268,30 +267,29 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     }
 
     // check CA
-    if (_options.cafile.has_value()) {
-      auto cafile = _options.cafile.value();
+    if (!_options.cafile.empty()) {
       LOG_TOPIC("cdaf2", TRACE, arangodb::Logger::SSL)
-          << "trying to load CA certificates from '" << cafile << "'";
+          << "trying to load CA certificates from '" << _options.cafile << "'";
 
-      res =
-          SSL_CTX_load_verify_locations(nativeContext, cafile.c_str(), nullptr);
+      res = SSL_CTX_load_verify_locations(nativeContext,
+                                          _options.cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC("30289", ERR, arangodb::Logger::SSL)
-            << "cannot load CA certificates from '" << cafile
+            << "cannot load CA certificates from '" << _options.cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
 
       STACK_OF(X509_NAME) * certNames;
 
-      std::string cafileContent = FileUtils::slurp(cafile);
-      certNames = SSL_load_client_CA_file(cafile.c_str());
+      std::string cafileContent = FileUtils::slurp(_options.cafile);
+      certNames = SSL_load_client_CA_file(_options.cafile.c_str());
       _cafileContent = cafileContent;
 
       if (certNames == nullptr) {
         LOG_TOPIC("30363", ERR, arangodb::Logger::SSL)
-            << "cannot load CA certificates from '" << cafile
+            << "cannot load CA certificates from '" << _options.cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }

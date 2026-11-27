@@ -29,6 +29,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/IcuRegexMatcher.h"
 #include "Basics/Result.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/fpconv.h"
@@ -1396,16 +1397,14 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
                                         static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
 
-  // the matcher is owned by the context!
-  icu_64_64::RegexMatcher* matcher = expressionContext->buildSplitMatcher(
+  basics::IcuRegexMatcher* matcher = expressionContext->buildIcuSplitMatcher(
       aqlSeparatorExpression, &trx->vpackOptions(), isEmptyExpression);
-
   if (matcher == nullptr) {
     // compiling regular expression failed
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(AqlValueHintNull());
   }
-  basics::abortMatchWhenKilled(*matcher, expressionContext);
+  matcher->abortWhenKilled(expressionContext);
 
   auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
@@ -1422,15 +1421,14 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   icu_64_64::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
-    UErrorCode errorCode = U_ZERO_ERROR;
-    auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    auto splitRes = matcher->split(valueToSplit, uResults, nrResults);
     functions::throwIfKilled(expressionContext);
-    uint16_t copyThisTime = uCount;
-
-    if (U_FAILURE(errorCode)) {
+    if (splitRes.fail()) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
+    const uint16_t uCount = splitRes.get();
+    uint16_t copyThisTime = uCount;
 
     if (copyThisTime > nrResults) {
       // last hit is the remaining string to be fed into split in a subsequent

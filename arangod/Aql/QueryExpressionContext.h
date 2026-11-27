@@ -60,9 +60,14 @@ class QueryExpressionContext : public aql::ExpressionContext {
 
   icu_64_64::RegexMatcher* buildRegexMatcher(
       std::string_view expr, bool caseInsensitive) override final;
+  basics::IcuRegexMatcher* buildIcuRegexMatcher(
+      std::string_view expr, bool caseInsensitive) override final;
   icu_64_64::RegexMatcher* buildLikeMatcher(
       std::string_view expr, bool caseInsensitive) override final;
   icu_64_64::RegexMatcher* buildSplitMatcher(
+      AqlValue splitExpression, velocypack::Options const* opts,
+      bool& isEmptyExpression) override final;
+  basics::IcuRegexMatcher* buildIcuSplitMatcher(
       AqlValue splitExpression, velocypack::Options const* opts,
       bool& isEmptyExpression) override final;
 

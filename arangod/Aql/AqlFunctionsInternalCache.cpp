@@ -23,6 +23,7 @@
 #include "AqlFunctionsInternalCache.h"
 
 #include "Aql/AqlValueMaterializer.h"
+#include "Basics/IcuRegexMatcher.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -91,6 +92,56 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
   return fromCache(rx, _likeCache);
 }
 
+basics::IcuRegexMatcher* AqlFunctionsInternalCache::buildIcuRegexMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  buildRegexPattern(_temp, expr, caseInsensitive);
+
+  return fromCacheIcu(_temp, _regexCacheIcu);
+}
+
+basics::IcuRegexMatcher* AqlFunctionsInternalCache::buildIcuLikeMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  buildLikePattern(_temp, expr, caseInsensitive);
+
+  return fromCacheIcu(_temp, _likeCacheIcu);
+}
+
+basics::IcuRegexMatcher* AqlFunctionsInternalCache::buildIcuSplitMatcher(
+    AqlValue const& splitExpression, velocypack::Options const* opts,
+    bool& isEmptyExpression) {
+  std::string rx;
+
+  AqlValueMaterializer materializer(opts);
+  VPackSlice slice = materializer.slice(splitExpression);
+  if (splitExpression.isArray()) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
+      if (!it.isString() || it.getStringLength() == 0) {
+        // one empty string rules them all
+        isEmptyExpression = true;
+        rx = "";
+        break;
+      }
+      if (rx.size() != 0) {
+        rx += '|';
+      }
+
+      velocypack::ValueLength length;
+      char const* str = it.getString(length);
+      basics::StringUtils::escapeRegexParams(rx, str, length);
+    }
+  } else if (splitExpression.isString()) {
+    velocypack::ValueLength length;
+    char const* str = slice.getString(length);
+    basics::StringUtils::escapeRegexParams(rx, str, length);
+    if (rx.empty()) {
+      isEmptyExpression = true;
+    }
+  } else {
+    rx.clear();
+  }
+  return fromCacheIcu(rx, _likeCacheIcu);
+}
+
 ValidatorBase* AqlFunctionsInternalCache::buildValidator(
     VPackSlice validatorParams) {
   auto matcherIter =
@@ -117,6 +168,21 @@ icu_64_64::RegexMatcher* AqlFunctionsInternalCache::fromCache(
                          return std::unique_ptr<icu_64_64::RegexMatcher>(
                              basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(
                                  pattern));
+                       }))
+          .first;
+
+  return matcherIter->second.get();
+}
+
+basics::IcuRegexMatcher* AqlFunctionsInternalCache::fromCacheIcu(
+    std::string const& pattern,
+    std::unordered_map<std::string, std::unique_ptr<basics::IcuRegexMatcher>>&
+        cache) {
+  // insert into cache, no matter if pattern is valid or not
+  auto matcherIter =
+      cache
+          .try_emplace(pattern, lazyConstruct([&] {
+                         return basics::IcuRegexMatcher::create(pattern);
                        }))
           .first;
 

@@ -415,20 +415,6 @@ PathRange PatternNormalizer::normalizeRange(AstNode const* node) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
-  // A lower bound of zero includes a zero-hop path. That path has no edge, and
-  // endpoint projection for it is not defined, so reject the range.
-  if (minDepth == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_PARSE,
-        "zero-hop variable-length relationships are not supported");
-  }
-  // `* 1..1` represents a single edge. The default one-hop form binds the edge
-  // variable to the edge document, adds one edge and one vertex to the path,
-  // and matches an undirected self-loop only once. Other ranges remain
-  // variable-length traversals.
-  if (minDepth == 1 && maxDepth == 1) {
-    return PathRange::defaultFixedOne();
-  }
   return PathRange::bounded(minDepth, maxDepth);
 }
 

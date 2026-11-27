@@ -623,16 +623,6 @@ Result RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   return {};
 }
 
-Result RocksDBVectorIndex::validateDocument(velocypack::Slice doc) const {
-  std::vector<float> input;
-  input.reserve(_definition.dimension);
-  auto res = readDocumentVectorData(doc, input);
-  if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
-    return {};
-  }
-  return res;
-}
-
 void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
                                         TRI_voc_tick_t tick,
                                         transaction::Methods* trx) {

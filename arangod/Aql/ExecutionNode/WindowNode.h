@@ -25,7 +25,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/WindowBounds.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Basics/datetime.h"
 
@@ -45,6 +44,51 @@ struct Aggregator;
 class ExecutionBlock;
 class ExecutionPlan;
 class QueryWarnings;
+
+/// utility class to calculate window bounds for Row / Range based windows
+/// could probably also be part of the executor
+class WindowBounds final {
+ public:
+  enum class Type { Row, Range };
+  /// range based WINDOW row values
+  struct Row {
+    double value;
+    double lowBound;
+    double highBound;
+    bool valid;
+  };
+
+  WindowBounds(Type type, AqlValue&& preceding, AqlValue&& following);
+  WindowBounds(Type type, velocypack::Slice slice);
+  ~WindowBounds();
+
+ public:
+  int64_t numPrecedingRows() const;
+  int64_t numFollowingRows() const;
+
+  bool needsFollowingRows() const;
+
+  Row calcRow(AqlValue const& input, QueryWarnings& q) const;
+
+ public:
+  bool unboundedPreceding() const;
+  void toVelocyPack(velocypack::Builder& options) const;
+
+ private:
+  enum class RangeType { Numeric, Date };
+  const Type _type;
+
+  int64_t _numPrecedingRows = 0;
+  int64_t _numFollowingRows = 0;
+  RangeType _rangeType = RangeType::Numeric;
+
+  // contains calendar aware year + month
+  arangodb::basics::ParsedDuration _precedingDuration;
+  arangodb::basics::ParsedDuration _followingDuration;
+
+  double _precedingNumber = 0.0;
+  double _followingNumber = 0.0;
+};
 
 /// @brief class WindowNode
 class WindowNode : public ExecutionNode {

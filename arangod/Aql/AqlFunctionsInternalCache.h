@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
+#include "Basics/IcuRegexMatcher.h"
 #include "VocBase/Validators.h"
 
 #include <unicode/regex.h>
@@ -52,6 +53,13 @@ class AqlFunctionsInternalCache final {
   icu_64_64::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
                                              velocypack::Options const* opts,
                                              bool& isEmptyExpression);
+  basics::IcuRegexMatcher* buildIcuRegexMatcher(std::string_view expr,
+                                                bool caseInsensitive);
+  basics::IcuRegexMatcher* buildIcuLikeMatcher(std::string_view expr,
+                                               bool caseInsensitive);
+  basics::IcuRegexMatcher* buildIcuSplitMatcher(AqlValue const& splitExpression,
+                                                velocypack::Options const* opts,
+                                                bool& isEmptyExpression);
 
   /// @brief return validators -- This is currently only used for JSONSchema
   /// validation.
@@ -78,6 +86,11 @@ class AqlFunctionsInternalCache final {
       std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>&
           cache);
 
+  basics::IcuRegexMatcher* fromCacheIcu(
+      std::string const& pattern,
+      std::unordered_map<std::string, std::unique_ptr<basics::IcuRegexMatcher>>&
+          cache);
+
   static void buildRegexPattern(std::string& out, std::string_view expr,
                                 bool caseInsensitive);
   static void buildLikePattern(std::string& out, std::string_view expr,
@@ -90,6 +103,10 @@ class AqlFunctionsInternalCache final {
   /// @brief cache for compiled regexes (LIKE function)
   std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>
       _likeCache;
+  std::unordered_map<std::string, std::unique_ptr<basics::IcuRegexMatcher>>
+      _regexCacheIcu;
+  std::unordered_map<std::string, std::unique_ptr<basics::IcuRegexMatcher>>
+      _likeCacheIcu;
   /// @brief cache for validators -- This is currently only used for JSONSchema
   /// validation.
   std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>>

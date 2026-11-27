@@ -45,6 +45,11 @@ icu_64_64::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
   return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
+basics::IcuRegexMatcher* QueryExpressionContext::buildIcuRegexMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildIcuRegexMatcher(expr, caseInsensitive);
+}
+
 icu_64_64::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
@@ -55,6 +60,13 @@ icu_64_64::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
                                                       isEmptyExpression);
+}
+
+basics::IcuRegexMatcher* QueryExpressionContext::buildIcuSplitMatcher(
+    AqlValue splitExpression, velocypack::Options const* opts,
+    bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache.buildIcuSplitMatcher(splitExpression, opts,
+                                                         isEmptyExpression);
 }
 
 arangodb::ValidatorBase* QueryExpressionContext::buildValidator(

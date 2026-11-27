@@ -24,7 +24,6 @@
 
 #include <cstdint>
 #include <string>
-#include <optional>
 
 #include "Basics/asio_ns.h"
 #include "Ssl/ssl-helper.h"
@@ -32,8 +31,8 @@
 namespace arangodb {
 
 struct SslServerOptions {
-  std::optional<std::string> cafile;
-  std::optional<std::string> keyfile;
+  std::string cafile;
+  std::string keyfile;
   std::string cipherList = "HIGH:!EXPORT:!aNULL@STRENGTH";
   uint64_t sslProtocol = TLS_GENERIC;
   uint64_t sslOptions = asio_ns::ssl::context::default_workarounds |

@@ -48,7 +48,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "analysis/token_attributes.hpp"
-#include "error/error.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "index/heap_iterator.hpp"

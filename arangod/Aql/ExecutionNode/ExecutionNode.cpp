@@ -689,8 +689,13 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
   while (it != _dependencies.end()) {
     auto c = (*it)->clone(plan, true);
     TRI_ASSERT(c != nullptr);
-    c->_parents.emplace_back(theClone);
-    theClone->_dependencies.emplace_back(c);
+    try {
+      c->_parents.emplace_back(theClone);
+      theClone->_dependencies.emplace_back(c);
+    } catch (...) {
+      delete c;
+      throw;
+    }
     ++it;
   }
 }

@@ -25,6 +25,7 @@ add_library(arango_aql STATIC
   AttributeNamePath.cpp
   BindParameters.cpp
   BlocksWithClients.cpp
+  CalculationNodeVarFinder.cpp
   ClusterQuery.cpp
   CollectOptions.cpp
   Collection.cpp
@@ -32,6 +33,8 @@ add_library(arango_aql STATIC
   Collections.cpp
   Condition.cpp
   ConditionPart.cpp
+  ConditionCoverage.cpp
+  ConditionFinder.cpp
   ConstFetcher.cpp
   CostEstimate.cpp
   DependencyProxy.cpp
@@ -112,6 +115,7 @@ add_library(arango_aql STATIC
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
   Timing.cpp
+  TraversalConditionFinder.cpp
   TraverserEngineShardLists.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp

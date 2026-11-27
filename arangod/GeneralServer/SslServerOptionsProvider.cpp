@@ -41,7 +41,7 @@ void SslServerOptionsProvider::declareOptionsImpl(
 
   options
       ->addOption("--tls.cafile", "The CA file used for secure connections.",
-                  new StringParameter(&_cafile))
+                  new StringParameter(&opts.cafile))
       .setLongDescription(R"(You can use this option to specify a file with
 CA certificates that are sent to the client whenever the server requests a
 client certificate. If you specify a file, the server only accepts client
@@ -54,7 +54,7 @@ The certificates in the file must be PEM-formatted.)");
       ->addOption("--tls.keyfile",
                   "The path to a PEM file (server certificate + private key) "
                   "to use for secure connections.",
-                  new StringParameter(&_keyfile))
+                  new StringParameter(&opts.keyfile))
       .setLongDescription(R"(If you use TLS/SSL encryption by binding the
 server to an `ssl://` endpoint (e.g. `--server.endpoint ssl://127.0.0.1:8529`),
 you must use this option to specify the filename of the server's private key.
@@ -191,16 +191,6 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
   options->addOldOption("--ssl.ecdh-curve", "--tls.ecdh-curve");
   options->addOldOption("--ssl.prefer-http1-in-alpn",
                         "--tls.prefer-http1-in-alpn");
-}
-
-void SslServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions>, SslServerOptions& options) {
-  if (!_cafile.empty()) {
-    options.cafile = _cafile;
-  }
-  if (!_keyfile.empty()) {
-    options.keyfile = _keyfile;
-  }
 }
 
 }  // namespace arangodb

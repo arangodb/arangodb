@@ -264,10 +264,6 @@ Result RocksDBIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> /*it*/,
   return {};
 }
 
-Result RocksDBIndex::validateDocument(velocypack::Slice /*doc*/) const {
-  return {};
-}
-
 /// performs a preflight check for an insert operation, not carrying out any
 /// modifications to the index.
 /// the default implementation does nothing. indexes can override this and
