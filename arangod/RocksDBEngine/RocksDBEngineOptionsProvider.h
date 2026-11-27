@@ -35,6 +35,8 @@ struct RocksDBEngineOptionsProvider
     : OptionsProviderImpl<RocksDBEngineOptionsProvider, RocksDBEngineOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           RocksDBEngineOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RocksDBEngineOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                            RocksDBEngineOptions& options);
 

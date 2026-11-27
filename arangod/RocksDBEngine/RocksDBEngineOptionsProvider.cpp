@@ -410,6 +410,14 @@ additional metrics via the `GET /_admin/metrics` endpoint:
 #endif
 }
 
+void RocksDBEngineOptionsProvider::processOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> opts,
+    RocksDBEngineOptions& options) {
+#ifdef USE_ENTERPRISE
+  eeProvider.processOptions(opts, options.eeOptions);
+#endif
+}
+
 void RocksDBEngineOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
   if (options.throttleScalingFactor == 0) {
@@ -452,9 +460,6 @@ void RocksDBEngineOptionsProvider::validateOptionsImpl(
            "--rocksdb.wal-file-timeout-initial. "
         << "Replication clients might have trouble to get in sync";
   }
-#ifdef USE_ENTERPRISE
-  eeProvider.validateOptions(opts, options.eeOptions);
-#endif
 }
 
 }  // namespace arangodb
