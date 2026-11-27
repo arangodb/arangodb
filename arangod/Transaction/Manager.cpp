@@ -1334,22 +1334,20 @@ Result Manager::updateTransactionIf(
     }
   } else {
     res = trx.abort();
+    if (requestedStatus == transaction::Status::COMMITTED) {
+      // the commit was done for a now aborted transaction we must report
+      // to not silently get out of sync
+      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                absl::StrCat("transaction ", tid.id(), " was ",
+                             (wasExpired ? "expired" : "soft-aborted")));
+    }
     if (intermediateCommits && ServerState::instance()->isDBServer() &&
-        tid.isFollowerTransactionId()) {
+        tid.isFollowerTransactionId() && res.ok()) {
       // we are trying to abort a follower transaction that had intermediate
       // commits already. in this case we return a special error code, which
       // makes the leader drop us as a follower for all shards in the
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
-    }
-    if (requestedStatus == transaction::Status::COMMITTED &&
-        (res.ok() ||
-         res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED))) {
-      // the commit was done for a now aborted transaction we must report
-      // to not silently get out of sync
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED,
-                absl::StrCat("transaction ", tid.id(), " was ",
-                             (wasExpired ? "expired" : "soft-aborted"));
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
