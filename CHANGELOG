@@ -21,6 +21,10 @@
 3.12.14 (2026-11-19)
 --------------------
 
+* COR-1287: Documents with a missing or malformed vector attribute are now
+  rejected while a vector index is ingesting, instead of being accepted and
+  making the index build fail. Addresses GitHub issue #23696.
+
 * FE-1318: bump moment from 2.30.1 to 2.31.0 to resolve CVE-2026-17495.
 
 * Updated ArangoDB Starter to v0.19.33.
