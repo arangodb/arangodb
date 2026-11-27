@@ -1,6 +1,10 @@
 3.12.15 (XXXX-XX-XX)
 --------------------
 
+* COR-1332: Fixed the AQL query results cache storing results of queries that call
+  non-cacheable functions with constant arguments, e.g. `RETURN DATE_NOW()`,
+  which returned stale values.
+
 * Updated ArangoDB Starter to v0.19.34.
 
 * BTS-2480: Fixed LogicalCollection cleanup on errors in openExistingDatabase().
