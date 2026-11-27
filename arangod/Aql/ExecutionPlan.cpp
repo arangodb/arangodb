@@ -3113,7 +3113,7 @@ struct Shower final
       --indent;
     }
 
-    LoggerStream logLn;
+    LoggerStream logLn(std::nullopt);
     logLn << Logger::LOGID("24fa8") << LogLevel::INFO << Logger::AQL;
 
     for (int i = 0; i < 2 * indent; i++) {

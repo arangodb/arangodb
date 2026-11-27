@@ -90,7 +90,6 @@ class LoggerStream : public LoggerStreamBase {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   explicit LoggerStream(bool enabled, std::optional<LogSecurity> security);
 #endif
-  LoggerStream();
   explicit LoggerStream(std::optional<LogSecurity> security);
   ~LoggerStream();
 };

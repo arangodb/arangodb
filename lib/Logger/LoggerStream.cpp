@@ -107,8 +107,6 @@ LoggerStream::LoggerStream(bool enabled, std::optional<LogSecurity> security)
     : LoggerStreamBase(enabled, security) {}
 #endif
 
-LoggerStream::LoggerStream() : LoggerStreamBase(true, std::nullopt) {}
-
 LoggerStream::LoggerStream(std::optional<LogSecurity> security)
     : LoggerStreamBase(true, security) {}
 
