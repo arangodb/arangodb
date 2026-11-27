@@ -51,8 +51,6 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
                                            AgencyOptions const& agencyOptions);
 
-  /// @brief aborts the startup if the options violate the restrictions of
-  /// FedRAMP High mode. called from processOptions().
   void processFedRAMPHighOptions();
 
   bool const _fedRAMPHigh;
