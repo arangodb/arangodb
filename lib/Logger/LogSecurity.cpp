@@ -57,8 +57,7 @@ static_assert(kAllSecurityBits == (1u << kClassifiers.size()) - 1,
 
 void appendSecurityClassifier(std::string& out, LogSecurity security,
                               std::string_view separator) {
-  auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
-                                         kAllSecurityBits);
+  auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security));
   bool first = true;
   while (bits != 0) {
     if (!first) {
