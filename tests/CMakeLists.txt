@@ -47,6 +47,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/TestLogger.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerTester.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
@@ -263,7 +264,9 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
   RestServer/FlushFeatureTest.cpp
+  RestServer/LogBufferFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
+  RestServer/ArangodServerFedRAMPTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/ChecksumCalculatorTest.cpp

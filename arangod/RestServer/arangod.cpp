@@ -30,10 +30,13 @@
 #include <unistd.h>
 
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RestServer/FedRAMPHigh.h"
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/RestartAction.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -42,6 +45,21 @@
 #include "VectorIndex/Feature.h"
 
 using namespace arangodb;
+
+/// @brief detects FedRAMP High mode from the environment, and aborts the
+/// startup if the environment variable has an invalid value.
+static bool detectFedRAMPHigh() {
+  std::string value;
+  if (!TRI_GETENV(kFedRAMPHighEnvVar, value)) {
+    return false;
+  }
+  auto enabled = isFedRAMPHighEnabled(value);
+  if (enabled.fail()) {
+    LOG_TOPIC("a3f1c", FATAL, Logger::STARTUP) << enabled.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+  return enabled.get();
+}
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -58,9 +76,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         argv[0], "Usage: " + name + " [<options>]",
         "For more information use:", SBIN_DIRECTORY);
 
+    bool const fedRAMPHigh = detectFedRAMPHigh();
+
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY,   std::move(name),
-                         &ret,    crashDumpManager, dataSourceRegistry};
+    ArangodServer server{options,    SBIN_DIRECTORY,   std::move(name),
+                         &ret,       crashDumpManager, dataSourceRegistry,
+                         fedRAMPHigh};
     ServerState state{server};
 
     server.addReporter(

@@ -45,6 +45,16 @@ LogThread::~LogThread() {
   shutdown();
 }
 
+namespace {
+// messages of these levels are flushed right away, and are therefore never
+// held back by a full queue
+bool isDirectLogLevel(LogLevel level) noexcept {
+  return level == LogLevel::FATAL || level == LogLevel::ERR ||
+         level == LogLevel::WARN;
+}
+
+}  // namespace
+
 bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   TRI_ASSERT(message != nullptr);
 
@@ -53,9 +63,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     return true;
   }
 
-  bool isDirectLogLevel =
-      (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
-       message->_level == LogLevel::WARN);
+  bool const flushImmediately = isDirectLogLevel(message->_level);
 
   auto numMessages =
       _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -69,15 +77,17 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     Logger::onDroppedMessage();
   });
 
-  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel) {
+  if (numMessages >= _maxQueuedLogMessages && !flushImmediately) {
     // log queue is full, and the message is not important enough
     // to push it anyway. this will execute the rollback.
+    // Note that we will instead log the message synchronously!
     return false;
   }
 
   if (!_messages.push({&group, message.get()})) {
     // unable to push message onto the queue.
     // this will also execute the rollback.
+    // Note that we will instead log the message synchronously!
     return false;
   }
 
@@ -87,7 +97,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   // otherwise we would leak here
   std::ignore = message.release();
 
-  if (isDirectLogLevel) {
+  if (flushImmediately) {
     this->flush();
   }
   return true;

@@ -24,9 +24,14 @@
 
 #include "Basics/operating-system.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
 
 namespace arangodb {
 #ifdef ARANGODB_ENABLE_SYSLOG
+
+/// @brief the syslog priority (e.g. LOG_ERR) to use for a message with the
+/// given level, which is forced to be output if `isForcedOutput` is set.
+int syslogPriorityFor(LogLevel level, bool isForcedOutput) noexcept;
 
 class LogAppenderSyslog final : public LogAppender {
  public:

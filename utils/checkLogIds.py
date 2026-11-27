@@ -5,7 +5,7 @@ import os
 
 import re
 g_log_topic_pattern = re.compile( \
-    r'(?P<macro>LOG_(TOPIC(_IF)?|TRX|CTX(_IF)?|QUERY|PREGEL))\((?P<param>[^),]*),(?P<rest>.*)')
+    r'(?P<macro>LOG_(TOPIC(_IF)?|SECURITY(_IF)?|TRX|CTX(_IF)?|QUERY|PREGEL))\((?P<param>[^),]*),(?P<rest>.*)')
 
 # a LogId is exactly 5 hexadecimal digits
 g_log_id_pattern = re.compile(r'"[0-9a-f]{5}"')

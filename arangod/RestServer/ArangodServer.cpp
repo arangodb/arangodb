@@ -29,6 +29,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RestServer/FedRAMPHigh.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 
 // The list of includes for the features is defined in the following file -
@@ -90,8 +91,48 @@ void assertNoTLSWithFips(
 
 }  // namespace
 
+ArangodServer::ArangodServer(
+    std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
+    std::string binaryName, int* ret,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    bool fedRAMPHigh)
+    : OptionProvidingServer<ArangodOptionProviders>(options, binaryPath,
+                                                    std::move(binaryName), ret),
+      _fedRAMPHigh(fedRAMPHigh),
+      _dumpManager(dumpManager),
+      _dataSourceRegistry(dataSourceRegistry) {
+  if (_fedRAMPHigh) {
+    // options are declared after construction, so this is the place to change
+    // their defaults. they are checked in processFedRAMPHighOptions().
+    applyFedRAMPHighLoggerDefaults(mutableOptions<LoggerOptionsProvider>());
+  }
+}
+
+void ArangodServer::processFedRAMPHighOptions() {
+  if (!_fedRAMPHigh) {
+    return;
+  }
+
+  LOG_SECURITY("7eed3", INFO, Logger::STARTUP,
+               LogSecurity::ConfigurationChanges)
+      << "FedRAMP High mode is enabled (environment variable '"
+      << kFedRAMPHighEnvVar << "' is set to 'on')";
+
+  if (auto result =
+          checkFedRAMPHighLoggerOptions(getOptions<LoggerOptionsProvider>());
+      result.fail()) {
+    LOG_TOPIC("74d25", FATAL, Logger::STARTUP) << result.errorMessage();
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void ArangodServer::processOptions() {
   OptionProvidingServer<ArangodOptionProviders>::processOptions();
+
+  // must run after the OptionProvidingServer::processOptions() call above,
+  // so that the final values of the options are checked.
+  processFedRAMPHighOptions();
 
 #ifdef ARANGODB_HAVE_FORK
   if (getOptions<SupervisorOptionsProvider>().supervisor) {

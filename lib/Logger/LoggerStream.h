@@ -23,10 +23,12 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <sstream>
 #include <string>
 
 #include "Logger/LogLevel.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 
@@ -39,7 +41,7 @@ class LoggerStreamBase {
   LoggerStreamBase& operator=(LoggerStreamBase const&) = delete;
 
   LoggerStreamBase();
-  explicit LoggerStreamBase(bool enabled);
+  explicit LoggerStreamBase(bool enabled, std::optional<LogSecurity> security);
 
   // intentionally not virtual, as such objects can be created _very_ often!
   ~LoggerStreamBase() = default;
@@ -73,6 +75,7 @@ class LoggerStreamBase {
   std::stringstream _out;
   size_t _topicId;
   LogLevel _level;
+  std::optional<LogSecurity> _security;
   int _line;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool const _enabled;
@@ -85,9 +88,9 @@ class LoggerStreamBase {
 class LoggerStream : public LoggerStreamBase {
  public:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  explicit LoggerStream(bool enabled);
+  explicit LoggerStream(bool enabled, std::optional<LogSecurity> security);
 #endif
-  LoggerStream();
+  explicit LoggerStream(std::optional<LogSecurity> security);
   ~LoggerStream();
 };
 

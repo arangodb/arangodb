@@ -41,6 +41,7 @@
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 #include "Logger/LogTopic.h"
@@ -78,6 +79,12 @@ static constexpr std::string_view DEBUG = "DEBUG";
 static constexpr std::string_view TRACE = "TRACE";
 static constexpr std::string_view UNKNOWN = "UNKNOWN";
 
+// separator between multiple classifiers of a security event that belongs to
+// more than one category, in plain text output
+constexpr std::string_view kSecurityClassifierSeparator = ",";
+// in JSON output, the classifiers form an array of strings
+constexpr std::string_view kJsonSecurityClassifierSeparator = R"(",")";
+
 struct DefaultLogGroup final : LogGroup {
   DefaultLogGroup() : LogGroup(0) {}
 };
@@ -87,8 +94,8 @@ DefaultLogGroup defaultLogGroupInstance;
 
 LogMessage::LogMessage(std::string_view function, std::string_view file,
                        int line, LogLevel level, size_t topicId,
-                       std::string&& message, uint32_t offset,
-                       bool shrunk) noexcept
+                       std::string&& message, uint32_t offset, bool shrunk,
+                       bool forceOutput) noexcept
     : _function(function),
       _file(file),
       _line(line),
@@ -96,7 +103,8 @@ LogMessage::LogMessage(std::string_view function, std::string_view file,
       _topicId(topicId),
       _message(std::move(message)),
       _offset(offset),
-      _shrunk(shrunk) {}
+      _shrunk(shrunk),
+      _forceOutput(forceOutput) {}
 
 void LogMessage::shrink(std::size_t maxLength) {
   // no need to shrink an already shrunk message
@@ -117,6 +125,7 @@ void LogMessage::shrink(std::size_t maxLength) {
 }
 
 std::atomic<bool> Logger::_active(false);
+std::atomic<bool> Logger::_alwaysLogSecurityEvents(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 std::mutex Logger::_appenderModificationMutex;
 logger::Appenders Logger::_appenders;
@@ -671,7 +680,8 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
 
 void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
-                 size_t topicId, std::string_view message) try {
+                 size_t topicId, std::string_view message,
+                 std::optional<LogSecurity> security) try {
   TRI_ASSERT(!logid.empty());
 
   // we only determine our pid once, as currentProcessId() will
@@ -696,10 +706,10 @@ void Logger::log(std::string_view logid, std::string_view function,
 
   if (Logger::_useJson) {
     buildJsonLogMessage(out, logid, function, file, line, level, topicId,
-                        message, shrunk);
+                        security, message, shrunk);
   } else {
     buildTextLogMessage(out, logid, function, file, line, level, topicId,
-                        message, offset, shrunk);
+                        security, message, offset, shrunk);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
@@ -708,7 +718,8 @@ void Logger::log(std::string_view logid, std::string_view function,
   out.push_back('\n');
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
-                                          std::move(out), offset, shrunk);
+                                          std::move(out), offset, shrunk,
+                                          forceLogging(security));
 
   append(defaultLogGroup(), std::move(msg), false,
          [level, topicId](LogMessage const& msg) -> void {
@@ -724,6 +735,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, bool& shrunk) {
   LogContext& logContext = LogContext::current();
   // construct JSON output
@@ -809,6 +821,17 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   // value of topic is always safe to print
   dumper.appendString(LogTopic::lookup(topicId));
 
+  // the security event classifier. this is always emitted for security
+  // events, regardless of any other log output options, so that security
+  // events can be reliably identified by downstream log processing.
+  if (security.has_value()) {
+    // the classifiers only consist of lowercase letters and dashes, so they
+    // can be appended directly without JSON escaping
+    out.append(",\"security\":[\"");
+    appendSecurityClassifier(out, *security, kJsonSecurityClassifierSeparator);
+    out.append("\"]");
+  }
+
   // the logid
   if (::arangodb::Logger::getShowIds()) {
     out.append(",\"id\":");
@@ -877,6 +900,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
                                  std::string_view function,
                                  std::string_view file, int line,
                                  LogLevel level, size_t topicId,
+                                 std::optional<LogSecurity> security,
                                  std::string_view message, uint32_t& offset,
                                  bool& shrunk) {
   LogContext& logContext = LogContext::current();
@@ -947,6 +971,17 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   }
 
   absl::StrAppend(&out, "{", LogTopic::lookup(topicId), "} ");
+
+  // the security event classifier. this is always emitted for security
+  // events, regardless of any other log output options, so that security
+  // events can be reliably identified by downstream log processing.
+  // note: it is placed after `offset`, so that it is also contained in
+  // the in-memory log buffer and in syslog output.
+  if (security.has_value()) {
+    out.push_back('[');
+    appendSecurityClassifier(out, *security, kSecurityClassifierSeparator);
+    out.append("] ");
+  }
 
   {
     READ_LOCKER(guard, _structuredParamsLock);

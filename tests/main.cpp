@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/Logger.h"
+#include "Mocks/TestLogger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -126,8 +127,7 @@ int main(int argc, char* argv[]) {
   arangodb::Logger::setTimeFormat(
       arangodb::LogTimeFormats::TimeFormat::UTCDateStringMicros);
   arangodb::Logger::setShowThreadIdentifier(true);
-  arangodb::Logger::initialize(false, 10000);
-  arangodb::Logger::addAppender(arangodb::Logger::defaultLogGroup(), "-");
+  arangodb::tests::initializeTestLogger();
 
   sc.prepare();
 

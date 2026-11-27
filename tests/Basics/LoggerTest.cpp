@@ -27,18 +27,40 @@
 
 #include "gtest/gtest.h"
 
+#include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogSecurity.h"
+#include "Logger/LogThread.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerOptionsProvider.h"
+#include "Mocks/TestLogger.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
 
 #include <format>
 
+#include <array>
+#include <bit>
 #include <filesystem>
+#include <mutex>
 #include <regex>
 #include <sstream>
+#include <string_view>
+#include <thread>
+#include <utility>
+#include <vector>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef ARANGODB_ENABLE_SYSLOG
+#include <syslog.h>
 #endif
 
 using namespace arangodb;
@@ -62,6 +84,67 @@ struct Synchronizer {
     cv.notify_all();
   }
 };
+
+/// @brief log appender which captures the messages logged by the thread that
+/// created it. only the part from the message offset onwards is kept, i.e.
+/// without timestamp, process and thread identifiers, so that tests can
+/// compare complete messages.
+class CapturingLogAppender final : public LogAppender {
+ public:
+  std::vector<std::string> take() {
+    std::lock_guard guard(_mutex);
+    return std::exchange(_messages, {});
+  }
+
+  std::string details() const override { return "capturing"; }
+
+ protected:
+  void logMessage(LogMessage const& message) override {
+    // global appenders receive messages from all threads, and leftover
+    // threads of other tests must not influence the captured messages
+    if (std::this_thread::get_id() != _owner) {
+      return;
+    }
+    std::lock_guard guard(_mutex);
+    _messages.emplace_back(
+        std::string_view(message._message).substr(message._offset));
+  }
+
+ private:
+  std::thread::id const _owner = std::this_thread::get_id();
+  std::mutex _mutex;
+  std::vector<std::string> _messages;
+};
+
+// the classifiers are an external contract (ADR LOG-001), on which
+// downstream log processing relies, so they are spelled out literally here.
+constexpr std::array<std::pair<LogSecurity, std::string_view>, 12>
+    kExpectedClassifiers = {{
+        {LogSecurity::Authentication, "arango-security-event-authentication"},
+        {LogSecurity::AccessControl, "arango-security-event-access-control"},
+        {LogSecurity::AccountManagement,
+         "arango-security-event-account-management"},
+        {LogSecurity::SystemAccess, "arango-security-event-system-access"},
+        {LogSecurity::ConfigurationChanges,
+         "arango-security-event-configuration-changes"},
+        {LogSecurity::PrivilegedOperations,
+         "arango-security-event-privileged-operations"},
+        {LogSecurity::DataAccess, "arango-security-event-data-access"},
+        {LogSecurity::Violations, "arango-security-event-violations"},
+        {LogSecurity::ApiCalls, "arango-security-event-api-calls"},
+        {LogSecurity::SessionManagement,
+         "arango-security-event-session-management"},
+        {LogSecurity::AuditLogAccess, "arango-security-event-audit-log-access"},
+        {LogSecurity::SystemErrors, "arango-security-event-system-errors"},
+    }};
+static_assert(kExpectedClassifiers.size() == std::popcount(kAllSecurityBits),
+              "kExpectedClassifiers must list every LogSecurity category");
+
+std::string classifierOf(LogSecurity security, std::string_view separator) {
+  std::string result;
+  appendSecurityClassifier(result, security, separator);
+  return result;
+}
 
 }  // namespace
 
@@ -403,4 +486,275 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
     EXPECT_EQ(expectedValues.at(i), iterations)
         << "Thread " << i << " did not have enough messages";
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     security event classification
+// -----------------------------------------------------------------------------
+
+TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
+  for (auto [s, expected] : kExpectedClassifiers) {
+    EXPECT_EQ(classifierOf(s, ","), expected);
+  }
+}
+
+TEST(LogSecurityTest, multiple_categories_are_joined_in_bit_order) {
+  std::string_view expected =
+      "arango-security-event-authentication,"
+      "arango-security-event-session-management";
+  // the order of OR-ing does not matter
+  EXPECT_EQ(
+      classifierOf(LogSecurity::SessionManagement | LogSecurity::Authentication,
+                   ","),
+      expected);
+  EXPECT_EQ(
+      classifierOf(LogSecurity::Authentication | LogSecurity::SessionManagement,
+                   ","),
+      expected);
+}
+
+TEST(LogSecurityTest, multiple_categories_are_joined_by_given_separator) {
+  EXPECT_EQ(
+      classifierOf(LogSecurity::Authentication | LogSecurity::SessionManagement,
+                   "\",\""),
+      "arango-security-event-authentication\",\""
+      "arango-security-event-session-management");
+}
+
+TEST(LogSecurityTest, valid_security_requires_nonempty_mask_of_known_bits) {
+  EXPECT_TRUE(isValidSecurity(LogSecurity::Authentication));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::SystemErrors));
+  EXPECT_TRUE(isValidSecurity(LogSecurity::DataAccess | LogSecurity::ApiCalls));
+  EXPECT_TRUE(isValidSecurity(static_cast<LogSecurity>(kAllSecurityBits)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(0)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 12)));
+  EXPECT_FALSE(isValidSecurity(static_cast<LogSecurity>(1u << 15)));
+  EXPECT_FALSE(isValidSecurity(LogSecurity::DataAccess |
+                               static_cast<LogSecurity>(1u << 15)));
+}
+
+// the LogThread used here is never started, so that its queue is not drained.
+// destroying a LogThread deactivates the logger, so the logger is shut down
+// during the test, and restarted afterwards.
+class LogThreadQueueTest : public ::testing::Test {
+ protected:
+  LogThreadQueueTest() { Logger::shutdown(); }
+
+  tests::ScopedTestLogger _testLogger;
+};
+
+// a refused message is not lost: the caller writes it synchronously instead.
+// so forced messages need no exemption from the queue limit.
+TEST_F(LogThreadQueueTest, forced_messages_respect_the_limit) {
+  LogThread thread("test-log-thread", /*maxQueuedLogMessages*/ 2);
+  auto log = [&thread](bool forceOutput) {
+    auto message = std::make_unique<LogMessage>(
+        "f", "file", 1, LogLevel::INFO, 0, "msg", 0, false, forceOutput);
+    return thread.log(Logger::defaultLogGroup(), message);
+  };
+
+  EXPECT_TRUE(log(/*forceOutput*/ true));
+  // the limit is reached now
+  EXPECT_FALSE(log(/*forceOutput*/ true));
+  EXPECT_FALSE(log(/*forceOutput*/ false));
+}
+
+// messages of urgent levels are flushed right away, so they never wait in a
+// full queue.
+TEST_F(LogThreadQueueTest, urgent_messages_are_queued_beyond_the_limit) {
+  LogThread thread("test-log-thread", /*maxQueuedLogMessages*/ 2);
+  auto log = [&thread](LogLevel level) {
+    auto message = std::make_unique<LogMessage>("f", "file", 1, level, 0, "msg",
+                                                0, false, false);
+    return thread.log(Logger::defaultLogGroup(), message);
+  };
+
+  EXPECT_TRUE(log(LogLevel::INFO));
+  // the limit is reached now
+  EXPECT_FALSE(log(LogLevel::INFO));
+  EXPECT_TRUE(log(LogLevel::WARN));
+  EXPECT_TRUE(log(LogLevel::ERR));
+  EXPECT_TRUE(log(LogLevel::FATAL));
+  EXPECT_FALSE(log(LogLevel::INFO));
+}
+
+#ifdef ARANGODB_ENABLE_SYSLOG
+// syslog daemons commonly discard LOG_DEBUG, which must not happen to
+// security events that are forced to be logged.
+TEST(LogAppenderSyslogTest, forced_messages_have_at_least_info_priority) {
+  for (LogLevel level : {LogLevel::FATAL, LogLevel::ERR, LogLevel::WARN,
+                         LogLevel::INFO, LogLevel::DEBUG, LogLevel::TRACE}) {
+    // lower values mean higher priority
+    EXPECT_LE(syslogPriorityFor(level, /*isForcedOutput*/ true), LOG_INFO)
+        << Logger::translateLogLevel(level);
+  }
+}
+#endif
+
+// processing the logger options is what makes the option
+// `--log.always-log-security-messages` take effect.
+TEST(LoggerOptionsProviderTest, processing_applies_always_log_security_flag) {
+  tests::ScopedAlwaysLogSecurityEvents guard;
+  for (bool value : {true, false}) {
+    LoggerOptionsProvider provider;
+    // processing the options also applies the configured log levels, which
+    // are global state. none are configured, so that they are left alone.
+    provider.mutableOptions().levels.clear();
+    provider.mutableOptions().alwaysLogSecurityEvents = value;
+    Logger::setAlwaysLogSecurityEvents(!value);
+    provider.processOptions(nullptr);
+    EXPECT_EQ(Logger::alwaysLogSecurityEvents(), value);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            security event logging
+// -----------------------------------------------------------------------------
+
+class LoggerSecurityTest : public ::testing::Test {
+ protected:
+  ~LoggerSecurityTest() { Logger::FIXME.setLogLevel(_oldTopicLevel); }
+
+  // the topic level and the appender level are separate filters. both start
+  // at INFO, independent of what earlier tests left behind: messages at INFO
+  // pass, those at DEBUG do not.
+  void startCapturing(bool useJson) {
+    appender->setLogLevel(Logger::FIXME, LogLevel::INFO);
+    _testLogger.restart(useJson, appender);
+    Logger::FIXME.setLogLevel(LogLevel::INFO);
+  }
+
+  std::vector<std::string> collect() { return appender->take(); }
+
+  tests::ScopedTestLogger _testLogger;
+  LogLevel const _oldTopicLevel = Logger::FIXME.level();
+  std::shared_ptr<CapturingLogAppender> appender =
+      std::make_shared<CapturingLogAppender>();
+};
+
+TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_text) {
+  startCapturing(/*useJson*/ false);
+  LOG_SECURITY("8d2f1", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "security test message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "security test message\n"});
+}
+
+TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_text) {
+  startCapturing(/*useJson*/ false);
+  LOG_TOPIC("8d2f2", INFO, Logger::FIXME) << "plain test message";
+  EXPECT_EQ(collect(),
+            std::vector<std::string>{"{general} plain test message\n"});
+}
+
+TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_json) {
+  startCapturing(/*useJson*/ true);
+  LOG_SECURITY("8d2f5", INFO, Logger::FIXME, LogSecurity::DataAccess)
+      << "json \"security\" test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  auto slice = builder->slice();
+  ASSERT_TRUE(slice.isObject()) << messages[0];
+  ASSERT_TRUE(slice.get("security").isArray()) << messages[0];
+  ASSERT_EQ(slice.get("security").length(), 1) << messages[0];
+  EXPECT_EQ(slice.get("security").at(0).stringView(),
+            "arango-security-event-data-access");
+  EXPECT_EQ(slice.get("message").stringView(),
+            "json \"security\" test message");
+}
+
+TEST_F(LoggerSecurityTest, multiple_classifiers_form_a_json_array) {
+  startCapturing(/*useJson*/ true);
+  LOG_SECURITY("8d2e1", INFO, Logger::FIXME,
+               LogSecurity::SessionManagement | LogSecurity::Authentication)
+      << "json multi-category test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  auto slice = builder->slice();
+  ASSERT_TRUE(slice.isObject()) << messages[0];
+  ASSERT_TRUE(slice.get("security").isArray()) << messages[0];
+  ASSERT_EQ(slice.get("security").length(), 2) << messages[0];
+  EXPECT_EQ(slice.get("security").at(0).stringView(),
+            "arango-security-event-authentication");
+  EXPECT_EQ(slice.get("security").at(1).stringView(),
+            "arango-security-event-session-management");
+}
+
+TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_json) {
+  startCapturing(/*useJson*/ true);
+  LOG_TOPIC("8d2f6", INFO, Logger::FIXME) << "plain json test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  ASSERT_TRUE(builder->slice().isObject()) << messages[0];
+  EXPECT_TRUE(builder->slice().get("security").isNone()) << messages[0];
+  EXPECT_EQ(messages[0].find("arango-security-event-"), std::string::npos);
+}
+
+TEST_F(LoggerSecurityTest, security_events_respect_log_levels_by_default) {
+  startCapturing(/*useJson*/ false);
+  Logger::setAlwaysLogSecurityEvents(false);
+  LOG_SECURITY("8d2f8", DEBUG, Logger::FIXME, LogSecurity::Authentication)
+      << "debug security message";
+  // proves that capturing works, so that the filtering above is meaningful
+  LOG_SECURITY("8d2ff", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "info security message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "info security message\n"});
+}
+
+TEST_F(LoggerSecurityTest, security_events_are_forced_if_requested) {
+  startCapturing(/*useJson*/ false);
+  Logger::setAlwaysLogSecurityEvents(true);
+  LOG_SECURITY("8d2f9", DEBUG, Logger::FIXME, LogSecurity::Authentication)
+      << "forced debug security message";
+  LOG_TOPIC("8d2fa", DEBUG, Logger::FIXME) << "plain debug message";
+  LOG_SECURITY_IF("8d2fb", TRACE, Logger::FIXME, LogSecurity::AccessControl,
+                  true)
+      << "forced trace security message";
+  LOG_SECURITY_IF("8d2fc", TRACE, Logger::FIXME, LogSecurity::AccessControl,
+                  false)
+      << "suppressed trace security message";
+
+  EXPECT_EQ(collect(), (std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "forced debug security message\n",
+                           "{general} [arango-security-event-access-control] "
+                           "forced trace security message\n"}));
+}
+
+// the topic level and the appender level are separate filters. here only the
+// appender is stricter than the message level, so the topic level does not
+// interfere.
+TEST_F(LoggerSecurityTest, forced_security_events_bypass_appender_level) {
+  startCapturing(/*useJson*/ false);
+  appender->setLogLevel(Logger::FIXME, LogLevel::ERR);
+  Logger::setAlwaysLogSecurityEvents(true);
+  LOG_SECURITY("8d300", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "forced security message";
+  LOG_TOPIC("8d301", INFO, Logger::FIXME) << "plain info message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "forced security message\n"});
+}
+
+TEST_F(LoggerSecurityTest, security_events_respect_appender_level_by_default) {
+  startCapturing(/*useJson*/ false);
+  appender->setLogLevel(Logger::FIXME, LogLevel::ERR);
+  Logger::setAlwaysLogSecurityEvents(false);
+  LOG_SECURITY("8d302", INFO, Logger::FIXME, LogSecurity::Authentication)
+      << "filtered security message";
+  // proves that capturing works, so that the filtering above is meaningful
+  LOG_SECURITY("8d303", ERR, Logger::FIXME, LogSecurity::Authentication)
+      << "error security message";
+  EXPECT_EQ(collect(), std::vector<std::string>{
+                           "{general} [arango-security-event-authentication] "
+                           "error security message\n"});
 }

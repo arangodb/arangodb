@@ -36,11 +36,8 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
       std::string binaryName, int* ret,
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
-      : OptionProvidingServer<ArangodOptionProviders>(
-            options, binaryPath, std::move(binaryName), ret),
-        _dumpManager(dumpManager),
-        _dataSourceRegistry(dataSourceRegistry) {}
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      bool fedRAMPHigh);
 
  protected:
   // Called by server::run() after collect & validate.
@@ -54,6 +51,9 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   static ServerState::RoleEnum resolveRole(ClusterOptions const& clusterOptions,
                                            AgencyOptions const& agencyOptions);
 
+  void processFedRAMPHighOptions();
+
+  bool const _fedRAMPHigh;
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
   std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
 };

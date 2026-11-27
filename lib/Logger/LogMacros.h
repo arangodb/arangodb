@@ -52,6 +52,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Logger/LogVoidify.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -62,7 +64,14 @@
       << ::arangodb::Logger::FUNCTION(__FUNCTION__) \
       << ::arangodb::Logger::LOGID((id))
 
-/// @brief logs a message for a topic given that a condition is true
+/// @brief internal helper: logs a message for a topic given that a condition
+/// is true. `security` is a `std::optional<::arangodb::LogSecurity>`, which
+/// marks the log message as a security event of a specific category (or
+/// `std::nullopt` if it is not a security event). if
+/// Logger::alwaysLogSecurityEvents() is set (FedRAMP High mode), security
+/// events are logged regardless of the configured log levels.
+/// note: `security` may be evaluated more than once, so it must not have
+/// side effects.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // in maintainer mode, we *intentionally and always build all log messages* if
 // the condition is true.
@@ -70,33 +79,58 @@
 // (e.g. trace) that would otherwise go undetected. we store a boolean in the
 // LoggerStream then to indicate whether we want to emit the log message or
 // not.
-#define ARANGO_INTERNAL_LOG_STREAM(level, topic, cond)                   \
-  !(cond) ? (void)nullptr                                                \
-          : ::arangodb::LogVoidify() &                                   \
-                (::arangodb::LoggerStream(::arangodb::Logger::isEnabled( \
-                     (::arangodb::LogLevel::level), (topic)))            \
+#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)              \
+  !(cond) ? (void)nullptr                                                     \
+          : ::arangodb::LogVoidify() &                                        \
+                (::arangodb::LoggerStream(                                    \
+                     ::arangodb::Logger::isEnabled(                           \
+                         (::arangodb::LogLevel::level), (topic), (security)), \
+                     (security))                                              \
                  << (::arangodb::LogLevel::level))
 
 #else
 // outside of maintainer mode, we check if the log message should be emitted,
 // and only then build the log log message. this is a performance optimization
 // so we can save constructing log messages which will not be emitted anyway.
-#define ARANGO_INTERNAL_LOG_STREAM(level, topic, cond)                       \
-  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic)) && \
-    (cond))                                                                  \
-      ? (void)nullptr                                                        \
-      : ::arangodb::LogVoidify() &                                           \
-            (::arangodb::LoggerStream() << (::arangodb::LogLevel::level))
+#define ARANGO_INTERNAL_LOG_STREAM(level, topic, security, cond)          \
+  !(::arangodb::Logger::isEnabled((::arangodb::LogLevel::level), (topic), \
+                                  (security)) &&                          \
+    (cond))                                                               \
+      ? (void)nullptr                                                     \
+      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream((security))  \
+                                    << (::arangodb::LogLevel::level))
 
 #endif
 
-#define LOG_TOPIC_IF(id, level, topic, cond)       \
-  ARANGO_INTERNAL_LOG_STREAM(level, topic, (cond)) \
+/// @brief logs a message for a topic given that a condition is true, and
+/// marks it as a security event. `security` is a value of the
+/// `::arangodb::LogSecurity` enum (possibly several categories OR-ed together).
+/// all other logging macros delegate to this one.
+/// note: `security` (and `topic`) may be evaluated more than once, so they
+/// must not have side effects. if computing `security` has side effects or
+/// is expensive, compute it into a local variable first.
+#define LOG_SECURITY_IF(id, level, topic, security, cond)    \
+  ARANGO_INTERNAL_LOG_STREAM(level, topic, security, (cond)) \
       << (topic) << ARANGO_INTERNAL_LOG_HELPER((id))
 
+/// @brief logs a message for a topic given that a condition is true.
+/// the message is not a security event.
+#define LOG_TOPIC_IF(id, level, topic, cond) \
+  LOG_SECURITY_IF(id, level, topic, ::std::nullopt, cond)
+
+/// @brief logs a message for a topic and marks it as a security event.
+/// this simply redirects to LOG_SECURITY_IF(...) with an always true
+/// condition.
+/// note: `security` (and `topic`) may be evaluated more than once, so they
+/// must not have side effects.
+#define LOG_SECURITY(id, level, topic, security) \
+  LOG_SECURITY_IF(id, level, topic, security, true)
+
 /// @brief logs a message for a topic.
-/// this simply redirects to LOG_TOPIC_IF(...) with an always true condition
-#define LOG_TOPIC(id, level, topic) LOG_TOPIC_IF(id, level, topic, true)
+/// this simply redirects to LOG_SECURITY_IF(...) without a security category
+/// and with an always true condition.
+#define LOG_TOPIC(id, level, topic) \
+  LOG_SECURITY_IF(id, level, topic, ::std::nullopt, true)
 
 /// @brief logs a message for debugging during development
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
