@@ -11,6 +11,7 @@ target_sources(arangodbtests
   FutureSharedLockTest.cpp
   HashesTest.cpp
   HybridLogicalClockTest.cpp
+  IcuRegexMatcherTest.cpp
   InputProcessorsTest.cpp
   OverloadTest.cpp
   SizeLimitedStringTest.cpp
