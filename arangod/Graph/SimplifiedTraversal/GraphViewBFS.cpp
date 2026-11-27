@@ -6,6 +6,7 @@
 #include <deque>
 #include <generator>
 
+#include "Graph/SimplifiedTraversal/Interior.h"
 #include "Inspection/Format.h"
 
 namespace arangodb::graph::experimental {
@@ -49,7 +50,7 @@ namespace arangodb::graph::experimental {
 //
 
 auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
-  -> std::generator<std::vector<EdgeId>> {
+    -> std::generator<std::vector<EdgeId>> {
   Interior interior;
   // queue contains Interior::Entry, because the queue contains candidates for
   // extensions of an already found path; the entry on the queue points to the
@@ -63,7 +64,7 @@ auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
   interior._startVertex = startId;
 
   std::cerr << "suspend 1";
-  co_yield {}; // path that only contains the start vertex!
+  co_yield {};  // path that only contains the start vertex!
   std::cerr << "resume 1";
 
   auto initialEdges = view->outEdges(startId);
@@ -71,14 +72,18 @@ auto graphViewBFS(std::shared_ptr<IGraphView> view, VertexIdLabel start)
 
   for (auto&& ie : initialEdges) {
     queue.emplace_back(Interior::Entry{-1, std::move(ie)});
+    std::cerr << "Added edge to queue";
   }
 
   // TODO: definitely one command (i.e. this needs to be a hand rolled queue
   while (!queue.empty()) {
+    std::cerr << "Pop from queue";
     auto nextItem = queue.front();
     queue.pop_front();
 
+    std::cerr << "Before emplacing to screamerr";
     interior._screamer.emplace_back(nextItem);
+    std::cerr << "Before tracing";
     auto path = interior.trace(nextItem.first);
     std::cerr << "suspend 2";
     co_yield path;
