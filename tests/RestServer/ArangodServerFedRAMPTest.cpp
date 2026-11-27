@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 
 #include "Mocks/Death_Test.h"
-#include "Mocks/TestLogger.h"
 
 #include "Logger/Logger.h"
 #include "Logger/LoggerOptions.h"
@@ -42,10 +41,6 @@
 using namespace arangodb;
 
 namespace {
-
-// the ArangodServer constructor sets the global "always log security events"
-// flag in FedRAMP High mode
-using tests::ScopedAlwaysLogSecurityEvents;
 
 /// @brief exposes the startup steps of ArangodServer that run before any
 /// features are created, so that tests can drive them like server::run() does.
@@ -73,18 +68,29 @@ std::unique_ptr<TestArangodServer> makeServer(bool fedRAMPHigh) {
       "arangod", nullptr, nullptr, nullptr, fedRAMPHigh);
 }
 
-/// @brief runs the option handling of the server startup and exits with
-/// EXIT_SUCCESS if the startup was not aborted. processing the options has
-/// global side effects (e.g. log levels, server role), so this must only be
-/// called in the child process of a death test.
-[[noreturn]] void startUpAndExit(bool fedRAMPHigh,
-                                 std::vector<std::string> args) {
+/// @brief runs the option handling of the server startup. processing the
+/// options has global side effects (e.g. log levels, server role), so this
+/// must only be called in the child process of a death test.
+void startUp(bool fedRAMPHigh, std::vector<std::string> args) {
   disableCoredump();
   // as in the early server startup, the logger is inactive. it then writes to
   // stderr, which is what death tests can match.
   Logger::shutdown();
   makeServer(fedRAMPHigh)->declareParseAndProcessOptions(std::move(args));
+}
+
+/// @brief exits with EXIT_SUCCESS if the startup was not aborted.
+[[noreturn]] void startUpAndExit(bool fedRAMPHigh,
+                                 std::vector<std::string> args) {
+  startUp(fedRAMPHigh, std::move(args));
   std::_Exit(EXIT_SUCCESS);
+}
+
+/// @brief exits with EXIT_SUCCESS if security events are always logged after
+/// the startup.
+[[noreturn]] void startUpAndExitWithSecurityLogging(bool fedRAMPHigh) {
+  startUp(fedRAMPHigh, {});
+  std::_Exit(Logger::alwaysLogSecurityEvents() ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 /// @brief parses `args` as command line with the real logger option
@@ -157,7 +163,6 @@ TEST(FedRAMPHighLoggerOptionsTest, check_requires_forced_security_messages) {
 // -----------------------------------------------------------------------------
 
 TEST(ArangodServerFedRAMPTest, fedramp_high_changes_logger_option_defaults) {
-  ScopedAlwaysLogSecurityEvents guard;
   EXPECT_TRUE(makeServer(true)
                   ->getOptions<LoggerOptionsProvider>()
                   .alwaysLogSecurityEvents);
@@ -178,19 +183,15 @@ TEST(ArangodServerFedRAMPDeathTest,
       "FedRAMP High mode");
 }
 
-// in FedRAMP High mode, security events are logged right from the
-// construction of the server, i.e. before options are processed.
-TEST(ArangodServerFedRAMPTest, fedramp_high_forces_security_logging_early) {
-  ScopedAlwaysLogSecurityEvents guard;
-  Logger::setAlwaysLogSecurityEvents(false);
-  makeServer(true);
-  EXPECT_TRUE(Logger::alwaysLogSecurityEvents());
+// the changed option default is what forces security logging in FedRAMP High
+// mode: it takes effect when the options are processed.
+TEST(ArangodServerFedRAMPDeathTest, fedramp_high_forces_security_logging) {
+  EXPECT_EXIT(startUpAndExitWithSecurityLogging(true),
+              ::testing::ExitedWithCode(EXIT_SUCCESS), "");
 }
 
-TEST(ArangodServerFedRAMPTest,
+TEST(ArangodServerFedRAMPDeathTest,
      no_fedramp_high_does_not_force_security_logging) {
-  ScopedAlwaysLogSecurityEvents guard;
-  Logger::setAlwaysLogSecurityEvents(false);
-  makeServer(false);
-  EXPECT_FALSE(Logger::alwaysLogSecurityEvents());
+  EXPECT_EXIT(startUpAndExitWithSecurityLogging(false),
+              ::testing::ExitedWithCode(EXIT_FAILURE), "");
 }

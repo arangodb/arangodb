@@ -106,10 +106,6 @@ ArangodServer::ArangodServer(
     // options are declared after construction, so this is the place to change
     // their defaults. they are checked in processFedRAMPHighOptions().
     applyFedRAMPHighLoggerDefaults(mutableOptions<LoggerOptionsProvider>());
-    // in FedRAMP High mode, security events must always be logged. turn this
-    // on right away, so that it already applies to security events logged
-    // during startup, before the options are processed.
-    Logger::setAlwaysLogSecurityEvents(true);
   }
 }
 
