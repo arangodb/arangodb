@@ -54,6 +54,14 @@
       - endpoints:
           args:
             skipEndpointsIpv6: true
+          requires:
+            fips: false
+      - endpoints:
+          args:
+            skipEndpointsIpv6: true
+            skipEndpointsSSL: true
+          requires:
+            fips: true
       - audit_client
       - audit_server
       - authentication
