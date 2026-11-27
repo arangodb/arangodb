@@ -27,8 +27,10 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
@@ -39,6 +41,47 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+/// @brief whether security logging of account management events is done on
+/// this server. this is only the case on single servers and coordinators,
+/// which are the only servers on which users can be managed by clients.
+bool shouldLogSecurityEvents() noexcept {
+  return ServerState::instance()->isSingleServerOrCoordinator();
+}
+
+/// @brief security log for the creation or deletion of a personal access
+/// token, which is an account management activity (management of a user's
+/// credentials). both successful and failed attempts are logged. a denied
+/// attempt is in addition logged as an access control violation by
+/// ExecContext, so it is not tagged as a violation here. the token itself is
+/// never logged.
+void logAccessTokenChange(GeneralRequest const& req, std::string_view operation,
+                          std::string_view user, Result const& result,
+                          std::string_view details) {
+  if (result.ok()) {
+    LOG_SECURITY_IF("39e78", INFO, Logger::AUTHENTICATION,
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
+        << "account management: " << operation << " for user '" << user
+        << "' succeeded, " << details << ", actor='" << req.user()
+        << "', client=" << req.connectionInfo().fullClient()
+        << ", request=" << GeneralRequest::translateMethod(req.requestType())
+        << " " << req.fullUrl();
+  } else {
+    LOG_SECURITY_IF("623b9", INFO, Logger::AUTHENTICATION,
+                    LogSecurity::AccountManagement, shouldLogSecurityEvents())
+        << "account management: " << operation << " for user '" << user
+        << "' failed: error=" << result.errorNumber() << ", reason='"
+        << result.errorMessage() << "', " << details << ", actor='"
+        << req.user() << "', client=" << req.connectionInfo().fullClient()
+        << ", request=" << GeneralRequest::translateMethod(req.requestType())
+        << " " << req.fullUrl();
+  }
+}
+
+constexpr std::string_view kCreateToken = "create access token";
+constexpr std::string_view kDeleteToken = "delete access token";
+}  // namespace
 
 RestAccessTokenHandler::RestAccessTokenHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
@@ -80,6 +123,7 @@ RestStatus RestAccessTokenHandler::execute() {
       return showAccessTokens(um, user);
     case RequestType::POST:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
+        logAccessTokenChange(*_request, kCreateToken, user, r, "token=n/a");
         if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
           generateError(rest::ResponseCode::FORBIDDEN,
                         TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
@@ -92,6 +136,9 @@ RestStatus RestAccessTokenHandler::execute() {
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
       if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
+        logAccessTokenChange(
+            *_request, kDeleteToken, user, r,
+            "token id=" + (suffixes.size() >= 2 ? suffixes[1] : "n/a"));
         if (r.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY) {
           generateError(rest::ResponseCode::FORBIDDEN,
                         TRI_ERROR_ARANGO_READ_ONLY, r.errorMessage());
@@ -148,6 +195,23 @@ RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um,
 
   VPackBuilder token;
   Result result = um->createAccessToken(user, name, validUntil, token);
+  {
+    std::string details = "token name='" + name + "'";
+    if (result.ok() && token.slice().isObject()) {
+      // note: the fingerprint only contains a few characters of the token
+      // and is meant to be displayed, so it is safe to log it.
+      if (VPackSlice id = token.slice().get("id"); id.isNumber()) {
+        details += ", token id=" + std::to_string(id.getNumber<uint64_t>());
+      }
+      if (VPackSlice fp = token.slice().get("fingerprint"); fp.isString()) {
+        details += ", fingerprint='";
+        details += fp.stringView();
+        details += "'";
+      }
+    }
+    details += ", valid_until=" + std::to_string(uint64_t(validUntil));
+    logAccessTokenChange(*_request, kCreateToken, user, result, details);
+  }
 
   if (result.ok()) {
     generateResult(ResponseCode::OK, token.slice());
@@ -170,6 +234,8 @@ RestStatus RestAccessTokenHandler::deleteAccessToken(auth::UserManager* um,
 
   uint64_t id = StringUtils::uint64(suffixes[1]);
   Result result = um->deleteAccessToken(user, id);
+  logAccessTokenChange(*_request, kDeleteToken, user, result,
+                       "token id=" + std::to_string(id));
 
   if (result.ok()) {
     resetResponse(ResponseCode::OK);

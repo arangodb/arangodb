@@ -34,6 +34,7 @@
 #endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogSecurity.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/BootstrapFeature.h"
@@ -145,9 +146,15 @@ void UpgradeFeature::start() {
           return res;
         });
         if (res.fail()) {
-          LOG_TOPIC("ce6bf", ERR, arangodb::Logger::FIXME)
+          LOG_SECURITY("ce6bf", ERR, arangodb::Logger::FIXME,
+                       LogSecurity::AccountManagement)
               << "failed to set default password: " << res.errorMessage();
           *_result = EXIT_FAILURE;
+        } else {
+          LOG_SECURITY("43f84", INFO, arangodb::Logger::FIXME,
+                       LogSecurity::AccountManagement)
+              << "password of user \"root\" set to the configured default "
+                 "password";
         }
       }
     }
@@ -158,7 +165,8 @@ void UpgradeFeature::start() {
       um->loadUserCacheAndStartUpdateThread();
       Result res = um->removeAllUsers();
       if (res.fail()) {
-        LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
+        LOG_SECURITY("70922", ERR, arangodb::Logger::FIXME,
+                     LogSecurity::AccountManagement)
             << "failed to clear users: " << res.errorMessage();
         *_result = EXIT_FAILURE;
         return;
@@ -172,14 +180,18 @@ void UpgradeFeature::start() {
       }
 
       if (res.fail()) {
-        LOG_TOPIC("e9637", ERR, arangodb::Logger::FIXME)
+        LOG_SECURITY("e9637", ERR, arangodb::Logger::FIXME,
+                     LogSecurity::AccountManagement)
             << "failed to create root user: " << res.errorMessage();
         *_result = EXIT_FAILURE;
         return;
       }
       auto oldLevel = arangodb::Logger::FIXME.level();
       arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
-      LOG_TOPIC("95cab", INFO, arangodb::Logger::FIXME) << "Password changed.";
+      LOG_SECURITY("95cab", INFO, arangodb::Logger::FIXME,
+                   LogSecurity::AccountManagement)
+          << "Password changed. All users have been removed and user "
+             "\"root\" has been recreated with the given password.";
       arangodb::Logger::FIXME.setLogLevel(oldLevel);
       *_result = EXIT_SUCCESS;
     }
