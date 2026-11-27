@@ -103,9 +103,6 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-LoggerStream::LoggerStream(bool enabled)
-    : LoggerStreamBase(enabled, std::nullopt) {}
-
 LoggerStream::LoggerStream(bool enabled, std::optional<LogSecurity> security)
     : LoggerStreamBase(enabled, security) {}
 #endif
