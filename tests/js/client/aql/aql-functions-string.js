@@ -32,6 +32,13 @@ const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
+// returns the query result; fails if the query produced any warning
+function resultWithoutWarnings(query, bindVars) {
+  const data = db._query(query, bindVars).data;
+  assertEqual([], data.extra.warnings, query);
+  return data.result;
+}
+
 function ahuacatlStringFunctionsTestSuite () {
   return {
     testRepeat: function () {
@@ -706,6 +713,10 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_TEST("test", "**")');
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_TEST("test", "?")');
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_TEST("test", "*")');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_MATCHES("test", "[")');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_MATCHES("test", "(a")');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_SPLIT("test", "[")');
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, 'RETURN REGEX_SPLIT("test", "(a")');
     },
 
     testRegex: function () {
@@ -845,19 +856,26 @@ function ahuacatlStringFunctionsTestSuite () {
         ['the quick\r\nbrown\nfox', 'quick.brown', false],
         ['the quick\r\nbrown\nfox', 'quick(.|\r\n)brown', true],
         ['the quick\r\nbrown\nfox', 'quick\\r\\nbrown', true],
-        ['the quick\r\nbrown\nfox', 'quick\\r\\red', false]
+        ['the quick\r\nbrown\nfox', 'quick\\r\\red', false],
+
+        // non-ASCII: '.' matches one code point
+        ['Mötley', '^M.tley$', true]
       ];
 
       values.forEach(function (v) {
         var query = 'RETURN REGEX_TEST(@what, @re)';
-        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(v[2], resultWithoutWarnings(query, { what: v[0], re: v[1] })[0], v);
 
         query = 'RETURN @what =~ @re';
-        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(v[2], resultWithoutWarnings(query, { what: v[0], re: v[1] })[0], v);
 
         query = 'RETURN @what !~ @re';
-        assertEqual(!v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(!v[2], resultWithoutWarnings(query, { what: v[0], re: v[1] })[0], v);
       });
+
+      // case-insensitive
+      assertEqual([ true ], resultWithoutWarnings('RETURN REGEX_TEST("ÄRGER", "^ärger$", true)'));
+      assertEqual([ false ], resultWithoutWarnings('RETURN REGEX_TEST("ÄRGER", "^ärger$", false)'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -923,14 +941,21 @@ function ahuacatlStringFunctionsTestSuite () {
 
         // // line breaks
         [['the quick\nbrown\nfox', 'the(.|\n)*fox', 'jumped over'], 'jumped over'],
-        [['the quick\nbrown\nfox', '^the.*fox$', 'jumped over'], 'the quick\nbrown\nfox']
+        [['the quick\nbrown\nfox', '^the.*fox$', 'jumped over'], 'the quick\nbrown\nfox'],
+
+        // non-ASCII
+        [['smörgås', 'ö', 'o'], 'smorgås']
       ];
 
       values.forEach(function (v) {
         var query;
         query = 'RETURN REGEX_REPLACE(@what, @re, @with)';
-        assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
+        assertEqual(v[1], resultWithoutWarnings(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
       });
+
+      // case-insensitive
+      assertEqual([ "xRGER" ], resultWithoutWarnings('RETURN REGEX_REPLACE("ÄRGER", "ä", "x", true)'));
+      assertEqual([ "ÄRGER" ], resultWithoutWarnings('RETURN REGEX_REPLACE("ÄRGER", "ä", "x", false)'));
     },
     
   // //////////////////////////////////////////////////////////////////////////////
@@ -959,8 +984,9 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 7, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line"] ],
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 8, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r"] ],
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ],
+        [ "a→b→c", "→", false, 5, ["a", "b", "c"] ],
       ].forEach(function(test) {
-        assertEqual([ test[4] ], getQueryResults('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
+        assertEqual([ test[4] ], resultWithoutWarnings('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
       });
     },
 
@@ -1017,8 +1043,11 @@ function ahuacatlStringFunctionsTestSuite () {
         ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, ["73.60.124.136"] ],
         ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, null ],
         ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ],
+        ["ñandú", "^(.)(.)", false, ["ña", "ñ", "a"] ],
+        ["ÄRGER", "^ärger$", true, ["ÄRGER"] ],
+        ["ÄRGER", "^ärger$", false, null ],
       ].forEach(function(test) {
-        assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
+        assertEqual([ test[3] ], resultWithoutWarnings('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
       });
     },
 
@@ -1048,92 +1077,60 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testLike: function () {
-      // containment
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "test"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "%test"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "test%"'));
-      assertEqual([ true ], getQueryResults('RETURN "this is a test string" LIKE "%test%"'));
-      assertEqual([ true ], getQueryResults('RETURN "this is a test string" LIKE "this%test%"'));
-      assertEqual([ true ], getQueryResults('RETURN "this is a test string" LIKE "this%is%test%"'));
-      assertEqual([ true ], getQueryResults('RETURN "this is a test string" LIKE "this%g"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "this%n"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "This%n"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "his%"'));
-      assertEqual([ true ], getQueryResults('RETURN "this is a test string" LIKE "%g"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "%G"'));
-      assertEqual([ false ], getQueryResults('RETURN "this is a test string" LIKE "this%test%is%"'));
+      // [ value, pattern, caseInsensitive, expected ]
+      // strings are what LIKE receives, i.e. after AQL string unescaping
+      var values = [
+        ["this is a test string", "test", false, false],
+        ["this is a test string", "%test", false, false],
+        ["this is a test string", "test%", false, false],
+        ["this is a test string", "%test%", false, true],
+        ["this is a test string", "this%test%", false, true],
+        ["this is a test string", "this%is%test%", false, true],
+        ["this is a test string", "this%g", false, true],
+        ["this is a test string", "this%n", false, false],
+        ["this is a test string", "This%n", false, false],
+        ["this is a test string", "his%", false, false],
+        ["this is a test string", "%g", false, true],
+        ["this is a test string", "%G", false, false],
+        ["this is a test string", "this%test%is%", false, false],
+        ["%", "%", false, true],
+        ["a%c", "a%c", false, true],
+        ["a%c", "ac", false, false],
+        ["a%c", "a\\%", false, false],
+        ["a%c", "\\%a%", false, false],
+        ["a%c", "\\%\\%", false, false],
+        ["%%", "\\%\\%", false, true],
+        ["_", "\\_", false, true],
+        ["_", "\\_%", false, true],
+        ["abcd", "_bcd", false, true],
+        ["abcde", "_bcd%", false, true],
+        ["abcde", "\\_bcd%", false, false],
+        ["\\abc", "\\\\%", false, true],
+        ["abc", "a%", false, true],
+        ["[ ] ( ) % * . + -", "[%", false, true],
+        ["[ ] ( ) % * . + -", "[ ] ( ) % * . + -", false, true],
+        ["[ ] ( ) % * . + -", "%. +%", false, true],
+        ["abc^def$g", "abc^def$g", false, true],
+        ["abc^def$g", "%^%$g", false, true],
+        ["der*hund", "%*%", false, true],
+        ["der*hund", "*", false, false],
+        ["ABCD", "abcd", false, false],
+        ["abcd", "ABCD", false, false],
+        ["MÖterTräNenMÜtterSöhne", "MÖTERTRÄNENMÜTTERSÖHNE", false, false],
+        ["ABCD", "abcd", true, true],
+        ["abcd", "ABCD", true, true],
+        ["MÖterTräNenMÜtterSöhne", "MöterTräNenMütterSöhne", true, true],
+        ["MÖterTräNenMÜtterSöhne", "mötertränenmüttersöhne", true, true],
+        ["MÖterTräNenMÜtterSöhne", "MÖTERTRÄNENMÜTTERSÖHNE", true, true]
+      ];
 
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "test")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "%test")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "test%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("this is a test string", "%test%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("this is a test string", "this%test%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("this is a test string", "this%is%test%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("this is a test string", "this%g")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "this%n")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "This%n")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "his%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("this is a test string", "%g")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "%G")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("this is a test string", "this%test%is%")'));
+      values.forEach(function (v) {
+        var query = 'RETURN LIKE(@what, @pattern, @ci)';
+        assertEqual(v[3], resultWithoutWarnings(query, { what: v[0], pattern: v[1], ci: v[2] })[0], v);
+      });
 
-      // special characters
-      assertEqual([ true ], getQueryResults('RETURN "%" LIKE "\\%"'));
-      assertEqual([ true ], getQueryResults('RETURN "a%c" LIKE "a%c"'));
-      assertEqual([ false ], getQueryResults('RETURN "a%c" LIKE "ac"'));
-      assertEqual([ false ], getQueryResults('RETURN "a%c" LIKE "a\\\\%"'));
-      assertEqual([ false ], getQueryResults('RETURN "a%c" LIKE "\\\\%a%"'));
-      assertEqual([ false ], getQueryResults('RETURN "a%c" LIKE "\\\\%\\\\%"'));
-      assertEqual([ true ], getQueryResults('RETURN "%%" LIKE "\\\\%\\\\%"'));
-      assertEqual([ true ], getQueryResults('RETURN "_" LIKE "\\\\_"'));
-      assertEqual([ true ], getQueryResults('RETURN "_" LIKE "\\\\_%"'));
-      assertEqual([ true ], getQueryResults('RETURN "abcd" LIKE "_bcd"'));
-      assertEqual([ true ], getQueryResults('RETURN "abcde" LIKE "_bcd%"'));
-      assertEqual([ false ], getQueryResults('RETURN "abcde" LIKE "\\\\_bcd%"'));
-      assertEqual([ true ], getQueryResults('RETURN "\\\\abc" LIKE "\\\\\\\\%"'));
-      assertEqual([ true ], getQueryResults('RETURN "\\abc" LIKE "\\a%"'));
-      assertEqual([ true ], getQueryResults('RETURN "[ ] ( ) % * . + -" LIKE "[%"'));
-      assertEqual([ true ], getQueryResults('RETURN "[ ] ( ) % * . + -" LIKE "[ ] ( ) \\% * . + -"'));
-      assertEqual([ true ], getQueryResults('RETURN "[ ] ( ) % * . + -" LIKE "%. +%"'));
-      assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "abc^def$g"'));
-      assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "%^%$g"'));
-      assertEqual([ true ],  getQueryResults('RETURN "der\*hund"  LIKE "%*%"'));
-      assertEqual([ true ],  getQueryResults('RETURN "der*hund"  LIKE "%*%"'));
-      assertEqual([ false ], getQueryResults('RETURN "der*hund"  LIKE "*"'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("%", "\\%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("a%c", "a%c")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("a%c", "ac")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("a%c", "a\\\\%")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("a%c", "\\\\%a%")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("a%c", "\\\\%\\\\%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("%%", "\\\\%\\\\%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("_", "\\\\_")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("_", "\\\\_%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("abcd", "_bcd")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("abcde", "_bcd%")'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("abcde", "\\\\_bcd%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("\\\\abc", "\\\\\\\\%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("\\abc", "\\a%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("[ ] ( ) % * . + -", "[%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("[ ] ( ) % * . + -", "[ ] ( ) \\% * . + -")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("[ ] ( ) % * . + -", "%. +%")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("abc^def$g", "abc^def$g")'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("abc^def$g", "%^%$g")'));
-
-      // case-sensitivity
-      assertEqual([ false ], getQueryResults('RETURN "ABCD" LIKE "abcd"'));
-      assertEqual([ false ], getQueryResults('RETURN "abcd" LIKE "ABCD"'));
-      assertEqual([ false ], getQueryResults('RETURN "MÖterTräNenMÜtterSöhne" LIKE "MÖTERTRÄNENMÜTTERSÖHNE"'));
-
-      assertEqual([ false ], getQueryResults('RETURN LIKE("ABCD", "abcd", false)'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("ABCD", "abcd", true)'));
-      assertEqual([ false ], getQueryResults('RETURN LIKE("abcd", "ABCD", false)'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("abcd", "ABCD", true)'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("MÖterTräNenMÜtterSöhne", "MöterTräNenMütterSöhne", true)'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("MÖterTräNenMÜtterSöhne", "mötertränenmüttersöhne", true)'));
-      assertEqual([ true ], getQueryResults('RETURN LIKE("MÖterTräNenMÜtterSöhne", "MÖTERTRÄNENMÜTTERSÖHNE", true)'));
-
-      assertEqual([ [ true, false, true, false ] ], getQueryResults('RETURN [ LIKE("Möter", "m_ter", true), LIKE("Möter", "m_ter", false), LIKE("Möter", "m_ter", true), LIKE("Möter", "m_ter", false) ]'));
+      // same pattern with different flags in one query
+      assertEqual([ [ true, false, true, false ] ], resultWithoutWarnings('RETURN [ LIKE("Möter", "m_ter", true), LIKE("Möter", "m_ter", false), LIKE("Möter", "m_ter", true), LIKE("Möter", "m_ter", false) ]'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1148,13 +1145,13 @@ function ahuacatlStringFunctionsTestSuite () {
       ];
 
       data.forEach(function (value) {
-        var actual = getQueryResults('RETURN LIKE(' + JSON.stringify(value) + `, 'foobar')`);
+        var actual = resultWithoutWarnings('RETURN LIKE(' + JSON.stringify(value) + `, 'foobar')`);
         assertEqual([ false ], actual);
 
-        actual = getQueryResults('RETURN LIKE(' + JSON.stringify(value) + ', ' + JSON.stringify(value) + ')');
+        actual = resultWithoutWarnings('RETURN LIKE(' + JSON.stringify(value) + ', ' + JSON.stringify(value) + ')');
         assertEqual([ true ], actual);
 
-        actual = getQueryResults('RETURN ' + JSON.stringify(value) + ' LIKE ' + JSON.stringify(value));
+        actual = resultWithoutWarnings('RETURN ' + JSON.stringify(value) + ' LIKE ' + JSON.stringify(value));
         assertEqual([ true ], actual);
       });
     },
@@ -1164,7 +1161,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testLikeCache: function () {
-      var actual = getQueryResults(`FOR i IN 1..100 RETURN LIKE(CONCAT('test', i), 'test%')`);
+      var actual = resultWithoutWarnings(`FOR i IN 1..100 RETURN LIKE(CONCAT('test', i), 'test%')`);
       assertEqual(100, actual.length);
       for (var i = 0; i < actual.length; ++i) {
         assertTrue(actual[i]);
@@ -1554,12 +1551,13 @@ function ahuacatlStringFunctionsTestSuite () {
         [ [ 'the quick brown foxx' ], 'the quick brown foxx', '.' ],
         [ [ 'the quick7brown foxx' ], 'the quick7brown foxx', '\\d' ],
         [ [ 'the quick brown foxx' ], "the quick brown foxx", ["[a-f]"] ],
-        [ [ 'the quick brown foxx' ], 'the quick brown foxx', 'u|f' ]
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', 'u|f' ],
+        [ [ 'a', 'b', 'c' ], 'a→b→c', '→' ]
       ];
 
       values.forEach(function (value) {
         var expected = value[0], text = value[1], separator = value[2];
-        var res = getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')');
+        var res = resultWithoutWarnings('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')');
         assertEqual([ expected ], res, JSON.stringify(value));
       });
     },
