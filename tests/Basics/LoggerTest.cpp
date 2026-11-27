@@ -140,9 +140,9 @@ constexpr std::array<std::pair<LogSecurity, std::string_view>, 12>
 static_assert(kExpectedClassifiers.size() == std::popcount(kAllSecurityBits),
               "kExpectedClassifiers must list every LogSecurity category");
 
-std::string classifierOf(LogSecurity security) {
+std::string classifierOf(LogSecurity security, std::string_view separator) {
   std::string result;
-  appendSecurityClassifier(result, security);
+  appendSecurityClassifier(result, security, separator);
   return result;
 }
 
@@ -494,7 +494,7 @@ TEST_F(LoggerTest, test_many_loggers_same_file) {
 
 TEST(LogSecurityTest, each_category_has_its_canonical_classifier) {
   for (auto [s, expected] : kExpectedClassifiers) {
-    EXPECT_EQ(classifierOf(s), expected);
+    EXPECT_EQ(classifierOf(s, ","), expected);
   }
 }
 
@@ -503,12 +503,22 @@ TEST(LogSecurityTest, multiple_categories_are_joined_in_bit_order) {
       "arango-security-event-authentication,"
       "arango-security-event-session-management";
   // the order of OR-ing does not matter
-  EXPECT_EQ(classifierOf(LogSecurity::SessionManagement |
-                         LogSecurity::Authentication),
-            expected);
-  EXPECT_EQ(classifierOf(LogSecurity::Authentication |
-                         LogSecurity::SessionManagement),
-            expected);
+  EXPECT_EQ(
+      classifierOf(LogSecurity::SessionManagement | LogSecurity::Authentication,
+                   ","),
+      expected);
+  EXPECT_EQ(
+      classifierOf(LogSecurity::Authentication | LogSecurity::SessionManagement,
+                   ","),
+      expected);
+}
+
+TEST(LogSecurityTest, multiple_categories_are_joined_by_given_separator) {
+  EXPECT_EQ(
+      classifierOf(LogSecurity::Authentication | LogSecurity::SessionManagement,
+                   "\",\""),
+      "arango-security-event-authentication\",\""
+      "arango-security-event-session-management");
 }
 
 TEST(LogSecurityTest, valid_security_requires_nonempty_mask_of_known_bits) {
@@ -629,11 +639,31 @@ TEST_F(LoggerSecurityTest, security_message_carries_classifier_in_json) {
   auto builder = velocypack::Parser::fromJson(messages[0]);
   auto slice = builder->slice();
   ASSERT_TRUE(slice.isObject()) << messages[0];
-  ASSERT_TRUE(slice.get("security").isString()) << messages[0];
-  EXPECT_EQ(slice.get("security").stringView(),
+  ASSERT_TRUE(slice.get("security").isArray()) << messages[0];
+  ASSERT_EQ(slice.get("security").length(), 1) << messages[0];
+  EXPECT_EQ(slice.get("security").at(0).stringView(),
             "arango-security-event-data-access");
   EXPECT_EQ(slice.get("message").stringView(),
             "json \"security\" test message");
+}
+
+TEST_F(LoggerSecurityTest, multiple_classifiers_form_a_json_array) {
+  startCapturing(/*useJson*/ true);
+  LOG_SECURITY("8d2e1", INFO, Logger::FIXME,
+               LogSecurity::SessionManagement | LogSecurity::Authentication)
+      << "json multi-category test message";
+
+  auto messages = collect();
+  ASSERT_EQ(messages.size(), 1);
+  auto builder = velocypack::Parser::fromJson(messages[0]);
+  auto slice = builder->slice();
+  ASSERT_TRUE(slice.isObject()) << messages[0];
+  ASSERT_TRUE(slice.get("security").isArray()) << messages[0];
+  ASSERT_EQ(slice.get("security").length(), 2) << messages[0];
+  EXPECT_EQ(slice.get("security").at(0).stringView(),
+            "arango-security-event-authentication");
+  EXPECT_EQ(slice.get("security").at(1).stringView(),
+            "arango-security-event-session-management");
 }
 
 TEST_F(LoggerSecurityTest, plain_message_has_no_classifier_in_json) {

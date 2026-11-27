@@ -23,7 +23,6 @@
 #pragma once
 
 #include <cstdint>
-#include <iosfwd>
 #include <string>
 #include <string_view>
 
@@ -69,17 +68,14 @@ constexpr bool isValidSecurity(LogSecurity security) noexcept {
   return bits != 0 && (bits & ~kAllSecurityBits) == 0;
 }
 
-/// @brief separator between multiple classifiers of a security event that
-/// belongs to more than one category.
-inline constexpr std::string_view kSecurityClassifierSeparator = ",";
-
 /// @brief appends the classifier of `security` to `out`, e.g.
 /// "arango-security-event-authentication" for a single category, or
 /// "arango-security-event-authentication,arango-security-event-session-management"
-/// for a combination of categories. Multiple classifiers are ordered by bit
-/// position (not by the order of OR-ing) and separated by
-/// kSecurityClassifierSeparator. Unknown bits are ignored; if no known bit is
-/// set, nothing is appended.
-void appendSecurityClassifier(std::string& out, LogSecurity security);
+/// for a combination of categories with separator ",". Multiple classifiers
+/// are ordered by bit position (not by the order of OR-ing) and separated by
+/// `separator`. Unknown bits are ignored; if no known bit is set, nothing is
+/// appended.
+void appendSecurityClassifier(std::string& out, LogSecurity security,
+                              std::string_view separator);
 
 }  // namespace arangodb

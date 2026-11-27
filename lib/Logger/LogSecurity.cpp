@@ -24,7 +24,6 @@
 
 #include <array>
 #include <bit>
-#include <ostream>
 #include <string>
 
 namespace arangodb {
@@ -56,13 +55,14 @@ static_assert(kAllSecurityBits == (1u << kClassifiers.size()) - 1,
 
 }  // namespace
 
-void appendSecurityClassifier(std::string& out, LogSecurity security) {
+void appendSecurityClassifier(std::string& out, LogSecurity security,
+                              std::string_view separator) {
   auto bits = static_cast<std::uint16_t>(static_cast<std::uint16_t>(security) &
                                          kAllSecurityBits);
   bool first = true;
   while (bits != 0) {
     if (!first) {
-      out.append(kSecurityClassifierSeparator);
+      out.append(separator);
     }
     first = false;
     out.append(kClassifiers[std::countr_zero(bits)]);
