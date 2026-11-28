@@ -48,8 +48,10 @@ const indexName = `${namePrefix}Inverted`;
 
 const userSet = helper.userSet;
 
-// names will have the from : UnitTest_<systemLevel>_<dbLevel>_<colLevel>
-let name = "";
+// names will have the from : UnitTest_<systemLevel>_<dbLevel>_<colLevel>.
+// the first suite, which only checks that all users exist, runs as root:
+// reconnecting with an empty username connects unauthenticated
+let name = "root";
 
 // systemLevel, dbLevel and collLevel will have each 3 attributes "rw", "ro", "none"
 // each of the attributes will give access to a set containing the test names.

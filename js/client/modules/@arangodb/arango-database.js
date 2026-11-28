@@ -540,11 +540,12 @@ ArangoDatabase.prototype._drop = function (id, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief flush the local cache
-// / this is called by connection.reconnect()
+// / @brief forget the local cache without sending a request
+// / this is called by connection.connectHandle(). the db proxy fetches
+// / collections again on access, as they are no own properties any more
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._flushCache = function () {
+ArangoDatabase.prototype._forgetCache = function () {
   for (let name in this) {
     if (this.hasOwnProperty(name)) {
       let collOrView = this[name];
@@ -558,12 +559,21 @@ ArangoDatabase.prototype._flushCache = function () {
     }
   }
 
+  this._dbProperties = null;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief flush and refill the local cache
+// / this is called by connection.reconnect()
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._flushCache = function () {
+  this._forgetCache();
+
   try {
     // repopulate cache
     this._collections();
   } catch (err) {}
-
-  this._dbProperties = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
