@@ -43,6 +43,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <optional>
 
 using namespace arangodb;
 using namespace std::chrono;
@@ -219,6 +220,19 @@ date::sys_info unlocalizeTimePoint(std::string const& timezone,
   auto const zoned = date::make_zoned(timezone, local);
   utcTimePoint = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
   return zoned.get_info();
+}
+
+// Like PostgreSQL: a skipped local time uses the offset before the
+// transition, a repeated one the offset after it.
+tp_sys_clock_ms localToSysPreferLater(std::string const& timezone,
+                                      tp_sys_clock_ms localTimePoint) {
+  auto const local =
+      date::local_time<milliseconds>{localTimePoint.time_since_epoch()};
+  auto const info = date::locate_zone(timezone)->get_info(local);
+  auto const offset = info.result == date::local_info::ambiguous
+                          ? info.second.offset
+                          : info.first.offset;
+  return tp_sys_clock_ms{local.time_since_epoch() - offset};
 }
 
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
@@ -988,6 +1002,7 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   basics::StringUtils::tolowerInPlace(duration);
 
   std::string inputTimezone = "UTC";
+  std::optional<date::sys_info> inputZoneInfo;
 
   if (parameters.size() == 3) {
     AqlValue const timezoneParam =
@@ -1000,20 +1015,24 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
 
     inputTimezone = timezoneParam.slice().copyString();
 
-    localizeTimePoint(inputTimezone, tp);
+    inputZoneInfo = localizeTimePoint(inputTimezone, tp);
   }
 
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
+  bool belowDay = true;
   if (duration == "y" || duration == "year" || duration == "years") {
     ymd = date::year{ymd.year()} / date::jan / date::day{1};
+    belowDay = false;
   } else if (duration == "m" || duration == "month" || duration == "months") {
     ymd = date::year{ymd.year()} / ymd.month() / date::day{1};
+    belowDay = false;
   } else if (duration == "d" || duration == "day" || duration == "days") {
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
     // However, we already split ymd to the precision of days,
     // and ms to cary the timestamp part, so nothing needs to be done here.
+    belowDay = false;
   } else if (duration == "h" || duration == "hour" || duration == "hours") {
     ms = day_time.hours();
   } else if (duration == "i" || duration == "minute" || duration == "minutes") {
@@ -1029,8 +1048,10 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   }
   tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
 
-  if (parameters.size() == 3) {
-    unlocalizeTimePoint(inputTimezone, tp);
+  if (inputZoneInfo.has_value()) {
+    // Like PostgreSQL: units below a day keep the input's UTC offset.
+    tp = belowDay ? tp - inputZoneInfo->offset
+                  : localToSysPreferLater(inputTimezone, tp);
   }
 
   return timeAqlValue(expressionContext, AFN, tp);
