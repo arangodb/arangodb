@@ -106,11 +106,9 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
     return "access the crash handler (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminApiCalls>) {
     return "access API call statistics (as admin)";
-  } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
-    return "manage AQL queries (as admin)";
-  } else if constexpr (std::is_same_v<T, p::AdminMonitorAqlQueries>) {
+  } else if constexpr (std::is_same_v<T, p::AdminMonitorQueries>) {
     return "see the AQL queries of other users (as admin)";
-  } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
+  } else if constexpr (std::is_same_v<T, p::AdminKillQueries>) {
     return "kill the AQL queries of other users (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
     return "see the transactions of other users (as admin)";
@@ -951,12 +949,10 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       return rbac::Action::AdminCrashHandler;
     } else if constexpr (std::is_same_v<T, p::AdminApiCalls>) {
       return rbac::Action::AdminApiCalls;
-    } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
-      return rbac::Action::AdminAqlQueries;
-    } else if constexpr (std::is_same_v<T, p::AdminMonitorAqlQueries>) {
-      return rbac::Action::AdminMonitorAqlQueries;
-    } else if constexpr (std::is_same_v<T, p::AdminKillAqlQueries>) {
-      return rbac::Action::AdminKillAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitorQueries>) {
+      return rbac::Action::AdminMonitorQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminKillQueries>) {
+      return rbac::Action::AdminKillQueries;
     } else if constexpr (std::is_same_v<T, p::AdminMonitorTransactions>) {
       return rbac::Action::AdminMonitorTransactions;
     } else if constexpr (std::is_same_v<T, p::AdminKillTransactions>) {

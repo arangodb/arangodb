@@ -478,14 +478,14 @@ TEST_F(RbacAuthModeTest, AdminQueryCache) {
   expectSingle(rbac::Action::AdminQueryCache, "<none>");
 }
 
-TEST_F(RbacAuthModeTest, AdminMonitorAqlQueries) {
-  check(p::AdminMonitorAqlQueries{});
-  expectSingle(rbac::Action::AdminMonitorAqlQueries, "<none>");
+TEST_F(RbacAuthModeTest, AdminMonitorQueries) {
+  check(p::AdminMonitorQueries{});
+  expectSingle(rbac::Action::AdminMonitorQueries, "<none>");
 }
 
-TEST_F(RbacAuthModeTest, AdminKillAqlQueries) {
-  check(p::AdminKillAqlQueries{});
-  expectSingle(rbac::Action::AdminKillAqlQueries, "<none>");
+TEST_F(RbacAuthModeTest, AdminKillQueries) {
+  check(p::AdminKillQueries{});
+  expectSingle(rbac::Action::AdminKillQueries, "<none>");
 }
 
 TEST_F(RbacAuthModeTest, AdminMonitorTransactions) {
