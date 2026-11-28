@@ -83,6 +83,7 @@ add_library(arango_basic_utils STATIC
         Basics/GlobalSerialization.cpp
         Basics/HybridLogicalClock.cpp
         Basics/IndexIter.h
+        Basics/IcuRegexMatcher.cpp
         Basics/Nonce.cpp
         Basics/NumberUtils.cpp
         Basics/ReadWriteSpinLock.cpp
