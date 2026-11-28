@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "V8ShellFeature.h"
+#include "Shell/V8ClientConnectionBindings.h"
 #include "Shell/V8ShellOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -459,7 +460,7 @@ void V8ShellFeature::setup(v8::Local<v8::Context>& context,
       haveClient = true;
       ClientFeature& client =
           server().getFeature<HttpEndpointProvider, ClientFeature>();
-      _connection = std::make_shared<V8ClientConnection>(server(), client);
+      _connection = std::make_shared<ClientConnection>(server(), client);
       if (client.isEnabled()) {
         _connection->connect();
       }
@@ -469,7 +470,9 @@ void V8ShellFeature::setup(v8::Local<v8::Context>& context,
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    _connection->initServer(_isolate, context);
+    TRI_InitV8ClientConnection(
+        _isolate, context, *_connection,
+        server().getFeature<HttpEndpointProvider, ClientFeature>());
   }
 
   bool pe = printHello();

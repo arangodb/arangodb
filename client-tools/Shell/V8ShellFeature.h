@@ -29,11 +29,11 @@
 #include <v8.h>
 
 #include "Shell/ShellFeature.h"
-#include "Shell/V8ClientConnection.h"
+#include "Shell/ClientConnection.h"
 
 namespace arangodb {
 
-class V8ClientConnection;
+class ClientConnection;
 
 class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
@@ -81,7 +81,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   std::string _name;
   v8::Isolate* _isolate;
   v8::Persistent<v8::Context> _context;
-  std::shared_ptr<V8ClientConnection> _connection;
+  std::shared_ptr<ClientConnection> _connection;
 };
 
 }  // namespace arangodb

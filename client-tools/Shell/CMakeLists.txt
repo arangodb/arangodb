@@ -23,7 +23,8 @@ add_executable(${BIN_ARANGOSH}
   ArangoshServer.cpp
   ShellFeature.cpp
   ShellOptionsProvider.cpp
-  V8ClientConnection.cpp
+  ClientConnection.cpp
+  V8ClientConnectionBindings.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp
   ProcessMonitoringFeature.cpp

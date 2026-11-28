@@ -218,6 +218,7 @@ set(ARANGODB_TESTS_SOURCES
   ClientTools/BackgroundJwtRenewalTest.cpp
   ClientTools/ConnectionHandlesTest.cpp
   ClientTools/RenewingJwtTokenTest.cpp
+  ClientTools/RequestCodingTest.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
