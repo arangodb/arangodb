@@ -29,10 +29,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBEngineEEOptionsProvider.h"
-#endif
-
 namespace arangodb {
 
 using namespace arangodb::options;
@@ -410,8 +406,15 @@ additional metrics via the `GET /_admin/metrics` endpoint:
                      "--rocksdb.export-read-write-metrics");
 
 #ifdef USE_ENTERPRISE
-  enterprise::RocksDBEngineEEOptionsProvider::declareOptions(opts,
-                                                             options.eeOptions);
+  eeProvider.declareOptions(opts, options.eeOptions);
+#endif
+}
+
+void RocksDBEngineOptionsProvider::processOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> opts,
+    RocksDBEngineOptions& options) {
+#ifdef USE_ENTERPRISE
+  eeProvider.processOptions(opts, options.eeOptions);
 #endif
 }
 
@@ -457,10 +460,6 @@ void RocksDBEngineOptionsProvider::validateOptionsImpl(
            "--rocksdb.wal-file-timeout-initial. "
         << "Replication clients might have trouble to get in sync";
   }
-#ifdef USE_ENTERPRISE
-  enterprise::RocksDBEngineEEOptionsProvider::validateOptions(
-      opts, options.eeOptions);
-#endif
 }
 
 }  // namespace arangodb

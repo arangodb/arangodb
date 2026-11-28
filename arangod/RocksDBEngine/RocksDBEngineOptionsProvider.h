@@ -25,14 +25,25 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBEngineEEOptionsProvider.h"
+#endif
+
 namespace arangodb {
 
 struct RocksDBEngineOptionsProvider
     : OptionsProviderImpl<RocksDBEngineOptionsProvider, RocksDBEngineOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           RocksDBEngineOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RocksDBEngineOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                            RocksDBEngineOptions& options);
+
+ private:
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptionsProvider eeProvider;
+#endif
 };
 
 }  // namespace arangodb
