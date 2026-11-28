@@ -354,6 +354,7 @@ target_link_libraries(arangodbtests
   arango
   arango_tests_activities
   arango_tests_basics
+  arango_tests_datetime
   arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
@@ -434,6 +435,7 @@ add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
+add_subdirectory(DateTime)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
