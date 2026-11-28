@@ -150,6 +150,8 @@ auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
     return "access the write-ahead log (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminReadAgency>) {
     return "read the agency (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadOnlyMode>) {
+    return "manage read-only mode (as admin)";
   } else if constexpr (std::is_same_v<T, p::AdminQueryCache>) {
     return "manage the query cache (as admin)";
   } else {
@@ -1040,6 +1042,8 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
       return rbac::Action::AdminWalAccess;
     } else if constexpr (std::is_same_v<T, p::AdminReadAgency>) {
       return rbac::Action::AdminReadAgency;
+    } else if constexpr (std::is_same_v<T, p::AdminReadOnlyMode>) {
+      return rbac::Action::AdminReadOnlyMode;
     } else if constexpr (std::is_same_v<T, p::AdminQueryCache>) {
       return rbac::Action::AdminQueryCache;
     } else {

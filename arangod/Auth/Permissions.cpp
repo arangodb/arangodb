@@ -138,6 +138,7 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
           [&](AdminRestore const&) { os << "AdminRestore"; },
           [&](AdminWalAccess const&) { os << "AdminWalAccess"; },
           [&](AdminReadAgency const&) { os << "AdminReadAgency"; },
+          [&](AdminReadOnlyMode const&) { os << "AdminReadOnlyMode"; },
           [&](AdminQueryCache const&) { os << "AdminQueryCache"; },
 
           // databases
