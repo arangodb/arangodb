@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, assertMatch */
+/*global fail, assertEqual, assertTrue, assertFalse, assertMatch, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -370,6 +370,25 @@ function ahuacatlQueryCacheTestSuite () {
       result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual(5, result.toArray().length);
+    },
+
+    testConstantFoldedNonCacheableFunctionIsNotCached : function () {
+      const query = "RETURN DATE_NOW()";
+
+      cache.properties({ mode: "on" });
+      const res1 = db._query(query);
+      assertFalse(res1._cached);
+      const first = res1.toArray();
+
+      internal.sleep(0.25);
+
+      const res2 = db._query(query);
+      assertFalse(res2._cached);
+      const second = res2.toArray();
+
+      assertEqual(1, first.length);
+      assertEqual(1, second.length);
+      assertTrue(first[0] < second[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

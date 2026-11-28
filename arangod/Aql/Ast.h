@@ -153,6 +153,9 @@ class Ast {
   /// @brief whether or not function calls may access collection documents
   bool functionsMayAccessDocuments() const noexcept;
 
+  /// @brief whether or not the query results may be stored in the query cache
+  bool isCacheable() const;
+
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const noexcept;
 
@@ -785,6 +788,9 @@ class Ast {
 
   /// @brief whether or not function calls may access collection data
   bool _functionsMayAccessDocuments;
+
+  /// @brief whether or not a non-cacheable function call was constant-folded
+  bool _containsFoldedNonCacheableFunction;
 
   /// @brief whether or not the query contains a traversal
   bool _containsTraversal;

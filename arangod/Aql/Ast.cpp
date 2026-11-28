@@ -445,6 +445,7 @@ Ast::Ast(QueryContext& query,
       _variables(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
+      _containsFoldedNonCacheableFunction(false),
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsAttributeNameValueBindParameters(false),
@@ -4094,6 +4095,10 @@ AstNode* Ast::optimizeFunctionCall(
     return node;
   }
 
+  if (!func->hasFlag(Function::Flags::Cacheable)) {
+    _containsFoldedNonCacheableFunction = true;
+  }
+
   Expression exp(this, node);
   FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
   bool mustDestroy;
@@ -4822,6 +4827,10 @@ void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
 
 bool Ast::functionsMayAccessDocuments() const noexcept {
   return _functionsMayAccessDocuments;
+}
+
+bool Ast::isCacheable() const {
+  return !_containsFoldedNonCacheableFunction && _root->isCacheable();
 }
 
 bool Ast::containsTraversal() const noexcept { return _containsTraversal; }
