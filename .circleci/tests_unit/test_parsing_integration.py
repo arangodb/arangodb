@@ -7,7 +7,8 @@ successfully and that complex structures work correctly.
 
 import pytest
 from pathlib import Path
-from src.config_lib import TestDefinitionFile, DeploymentType
+from src.config_lib import TestDefinitionFile, DeploymentType, Architecture
+from src.filters import FilterCriteria, filter_jobs
 
 
 TESTS_DIR = Path(__file__).parent.parent.parent / "tests"
@@ -85,3 +86,31 @@ class TestParsingIntegration:
                 assert (
                     job.repository.git_branch
                 ), f"Job in {yaml_file.name} should have git_branch"
+
+    def test_upgrade_jobs_only_run_when_requested(self):
+        """All RTA upgrade jobs require run-upgrade-tests and cover both architectures."""
+        test_def = TestDefinitionFile.from_yaml_file(str(TESTS_DIR / "upgrade.yml"))
+        jobs = list(test_def.jobs.values())
+
+        assert jobs
+        for job in jobs:
+            assert job.job_type == "run-rta-tests"
+            assert job.requires.run_upgrade_tests is True
+            assert job.arguments.extra_args.get("run-upgrade") is True
+        assert {job.requires.architecture for job in jobs} == {
+            Architecture.X64,
+            Architecture.AARCH64,
+        }
+
+        assert filter_jobs(test_def, FilterCriteria()) == []
+        assert len(
+            filter_jobs(test_def, FilterCriteria(run_upgrade_tests=True))
+        ) == len(jobs)
+
+    def test_ui_jobs_do_not_run_upgrade(self):
+        """The RTA UI job must not trigger an upgrade run."""
+        test_def = TestDefinitionFile.from_yaml_file(str(TESTS_DIR / "ui.yml"))
+        for job in test_def.jobs.values():
+            assert job.job_type == "run-rta-tests"
+            assert job.arguments.extra_args.get("run-upgrade") is False
+            assert job.requires.run_upgrade_tests is None

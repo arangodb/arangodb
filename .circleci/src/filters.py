@@ -33,6 +33,7 @@ class FilterCriteria:
 
     # Build configuration
     architecture: Optional[Architecture] = None  # Current build architecture
+    run_upgrade_tests: bool = False # whether to run the rta upgrade tests
     v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
     build_variant: Optional[BuildVariant] = None  # Build variant (for instrumentation)
 
@@ -138,6 +139,9 @@ def _check_requirements_match(requires: TestRequirements, criteria: FilterCriter
         return False  # Requires V8 build, but we're in non-V8 mode
     if requires.v8 is False and criteria.is_v8_build:
         return False  # Non-V8-only, but we're in V8 mode
+
+    if requires.run_upgrade_tests is True and not criteria.run_upgrade_tests:
+        return False
 
     return True
 
