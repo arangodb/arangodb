@@ -24,6 +24,7 @@
 
 #include "Basics/ICancellationToken.h"
 #include "Basics/ErrorCode.h"
+#include "Basics/IcuRegexMatcher.h"
 
 #include <string_view>
 #include <unicode/regex.h>
@@ -57,9 +58,14 @@ class ExpressionContext : public arangodb::ICancellationToken {
 
   virtual icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                                      bool caseInsensitive) = 0;
+  virtual basics::IcuRegexMatcher* buildIcuRegexMatcher(
+      std::string_view expr, bool caseInsensitive) = 0;
   virtual icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                                     bool caseInsensitive) = 0;
   virtual icu_64_64::RegexMatcher* buildSplitMatcher(
+      AqlValue splitExpression, velocypack::Options const* opts,
+      bool& isEmptyExpression) = 0;
+  virtual basics::IcuRegexMatcher* buildIcuSplitMatcher(
       AqlValue splitExpression, velocypack::Options const* opts,
       bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
