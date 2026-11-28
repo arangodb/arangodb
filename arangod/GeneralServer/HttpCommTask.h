@@ -26,6 +26,7 @@
 
 #include <llhttp.h>
 #include <memory>
+#include <optional>
 
 namespace arangodb {
 class HttpRequest;
@@ -93,11 +94,13 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _url;
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
+  std::optional<auth::TokenCache::Entry> _earlyAuthToken;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
   bool _urlCorrupt;
   bool _headerCorrupt;
+  bool _authRejected;
 };
 }  // namespace rest
 }  // namespace arangodb
