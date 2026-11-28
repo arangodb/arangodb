@@ -59,6 +59,11 @@
 * COR-1276: Fix a cluster crash for vector search queries that filter on or return only
   the vector attribute of a vector index without `storedValues`.
 
+* BTS-2505: Fixed an issue where UPDATE, REPLACE, or REMOVE operations on a
+  SmartGraph edge, found through a join condition such as e._from == x._id or
+  e._to == x._id, could fail with error 1202 (document not found) when the
+  smart-join-smart-edge optimizer rule was enabled.
+
 * COR-1088: Removing MD5 as password hash for Users, SHA256 is default for many years now.
   SHA1 and SHA224 will lead to a warning and will be deleted in some future release.
 
