@@ -32,6 +32,7 @@
 
 #include <velocypack/Options.h>
 
+#include <optional>
 #include <string_view>
 
 namespace arangodb {
@@ -92,6 +93,11 @@ class GeneralResponse {
   ContentType contentTypeRequested() const noexcept {
     return _contentTypeRequested;
   }
+
+  // The API version that serves the request. Unlike the headers, it survives
+  // reset(), because the header is only written when the response is sent.
+  void setApiVersion(ApiVersion version) noexcept { _apiVersion = version; }
+  std::optional<ApiVersion> apiVersion() const noexcept { return _apiVersion; }
 
  protected:
   explicit GeneralResponse(ResponseCode, uint64_t mid);
@@ -181,6 +187,8 @@ class GeneralResponse {
   ResponseCode _responseCode;  // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;
+  // Not set for responses sent before a request reaches its handler.
+  std::optional<ApiVersion> _apiVersion;
   bool _generateBody;
 };
 }  // namespace arangodb
