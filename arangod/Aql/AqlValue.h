@@ -112,6 +112,9 @@ struct AqlValue final {
   friend struct std::hash<aql::AqlValue>;
   friend struct std::equal_to<aql::AqlValue>;
 
+ private:
+  static constexpr uint64_t kDefaultSeed = 0xdeadbeef;
+
  public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
@@ -279,9 +282,6 @@ struct AqlValue final {
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
 
-  // construct from another AqlValue and a new data pointer, not copying!
-  explicit AqlValue(AqlValue const& other, void const* data) noexcept;
-
   explicit AqlValue(AqlValueHintNone) noexcept;
 
   explicit AqlValue(AqlValueHintNull) noexcept;
@@ -350,7 +350,7 @@ struct AqlValue final {
   bool isRange() const noexcept;
 
   /// @brief hashes the value
-  uint64_t hash(uint64_t seed = 0xdeadbeef) const;
+  uint64_t hash(uint64_t seed = kDefaultSeed) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;

@@ -98,6 +98,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlMergeTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueCompare.cpp
+  Aql/AqlValueHashEqualTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp

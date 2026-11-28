@@ -1046,29 +1046,6 @@ AqlValue::AqlValue(uint8_t const* pointer) noexcept {
   setPointer(pointer);
 }
 
-AqlValue::AqlValue(AqlValue const& other, void const* data) noexcept {
-  TRI_ASSERT(data != nullptr);
-  auto t = other.type();
-  setType(t);
-  switch (t) {
-    case VPACK_MANAGED_SLICE:
-      _data.managedSliceMeta.lengthOrigin =
-          other._data.managedSliceMeta.lengthOrigin;
-      _data.managedSliceMeta.pointer =
-          const_cast<uint8_t*>(static_cast<uint8_t const*>(data));
-      break;
-    case VPACK_MANAGED_STRING:
-      _data.managedStringMeta.pointer = static_cast<std::string const*>(data);
-      break;
-    case RANGE:
-      _data.rangeMeta.range = static_cast<Range const*>(data);
-      break;
-    default:
-      TRI_ASSERT(false);
-      break;
-  }
-}
-
 AqlValue::AqlValue(AqlValueHintNone) noexcept {
   setType(AqlValueType::VPACK_INLINE);
   _data.inlineSliceMeta.slice[0] = 0x00;  // none in VPack
@@ -1352,60 +1329,27 @@ void const* AqlValue::data() const noexcept {
 namespace std {
 using arangodb::aql::AqlValue;
 
-size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
+// bytes, not AQL equality: [] and [null] must not merge
+size_t hash<AqlValue>::operator()(AqlValue const& x) const {
   auto t = x.type();
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.inlineSliceMeta.slice).volatileHash());
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.longNumberMeta.data.slice.slice).volatileHash());
-      // TODO(MBkkt) these hashes have bad distribution
-    case AqlValue::VPACK_SLICE_POINTER:
-      return std::hash<void const*>()(x._data.slicePointerMeta.pointer);
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return std::hash<void const*>()(x._data.managedSliceMeta.pointer);
-    case AqlValue::VPACK_MANAGED_STRING:
-      return std::hash<void const*>()(x._data.managedStringMeta.pointer);
-    case AqlValue::RANGE:
-      return std::hash<void const*>()(x._data.rangeMeta.range);
+  if (t == AqlValue::RANGE) {
+    auto const* r = x._data.rangeMeta.range;
+    int64_t const bounds[2] = {r->_low, r->_high};
+    return static_cast<size_t>(
+        VELOCYPACK_HASH(bounds, sizeof(bounds), AqlValue::kDefaultSeed));
   }
-  return 0;
+  return static_cast<size_t>(x.slice(t).volatileHash());
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
-                                    AqlValue const& b) const noexcept {
-  // TODO(MBkkt) can be just compare two uint64_t?
-  auto t = a.type();
-  if (t != b.type()) {
-    return false;
+                                    AqlValue const& b) const {
+  auto ta = a.type();
+  auto tb = b.type();
+  if (ta == AqlValue::RANGE || tb == AqlValue::RANGE) {
+    return ta == tb && a.range()->_low == b.range()->_low &&
+           a.range()->_high == b.range()->_high;
   }
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return VPackSlice(a._data.inlineSliceMeta.slice)
-          .binaryEquals(VPackSlice(b._data.inlineSliceMeta.slice));
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      // equal is equal. sign/endianess does not matter
-      return a._data.longNumberMeta.data.intLittleEndian.val ==
-             b._data.longNumberMeta.data.intLittleEndian.val;
-    case AqlValue::VPACK_SLICE_POINTER:
-      return a._data.slicePointerMeta.pointer ==
-             b._data.slicePointerMeta.pointer;
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return a._data.managedSliceMeta.pointer ==
-             b._data.managedSliceMeta.pointer;
-    case AqlValue::VPACK_MANAGED_STRING:
-      return a._data.managedStringMeta.pointer ==
-             b._data.managedStringMeta.pointer;
-    case AqlValue::RANGE:
-      return a._data.rangeMeta.range == b._data.rangeMeta.range;
-  }
-  return false;
+  return a.slice(ta).binaryEquals(b.slice(tb));
 }
 
 }  // namespace std

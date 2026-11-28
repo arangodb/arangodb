@@ -27,6 +27,11 @@
   SmartGraph edge collections as never in sync, because their `Current` entries
   were looked up under the virtual collection instead of its shadow collections.
 
+* COR-538: Fixed AqlValue hash and equality comparing pointers instead of
+  content, so identical values were serialized more than once per AqlItemBlock.
+  Also fixed crashes when copying blocks with string values and when a value
+  shared among cells was stolen from a block.
+
 * BTS-2543: Fix memory and file handle leaks in the zip file functions when a
   path access check failed or threw an exception.
   
