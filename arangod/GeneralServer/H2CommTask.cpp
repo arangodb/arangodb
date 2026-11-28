@@ -202,22 +202,31 @@ template<SocketType T>
       << "<http2> received data for stream " << stream_id;
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   Stream* strm = me->findStream(stream_id);
-  if (strm) {
+  if (strm && !strm->bodyLimitExceeded) {
     // auth only runs at END_STREAM, so cap the body as it arrives
     size_t maxBodySize = CommTask::MaximalBodySize;
     TRI_IF_FAILURE("H2CommTask::lowerBodySizeLimit") {
       // lets tests trigger the limit without sending a 1GB body
       maxBodySize = 16;
     }
+    auto resetStream = [&] {
+      strm->bodyLimitExceeded = true;
+      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
+                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+    };
     bool const overLimit = strm->bodySize + len > maxBodySize ||
                            me->_bufferedBodyBytes + len > maxBodySize;
     if (overLimit) {
       LOG_TOPIC("2823d", WARN, Logger::REQUESTS)
           << "<http2> request body on stream " << stream_id
           << " exceeds the allowed size, resetting the stream";
-      strm->bodyLimitExceeded = true;
-      return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE,
-                                       stream_id, NGHTTP2_ENHANCE_YOUR_CALM);
+      return resetStream();
+    }
+    if (!me->_generalServerFeature.reserveRequestBodyBytes(len)) {
+      LOG_TOPIC("2823e", DEBUG, Logger::REQUESTS)
+          << "<http2> request body on stream " << stream_id
+          << " exceeds the global process-wide limit, resetting the stream";
+      return resetStream();
     }
     strm->bodySize += len;
     me->_bufferedBodyBytes += len;
@@ -236,6 +245,7 @@ void H2CommTask<T>::releaseBufferedBody(Stream& strm) noexcept {
   if (strm.bodySize != 0) {
     TRI_ASSERT(_bufferedBodyBytes >= strm.bodySize);
     _bufferedBodyBytes -= strm.bodySize;
+    this->_generalServerFeature.releaseRequestBodyBytes(strm.bodySize);
     strm.bodySize = 0;
   }
 }

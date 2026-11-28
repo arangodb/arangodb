@@ -93,6 +93,7 @@ bool HttpCommTask<T>::transferEncodingContainsChunked(
 template<SocketType T>
 int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  TRI_ASSERT(me->_bufferedBodyBytes == 0);
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
   me->_origin.clear();
@@ -208,6 +209,12 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
+  // before 100-continue, so the client doesn't upload a body we'd refuse
+  if (auto code = me->_generalServerFeature.admitRequestBody(p->content_length);
+      code != rest::ResponseCode::OK) {
+    me->sendBodyLimitError(code);
+    return HPE_USER;
+  }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
   std::string const& expect =
@@ -242,6 +249,18 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  // as bytes arrive, a client can't hold budget for bytes it never sends
+  if (!me->_generalServerFeature.reserveRequestBodyBytes(len)) {
+    LOG_TOPIC("2823f", DEBUG, Logger::REQUESTS)
+        << "<http> request body exceeds the global process-wide limit, "
+           "closing the connection";
+    me->releaseBufferedBody();
+    // rest of the body stays unread, connection can't be reused
+    me->_shouldKeepAlive = false;
+    me->sendBodyLimitError(rest::ResponseCode::SERVICE_UNAVAILABLE);
+    return HPE_USER;
+  }
+  me->_bufferedBodyBytes += len;
   me->_request->appendBody(at, len);
   return HPE_OK;
 } catch (...) {
@@ -297,7 +316,32 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
 }
 
 template<SocketType T>
-HttpCommTask<T>::~HttpCommTask() noexcept = default;
+HttpCommTask<T>::~HttpCommTask() noexcept {
+  // connection closed mid-body
+  releaseBufferedBody();
+}
+
+template<SocketType T>
+void HttpCommTask<T>::releaseBufferedBody() noexcept {
+  if (_bufferedBodyBytes != 0) {
+    this->_generalServerFeature.releaseRequestBodyBytes(_bufferedBodyBytes);
+    _bufferedBodyBytes = 0;
+  }
+}
+
+template<SocketType T>
+void HttpCommTask<T>::sendBodyLimitError(rest::ResponseCode code) {
+  if (code == rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE) {
+    this->sendErrorResponse(
+        code, rest::ContentType::UNSET, 1, TRI_ERROR_RESOURCE_LIMIT,
+        "request body is larger than the global request body memory limit");
+  } else {
+    this->sendErrorResponse(code, rest::ContentType::UNSET, 1,
+                            TRI_ERROR_OUT_OF_MEMORY,
+                            "global request body memory limit reached, try "
+                            "again later");
+  }
+}
 
 template<SocketType T>
 void HttpCommTask<T>::start() {
@@ -367,6 +411,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
+      releaseBufferedBody();
       if (_urlCorrupt) {
         LOG_TOPIC("33323", WARN, Logger::REQUESTS)
             << "request failed because of a corrupt URL";
