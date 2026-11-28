@@ -112,7 +112,7 @@ function hotBackup (options) {
         !PTK.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
         !PTK.isAlive() ||
         !PTK.restoreHotBackup() ||
-        !PTK.instanceManager.waitForAllShardsInSync() ||
+        !PTK.waitForAllShardsInSync() ||
         !PTK.runTests(dumpCheck, 'UnitTestsDumpDst')||
         !PTK.runRtaCheckData() ||
         !PTK.tearDown(tearDownFile)) {
@@ -206,7 +206,7 @@ function hotBackup_load_backend (options, which, args) {
         !PTK.createHotBackup() ||
         !PTK.stopStressArangosh() ||
         !PTK.restoreHotBackup() ||
-        !PTK.instanceManager.waitForAllShardsInSync() ||
+        !PTK.waitForAllShardsInSync() ||
         !isInstrumentedSleep() ||
         !retryWaitRestore(args.postRestoreFn, args.args)
         //!PTK.runRtaCheckData()
