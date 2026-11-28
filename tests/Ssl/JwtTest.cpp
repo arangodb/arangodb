@@ -153,6 +153,34 @@ TEST(JwtTest, extractPreferredUsernameReturnsClaimOfUserToken) {
   EXPECT_EQ(extractPreferredUsername(token), "alice");
 }
 
+TEST(JwtTest, extractTimelessClaimsDropsTimeClaims) {
+  auto const claims = extractTimelessClaims(tokenWithEncodedBody(
+      absl::WebSafeBase64Escape(R"({"preferred_username":"alice",)"
+                                R"("iss":"arangodb","iat":1000,"nbf":1000,)"
+                                R"("exp":4600})")));
+
+  ASSERT_TRUE(claims.has_value());
+  EXPECT_EQ(*claims, R"({"preferred_username":"alice","iss":"arangodb"})");
+}
+
+TEST(JwtTest, extractTimelessClaimsIsEqualForSameIdentityAtOtherTime) {
+  auto const earlier = tokenWithEncodedBody(absl::WebSafeBase64Escape(
+      R"({"preferred_username":"root","iss":"arangodb","iat":1000})"));
+  auto const later = tokenWithEncodedBody(absl::WebSafeBase64Escape(
+      R"({"preferred_username":"root","iss":"arangodb","iat":2000})"));
+  auto const otherUser = tokenWithEncodedBody(absl::WebSafeBase64Escape(
+      R"({"preferred_username":"alice","iss":"arangodb","iat":1000})"));
+
+  EXPECT_EQ(extractTimelessClaims(earlier), extractTimelessClaims(later));
+  EXPECT_NE(extractTimelessClaims(earlier), extractTimelessClaims(otherUser));
+}
+
+TEST(JwtTest, extractTimelessClaimsIsEmptyForMalformedToken) {
+  EXPECT_EQ(extractTimelessClaims(""), std::nullopt);
+  EXPECT_EQ(extractTimelessClaims("invalid"), std::nullopt);
+  EXPECT_EQ(extractTimelessClaims("a.b.c.d"), std::nullopt);
+}
+
 TEST(JwtTest, extractPreferredUsernameIsEmptyWithoutStringClaim) {
   EXPECT_EQ(extractPreferredUsername(generateInternalToken("secret", "id")),
             std::nullopt);

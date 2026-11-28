@@ -31,6 +31,7 @@
 
 #include "Basics/ResultT.h"
 #include "Utils/ConnectionHandles.h"
+#include "Utils/RenewingJwtToken.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -177,9 +178,31 @@ class V8ClientConnection {
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
+  // how the jwt token of a connection is kept fresh
+  struct TokenRenewal {
+    enum class Kind {
+      // basic auth, no auth, or a token without expiry from --server.jwt-secret
+      kNone,
+      // a user token from /_open/auth, renewed by logging in again
+      kLogin,
+      // the --server.jwt-token, renewed by the ClientFeature in the background
+      kJwtTokenOption,
+    };
+    Kind kind = Kind::kNone;
+    // token state of kLogin, which logs in with the credentials of the
+    // Configuration
+    JwtTokenState token;
+  };
+
   // how a connection is configured
   struct Configuration {
     fuerte::ConnectionBuilder builder;
+    TokenRenewal renewal;
+    // the endpoint and credentials as given by the client, whichever of them
+    // the authentication mode uses
+    std::string endpoint;
+    std::string username;
+    std::string password;
   };
 
   using Handles = ConnectionHandles<Configuration>;
@@ -213,31 +236,31 @@ class V8ClientConnection {
     _lastErrorMessage = msg;
   }
 
-  // Helper function to authenticate via /_open/auth endpoint
-  ResultT<std::string> authenticateViaOpenAuth();
+  // Requests a token at the endpoint of target: kLogin logs in via
+  // /_open/auth with username and password, kRenew renews the token of target
+  // via /_open/auth/renew, over the active connection if that has the token.
+  // yields no token if the server issues none (yet). Need to hold _lock
+  TokenOutcome requestToken(TokenRequest request,
+                            fuerte::ConnectionBuilder const& target,
+                            std::string const& username = "",
+                            std::string const& password = "");
 
-  // Helper function to check if JWT token needs renewal
-  bool needsTokenRenewal();
+  // The superuser token for the jwt secret, generated once per secret
+  std::string const& internalToken(std::string const& jwtSecret);
 
-  // Helper function to renew JWT token
-  ResultT<std::string> renewJwtToken();
-
-  // Switches the connection to a --server.jwt-token that the ClientFeature
-  // renewed in the background; no-op for all other authentication modes
-  void adoptRenewedJwtToken();
+  // Renews the token of the active configuration if due, and switches to a
+  // connection with the new token
+  void renewTokenIfDue();
 
  private:
   application_features::ApplicationServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;
+  // the last superuser token, and the jwt secret it was generated with
+  std::string _internalToken;
+  std::string _internalTokenSecret;
   std::chrono::duration<double> _requestTimeout;
-
-  // Store credentials for JWT token renewal
-  std::string _storedUsername;
-  std::string _storedPassword;
-  std::string _currentJwtToken;
-  double _jwtTokenExpiry;  // expiration time in seconds since epoch
 
   mutable std::recursive_mutex _lock;
   unsigned _lastHttpReturnCode;
