@@ -51,11 +51,43 @@ void NetworkOptionsProvider::declareOptionsImpl(
                      "The default time-to-live of idle connections for "
                      "cluster-internal communication (in milliseconds).",
                      new UInt64Parameter(&opts.idleTtlMilli));
-  options->addOption(
-      "--network.verify-hosts",
-      "Verify peer certificates when using TLS in cluster-internal "
-      "communication.",
-      new BooleanParameter(&opts.verifyHosts));
+  options
+      ->addOption("--network.verify-hosts",
+                  "Verify peer certificates when using TLS in cluster-internal "
+                  "communication.",
+                  new BooleanParameter(&opts.verifyHosts))
+      .setLongDescription(R"(If you enable this option, the servers of a
+cluster verify the certificate of the server they connect to when they
+communicate with each other via TLS:
+
+- The certificate chain must lead to a CA that the server trusts. The server
+  uses the CA certificates of the operating system for this, not the ones of
+  the `--ssl.cafile` option. To trust a private CA or a self-signed certificate,
+  add it to the CA store of the operating system, or set the `SSL_CERT_FILE`
+  environment variable to the path of a PEM file with the CA certificates when
+  starting the server.
+- The certificate needs to list the host name or IP address of the endpoint
+  that is used to connect to the server, as advertised in the cluster, in its
+  Subject Alternative Name (SAN) extension.
+
+The option does not apply to the communication with the Agency. The
+certificates of the Agents are not verified.
+
+If the verification fails, the servers cannot communicate with each other and
+the cluster doesn't start up. With the default log levels, the logs only show
+generic connection errors (`Unable to connect`). To see the reason, set
+`--log.level communication=debug`. The server whose certificate is rejected
+then logs messages like
+`error during TLS handshake: 'tlsv1 alert unknown ca (SSL routines)'`.
+
+```bash
+SSL_CERT_FILE=/path/to/ca.crt arangod \
+  --server.endpoint https://192.168.1.1:8530 \
+  --ssl.keyfile server.pem \
+  --network.verify-hosts \
+  --log.level communication=debug \
+  ...
+```)");
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
 
