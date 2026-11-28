@@ -359,8 +359,14 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     }
 
     resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
-    _response->setContentType(
-        fuerte::v1::to_string(response.response().contentType()));
+    auto contentType = fuerte::v1::to_string(response.response().contentType());
+    if (auto type =
+            rest::stringToContentType(contentType, rest::ContentType::CUSTOM);
+        type != rest::ContentType::CUSTOM) {
+      _response->setContentType(type);
+    } else {
+      _response->setContentType(std::move(contentType));
+    }
 
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
@@ -467,6 +473,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
       _timingData.superuser = true;
       std::ignore = co_await std::move(res);
       // Request response already set by the forwarding logic!
+      compressResponse();
       _sendResponseCallback(this);
       co_return;
     }
