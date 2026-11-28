@@ -7,6 +7,6 @@
     "test": "node apitester.js"
   },
   "dependencies": {
-    "undici": "^7.0.0"
+    "undici": "^7.30.1"
   }
 }
