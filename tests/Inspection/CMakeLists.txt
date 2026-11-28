@@ -5,6 +5,7 @@ target_include_directories(arango_inspection_test_helper
   include)
 
 add_library(arango_tests_inspection OBJECT
+  IndexDescriptorPrototypeTest.cpp
   InspectionTest.cpp
   JsonPrintTest.cpp
   TransformerTest.cpp
