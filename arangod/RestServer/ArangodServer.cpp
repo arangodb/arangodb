@@ -73,17 +73,21 @@ void applyAgencyRocksDBMemoryLimits(
 
 void assertNoTLSWithFips(
     [[maybe_unused]] FipsFeatureOptions const& fipsOptions,
-    [[maybe_unused]] SslServerOptions const& sslServerOptions) {
+    [[maybe_unused]] EndpointFeatureOptions const& endpointOptions,
+    [[maybe_unused]] SslServerOptions& sslServerOptions) {
 #ifdef USE_ENTERPRISE
   if (fipsOptions.enableFips) {
-    bool const tlsRequested = sslServerOptions.cafile.has_value() ||
-                              sslServerOptions.keyfile.has_value();
-    if (tlsRequested) {
+    bool const hasSslEndpoint =
+        std::ranges::any_of(endpointOptions.endpoints, Endpoint::hasSslPrefix);
+    if (hasSslEndpoint) {
       LOG_TOPIC("dfe35", FATAL, Logger::STARTUP)
           << "--server.fips-enable was provided. "
-          << "Please remove everything related to TLS/SSL.";
+          << "Please remove TLS/SSL endpoints.";
       FATAL_ERROR_EXIT();
     }
+    // No endpoints have ssl enabled, remove the tls options.
+    sslServerOptions.cafile.reset();
+    sslServerOptions.keyfile.reset();
   }
 #endif  // USE_ENTERPRISE
 }
@@ -148,8 +152,9 @@ void ArangodServer::processOptions() {
   }
 
   auto const& fipsOptions = getOptions<FipsFeatureOptionsProvider>();
-  auto const& sslServerOption = getOptions<SslServerOptionsProvider>();
-  assertNoTLSWithFips(fipsOptions, sslServerOption);
+  auto const& endpointOptions = getOptions<EndpointOptionsProvider>();
+  auto& sslServerOption = mutableOptions<SslServerOptionsProvider>();
+  assertNoTLSWithFips(fipsOptions, endpointOptions, sslServerOption);
 }
 
 void ArangodServer::validateOptions() {

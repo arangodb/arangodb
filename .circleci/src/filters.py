@@ -40,6 +40,7 @@ class FilterCriteria:
 
     # Feature flags
     enterprise: bool = True
+    fips: bool = False
 
     # filter for testsuites if commanded
     test_suite: str = ""
@@ -123,6 +124,15 @@ def _check_requirements_match(requires: TestRequirements, criteria: FilterCriter
         return False  # Requires instrumented build, but we're in regular mode
     if requires.instrumentation is False and criteria.is_instrumented_build:
         return False  # Regular-build-only, but we're in instrumented mode
+
+    # Check FIPS flag compatibility
+    # - fips=True: Only for FIPS builds
+    # - fips=False: Only for non-FIPS builds
+    # - fips=None (unspecified): Include in both
+    if requires.fips is True and not criteria.fips:
+        return False
+    if requires.fips is False and criteria.fips:
+        return False
 
     return True
 

@@ -28,6 +28,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <ranges>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -92,8 +94,8 @@ void EndpointList::apply(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EndpointList::hasSsl() const {
-  for (auto& it : _endpoints) {
-    if (it.first.starts_with("http+ssl://")) {
+  for (const auto& endpoint : _endpoints | std::views::values) {
+    if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
       return true;
     }
   }

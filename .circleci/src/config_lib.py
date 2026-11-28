@@ -176,6 +176,7 @@ class TestRequirements:
         None  # Include/exclude for instrumented builds (TSAN/ALUBSAN/COVERAGE)
     )
     coverage: Optional[bool] = None  # Include/exclude for coverage builds only
+    fips: Optional[bool] = None  # Include/exclude for FIPS builds
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     @classmethod
@@ -201,6 +202,8 @@ class TestRequirements:
             kwargs["instrumentation"] = data["instrumentation"]
         if "coverage" in data:
             kwargs["coverage"] = data["coverage"]
+        if "fips" in data:
+            kwargs["fips"] = data["fips"]
 
         # Handle arch field
         if "arch" in data and data["arch"] is not None:
@@ -223,6 +226,7 @@ class TestRequirements:
                 full=self.full,
                 instrumentation=self.instrumentation,
                 coverage=self.coverage,
+                fips=self.fips,
                 architecture=self.architecture,
             )
 
@@ -233,6 +237,7 @@ class TestRequirements:
             full=merge_field(override.full, self.full),
             instrumentation=merge_field(override.instrumentation, self.instrumentation),
             coverage=merge_field(override.coverage, self.coverage),
+            fips=merge_field(override.fips, self.fips),
             architecture=merge_field(override.architecture, self.architecture),
         )
 

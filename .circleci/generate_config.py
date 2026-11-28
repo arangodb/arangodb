@@ -189,6 +189,7 @@ def create_generator_config(
         full=full,
         clang_tidy=clang_tidy,
         test_suite=test_suite,
+        fips=fips,
     )
 
     # Create test execution config
