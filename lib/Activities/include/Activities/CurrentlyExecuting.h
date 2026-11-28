@@ -25,23 +25,22 @@
 
 namespace arangodb::activities {
 /**
-   Structure for the currently executing activity
-
-   It adds the current thread to the activity-thread-list at construction and
-   removes the thread on destruction.
+   Structure for the currently executing activity. This thread's node is linked
+   into that activity's thread list (one activity can have multiple threads).
  */
 struct CurrentlyExecuting {
-  CurrentlyExecuting(ActivityHandle handle);
+  CurrentlyExecuting() noexcept = default;
   ~CurrentlyExecuting();
-  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
-  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
   CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
   auto operator=(CurrentlyExecuting const& other) noexcept
       -> CurrentlyExecuting& = delete;
-  ActivityHandle activity;
+
+  auto activity() const noexcept -> ActivityHandle { return _currentActivity; }
+  auto switchTo(ActivityHandle nextActivity) noexcept -> void;
 
  private:
-  Activity::ThreadListIterator _position;
+  ActivityHandle _currentActivity;
+  Activity::ThreadNode _threadNode;
 };
 
 }  // namespace arangodb::activities

@@ -36,9 +36,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/SharedSlice.h>
 #include <coroutine>
+#include <latch>
+#include <optional>
 #include <thread>
 #include <unordered_map>
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::activities;
@@ -354,6 +355,52 @@ TEST_F(ActivityRegistryTest,
               (std::vector<basics::ThreadInfo>{
                   basics::ThreadInfo::current().get_ref().value()}));
   }
+
+  // Three threads in `a`; the middle one leaves, then the head one.
+  {
+    auto me = basics::ThreadInfo::current().get_ref().value();
+    std::optional<basics::ThreadInfo> b;
+    std::optional<basics::ThreadInfo> c;
+    std::latch bIn{1}, bOut{1}, cIn{1}, cOut{1};
+
+    auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
+    std::jthread tb([&] {
+      auto s = Registry::ScopedCurrentlyExecutingActivity(a);
+      b = basics::ThreadInfo::current().get_ref().value();
+      bIn.count_down();
+      bOut.wait();
+    });
+    bIn.wait();
+    std::jthread tc([&] {
+      auto s = Registry::ScopedCurrentlyExecutingActivity(a);
+      c = basics::ThreadInfo::current().get_ref().value();
+      cIn.count_down();
+      cOut.wait();
+    });
+    cIn.wait();
+    EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{me, *b, *c}));
+
+    bOut.count_down();
+    tb.join();
+    EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{me, *c}));
+
+    {
+      auto other = activities::make<GenericActivity>(
+          "other", activities::GenericActivityData{});
+      // Executing activity 'other' on 'me' thread removes 'me' thread from
+      // activity a's thread list because a thread only can run one activity
+      // at a time
+      auto s = Registry::ScopedCurrentlyExecutingActivity(other);
+      EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{
+                                  *c}));  // hence, 'me' was removed here
+    }
+    // Now activity 'other' is destroyed, so old thread ('me' in this case) come
+    // back to activity a's thread list
+    EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{*c, me}));
+
+    cOut.count_down();
+  }
+  EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{}));
 }
 
 TEST_F(ActivityRegistryTest, snapshot_includes_threads) {
