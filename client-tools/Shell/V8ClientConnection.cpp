@@ -153,7 +153,7 @@ V8ClientConnection::~V8ClientConnection() {
 
 std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     bool bypassCache) {
-  if (_client.endpoint() == "none") {
+  if (endpoint() == "none") {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
@@ -191,7 +191,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     if (_forceJson) {
       req->header.acceptType(fu::ContentType::Json);
     }
-    req->header.database = _databaseName;
+    req->header.database = candidate.config.databaseName;
     req->timeout(std::chrono::seconds(30));
     retryCount -= 1;
     try {
@@ -200,7 +200,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (!res) {
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed fatally from: " << newConnection->localEndpoint();
         return nullptr;
       }
@@ -231,7 +231,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           }
           setCustomError(_lastHttpReturnCode, errorMessage);
           LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
-              << "Connection attempt to endpoint '" << _client.endpoint()
+              << "Connection attempt to endpoint '" << endpoint()
               << "' failed: " << errorMessage
               << " from: " << newConnection->localEndpoint();
           return nullptr;
@@ -245,7 +245,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         msg += "'";
         setCustomError(503, msg);
         LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed: " << msg
             << " from: " << newConnection->localEndpoint();
         return nullptr;
@@ -298,7 +298,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
-            << "Connection attempt to endpoint '" << _client.endpoint()
+            << "Connection attempt to endpoint '" << endpoint()
             << "' failed: " << msg
             << " from: " << newConnection->localEndpoint();
         return nullptr;
@@ -367,14 +367,38 @@ application_features::ApplicationServer& V8ClientConnection::server() {
   return _server;
 }
 
+std::string V8ClientConnection::databaseName() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().databaseName;
+}
+
 void V8ClientConnection::setDatabaseName(std::string const& value) {
-  _databaseName = value;
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  _handles.config().databaseName = value;
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
 
 void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
+}
+
+std::string V8ClientConnection::endpoint() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.endpoint()
+                                            : _handles.config().endpoint;
+}
+
+std::string V8ClientConnection::username() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.username()
+                                            : _handles.config().username;
+}
+
+std::string V8ClientConnection::password() const {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  return _handles.config().endpoint.empty() ? _client.password()
+                                            : _handles.config().password;
 }
 
 std::string V8ClientConnection::protocol() const {
@@ -473,7 +497,8 @@ void V8ClientConnection::renewTokenIfDue() {
     case TokenRenewal::Kind::kNone:
       return;
     case TokenRenewal::Kind::kJwtTokenOption:
-      // the ClientFeature renews the --server.jwt-token in the background
+      // the ClientFeature renews the --server.jwt-token in the background, at
+      // its endpoint, which adoptClientSettings() keeps at the active handle's
       newToken = _client.jwtToken();
       break;
     case TokenRenewal::Kind::kLogin: {
@@ -534,7 +559,6 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
-  _databaseName = _client.databaseName();
 
   // configure a copy, so that a failed login leaves the configuration
   // untouched. each authentication mode clears the fields of the others;
@@ -589,8 +613,18 @@ ResultT<std::string> V8ClientConnection::prepareConnection() {
                                     .renewal = std::move(renewal),
                                     .endpoint = _client.endpoint(),
                                     .username = _client.username(),
-                                    .password = _client.password()};
+                                    .password = _client.password(),
+                                    .jwtSecret = _client.jwtSecret(),
+                                    .databaseName = _client.databaseName()};
   return ResultT<std::string>::success("");
+}
+
+void V8ClientConnection::adoptClientSettings(Configuration const& config) {
+  _client.setEndpoint(config.endpoint);
+  _client.setUsername(config.username);
+  _client.setPassword(config.password);
+  _client.setJwtSecret(config.jwtSecret);
+  _client.setDatabaseName(config.databaseName);
 }
 
 ResultT<std::string> V8ClientConnection::connect() {
@@ -607,6 +641,11 @@ ResultT<std::string> V8ClientConnection::reconnect() {
 
   auto res = prepareConnection();
   if (!res.ok()) {
+    // the caller already put the failed settings into the client. before the
+    // first connect there is no configuration to go back to
+    if (!_handles.config().endpoint.empty()) {
+      adoptClientSettings(_handles.config());
+    }
     return res;
   }
 
@@ -614,21 +653,20 @@ ResultT<std::string> V8ClientConnection::reconnect() {
     createConnection();
   } catch (...) {
     return ResultT<std::string>::error(TRI_ERROR_FAILED,
-                                       "error in '" + _client.endpoint() + "'");
+                                       "error in '" + endpoint() + "'");
   }
 
   if (isConnected() &&
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC("2d416", INFO, arangodb::Logger::HTTPCLIENT)
         << ClientFeature::buildConnectedMessage(
-               endpointSpecification(), _version, _role, _mode, _databaseName,
+               endpointSpecification(), _version, _role, _mode, databaseName(),
                _client.username());
   } else {
     if (_client.getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::HTTPCLIENT)
-          << "Could not connect to endpoint '" << _client.endpoint()
-          << "', username: '" << _client.username()
-          << "' - Server message: " << _lastErrorMessage;
+          << "Could not connect to endpoint '" << endpoint() << "', username: '"
+          << _client.username() << "' - Server message: " << _lastErrorMessage;
     }
     return ResultT<std::string>::error(
         TRI_ERROR_FAILED,
@@ -677,8 +715,8 @@ void V8ClientConnection::getConnectionHandleTable(
       setString("endpoint", "N/A", entry);
       setString("localPort", "N/A", entry);
     }
-    setString("username", config.builder.user(), entry);
-    setString("password", config.builder.password(), entry);
+    setString("username", config.username, entry);
+    setString("password", config.password, entry);
     setString("jwtToken", config.builder.jwtToken(), entry);
 
     table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
@@ -719,6 +757,12 @@ void V8ClientConnection::connectHandle(
   // brings its own renewal state, so an expired token is renewed on the next
   // request
   _handles.activate(handle, std::move(*cached));
+  adoptClientSettings(_handles.config());
+  // the db object caches what it read via the previous handle, which may
+  // have been another database, server or user. it is not refilled here, as
+  // switching handles must not send requests
+  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._forgetCache();",
+                              "forget db object cache", false);
 
   TRI_V8_RETURN_TRUE();
 }
@@ -1201,16 +1245,18 @@ static void ClientConnection_connectedUser(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  if (client == nullptr) {
+  if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
         "connectedUser() must be invoked on an arango connection object "
         "instance.");
   }
 
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+  // the user of the active connection, which connectHandle() may have
+  // switched to
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, v8connection->username()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1872,7 +1918,9 @@ static void ClientConnection_getEndpoint(
     TRI_V8_THROW_EXCEPTION_USAGE("getEndpoint()");
   }
 
-  TRI_V8_RETURN_STD_STRING(client->endpoint());
+  // the endpoint of the active connection, which connectHandle() may have
+  // switched to
+  TRI_V8_RETURN_STD_STRING(v8connection->endpoint());
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3055,7 +3103,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req, method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, databaseName(), _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
@@ -3131,7 +3179,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req, method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, databaseName(), _forceJson,
                    _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson,
