@@ -922,6 +922,11 @@ TEST_F(ClassicAuthModeTest, EveryAdminActionIsForbiddenWithoutSystemReadWrite) {
       AllAdminPermissionsExceptQueryCache{});
 }
 
+TEST_F(ClassicAuthModeTest, FullCompactionIsForbiddenEvenForAdmins) {
+  beAdmin();
+  expectError(check(p::FullCompaction{}), TRI_ERROR_FORBIDDEN);
+}
+
 TEST_F(ClassicAuthModeTest, AdminReadUsersIsNotSpecialInClassic) {
   // Contrast with AuthMode::Rbac, where AdminReadUsers has no counterpart yet
   // and fails closed with TRI_ERROR_NOT_IMPLEMENTED.

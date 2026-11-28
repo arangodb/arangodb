@@ -267,6 +267,9 @@ std::ostream& operator<<(std::ostream& os, Permission const& permission) {
           [&](UseApiVersion const& p) {
             os << "UseApiVersion version=" << p.version;
           },
+
+          // superuser only
+          [&](FullCompaction const&) { os << "FullCompaction"; },
       },
       permission);
   return os;

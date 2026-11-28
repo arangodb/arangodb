@@ -414,15 +414,16 @@ function adminApiAuthzSuite () {
       ], endObserve());
     },
 
-    // PUT /_admin/compact - RestCompactHandler gates on isSuperuserOrDisabled()
-    // (execute:46, no observed question); base only.
+    // PUT /_admin/compact - RestCompactHandler asks can(FullCompaction)
+    // (execute:46), which only superusers pass.
     // AUDIT: triggers a full RocksDB compaction (safe/idempotent, small test DB).
     testCompact: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/_system/_admin/compact`, {});
       assertPermissions([
               "UseApiVersion version=v1",
-        "UseDatabase name=_system level=read"
+        "UseDatabase name=_system level=read",
+        "FullCompaction"
       ], endObserve());
     },
 
