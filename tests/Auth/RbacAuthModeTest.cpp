@@ -473,6 +473,11 @@ TEST_F(RbacAuthModeTest, AdminBackup) {
   expectSingle(rbac::Action::AdminBackup, "<none>");
 }
 
+TEST_F(RbacAuthModeTest, AdminReadOnlyMode) {
+  check(p::AdminReadOnlyMode{});
+  expectSingle(rbac::Action::AdminReadOnlyMode, "<none>");
+}
+
 TEST_F(RbacAuthModeTest, AdminQueryCache) {
   check(p::AdminQueryCache{});
   expectSingle(rbac::Action::AdminQueryCache, "<none>");

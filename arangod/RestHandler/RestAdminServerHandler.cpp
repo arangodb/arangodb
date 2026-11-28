@@ -199,7 +199,7 @@ void RestAdminServerHandler::handleMode() {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
     if (auto r = ExecContext::current().canUseAdminAction(
-            auth::perms::AdminMaintenance{});
+            auth::perms::AdminReadOnlyMode{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     r.errorMessage());
