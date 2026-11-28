@@ -43,4 +43,4 @@ if(USE_ENTERPRISE)
     arango_enterprise_storage_engine)
 endif()
 
-add_dependencies(arangoserver tzdata)
+add_dependencies(arangoserver)
