@@ -448,11 +448,11 @@ patch file in `js/node/patches`.
 
 #### Build the HTTP API documentation for Swagger-UI
 
-The REST HTTP API of the ArangoDB server is described using the OpenAPI
+The HTTP API of the ArangoDB server is described using the OpenAPI
 specification (formerly Swagger). The source code is in documentation repository
 at <https://github.com/arangodb/docs-hugo>.
 
-To build the `api-docs.json` file for viewing the API documentation in the
+To build the `openapi-*.json` files for viewing the API documentation in the
 Swagger-UI of the web interface (**SUPPORT** section, **Rest API** tab), run
 the following commands in a terminal:
 
@@ -491,8 +491,10 @@ the following commands in a terminal:
 
    `docker compose -f docker-compose.plain-build.yml up --abort-on-container-exit`
 
-7. When the docs building finishes successfully, you can find the `api-docs.json`
-   files in `site/data/<version>/`.
+7. When the docs building finishes successfully, you can find
+  `openapi-<api_version>.json` files in each `site/data/<version>/` folder.
+  For example, `site/data/4.x/` contains `openapi-v1.json` and
+  `openapi-experimental.json`.
 
 ---
 

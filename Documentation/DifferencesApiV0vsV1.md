@@ -1,10 +1,10 @@
-# Behavioural Differences Between REST API Version 0 and Version 1
+# Behavioral Differences Between HTTP API Version 0 and Version 1
 
-This document is a comprehensive overview of all behavioural differences
-between REST API version 0 (`V0`, the classic/default API, addressed either
-without a version prefix or via `/_arango/v0/...`) and REST API version 1
-(`V1`, addressed via `/_arango/v1/...`) that currently exist in the ArangoDB
-code base.
+This document is a comprehensive overview of all behavioral differences
+between HTTP API version 0 (`V0`, the classic/default API, addressed either
+without a version prefix or via `/_arango/v0/...`) and HTTP API version 1
+(`V1`, addressed via `/_arango/v1/...`). Both API versions exist in the current
+3.12 code base, but API v0 has been removed from devel for 4.0.
 
 It was compiled by searching the whole code base for calls to
 `GeneralRequest::requestedApiVersion()`, which is the (sole) method used
@@ -19,7 +19,7 @@ endpoints exist at all under a given API version.
 > compiled with `ARANGODB_ENABLE_FAILURE_TESTS` by activating the failure
 > point `ApiVersion::treatVersion1AsSupported` (see
 > `lib/Rest/GeneralRequest.cpp` and `arangod/GeneralServer/RestHandlerFactory.cpp`).
-> Everything described below reflects the behaviour that is implemented in
+> Everything described below reflects the behavior that is implemented in
 > the code for when V1 *is* enabled/reachable.
 
 ## How the API version is determined
@@ -78,15 +78,17 @@ The following endpoints are V0-only:
 | `/_admin/statistics-description` | `RestAdminStatisticsHandler` | |
 | `/` (catch-all prefix) | `RestActionHandler` | generic/legacy action dispatch |
 
-All other REST endpoints (the large majority) are registered for both `{0,
-1}` and behave identically at the routing level; any behavioural
+All other HTTP endpoints (the large majority) are registered for both `{0,
+1}` and behave identically at the routing level; any behavioral
 differences for those come from explicit `requestedApiVersion()` checks in
 the handler code, documented below.
 
-`/openapi.json` is special: it is registered for `{0, 1, 2}` and serves a
-different, version-specific static OpenAPI specification document
-depending on the requested API version (`kOpenApiV0`/`kOpenApiV1`/`kOpenApiV2`,
-compiled in from `openapi-v0.csx`/`openapi-v1.csx`/`openapi-v2.csx`) — see
+`/openapi.json` is special: it is registered for `V0`/`V1`/`Experimental`
+(depending on what API versions a given ArangoDB version supports)
+and serves a different, version-specific static OpenAPI specification
+document depending on the requested API version
+(`kOpenApiV0`/`kOpenApiV1`/`kOpenApiExperimental`, compiled in from
+`openapi-v0.csx`/`openapi-v1.csx`/`openapi-experimental.csx`) — see
 `arangod/RestHandler/RestOpenApiHandler.cpp`. If a version has no compiled-in
 spec, the handler answers with HTTP `404` / `TRI_ERROR_HTTP_NOT_FOUND`.
 
@@ -95,14 +97,14 @@ spec, the handler answers with HTTP `404` / `TRI_ERROR_HTTP_NOT_FOUND`.
 `RestVersionHandler` (`arangod/RestHandler/RestVersionHandler.cpp`) includes
 a `requestedApiVersion` field in its JSON response (e.g. `"v0"` or `"v1"`),
 reflecting whichever API version was used to call it. This is purely
-informational and not a behavioural difference in status codes, but it does
+informational and not a behavioral difference in status codes, but it does
 mean the **response body shape differs** in that this field always mirrors
 the caller's chosen version.
 
 ## Authentication/authorization error shape: `handleAuthorizationChecks`
 
 This is one of the most consequential differences, since it affects **every**
-authenticated REST call, regardless of endpoint (`arangod/GeneralServer/RestHandler.cpp`).
+authenticated HTTP call, regardless of endpoint (`arangod/GeneralServer/RestHandler.cpp`).
 
 The RestHandler has three methods that guard access. They all have a default 
 implementation but each RestHandler can override each one of these:
@@ -315,7 +317,7 @@ the request under V1.
 * **Deprecated index types on `POST /_api/index`**
   (`RestIndexHandler.cpp`, line ~909): under **V1**, creating an index of
   type `geo1`, `geo2`, `hash`, `skiplist` or `fulltext` fails with HTTP `400`
-  / `TRI_ERROR_BAD_PARAMETER`, "index type '<type>' is not supported in API
+  / `TRI_ERROR_BAD_PARAMETER`, "index type '\<type\>' is not supported in API
   version 1 or higher". Under **V0** these aliases are still accepted.
 
 ## Response attributes omitted under V1
@@ -356,7 +358,7 @@ the request under V1.
 
 ## Summary table of HTTP status / errorNum differences
 
-| Area | V0 behaviour | V1 behaviour |
+| Area | V0 behavior | V1 behavior |
 |---|---|---|
 | Generic authorization failure (`RestHandler::handleAuthorizationChecks`) | Always HTTP 401 + errorNum 11 (`TRI_ERROR_FORBIDDEN`), regardless of actual cause | HTTP/errorNum reflect the actual `Result` (401/403/404 as appropriate) |
 | No DB access at all (`AuthMode::UseDatabase`) | HTTP 403 / errorNum 11 | HTTP 404 / errorNum 1228 (`DATABASE_NOT_FOUND`) — hides existence |
@@ -402,7 +404,7 @@ the request under V1.
 * `arangod/GeneralServer/RestHandlerFactory.cpp` / `.h`
 * `arangod/GeneralServer/GeneralServerFeature.cpp` (route registration table)
 * `arangod/GeneralServer/RestHandler.cpp`
-* `arangod/GeneralServer/CommTask.cpp` (logging only, no behavioural difference)
+* `arangod/GeneralServer/CommTask.cpp` (logging only, no behavioral difference)
 * `arangod/RestHandler/RestVersionHandler.cpp` / `.h`
 * `arangod/RestHandler/RestOpenApiHandler.cpp`
 * `arangod/RestHandler/RestAdminClusterHandler.cpp`
