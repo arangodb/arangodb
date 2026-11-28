@@ -38,8 +38,12 @@
 #include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+
+#include <atomic>
+#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -939,3 +943,416 @@ TEST_F(TransactionManagerTest, lock_usage_of_expired_transaction) {
   ASSERT_TRUE(res.ok());
 }
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                 soft-aborted managed transactions
+// -----------------------------------------------------------------------------
+
+namespace {
+
+/// @brief begins a write transaction on a fresh collection `testCollection`
+void beginWriteTransaction(TRI_vocbase_t& vocbase, transaction::Manager& mgr,
+                           TransactionId tid) {
+  auto colDescriptor = arangodb::tests::testCollectionDescriptor(
+      "testCollection", arangodb::DataSourceId{42});
+  ASSERT_NE(vocbase.createCollection(colDescriptor), nullptr);
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
+  ASSERT_TRUE(mgr.ensureManagedTrx(vocbase, tid, json->slice(),
+                                   transaction::OperationOriginTestCase{},
+                                   false)
+                  .waitAndGet()
+                  .ok());
+}
+
+/// @brief error number thrown when leasing the transaction, or
+/// TRI_ERROR_NO_ERROR if leasing succeeds
+ErrorCode leaseErrorNumber(transaction::Manager& mgr, TransactionId tid) {
+  try {
+    auto ctx =
+        mgr.leaseManagedTrx(tid, AccessMode::Type::WRITE, false).waitAndGet();
+    return TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& ex) {
+    return ex.code();
+  }
+}
+
+/// @brief details entry of the transaction as reported by toVelocyPack()
+std::shared_ptr<arangodb::velocypack::Builder> transactionDetails(
+    transaction::Manager& mgr, std::string const& database, TransactionId tid) {
+  arangodb::velocypack::Builder builder;
+  {
+    arangodb::velocypack::ArrayBuilder guard(&builder);
+    mgr.toVelocyPack(builder, database, "", /*fanout*/ false,
+                     /*details*/ true);
+  }
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
+  for (auto const entry :
+       arangodb::velocypack::ArrayIterator(builder.slice())) {
+    if (entry.get("id").copyString() == std::to_string(tid.id())) {
+      result->add(entry);
+    }
+  }
+  return result;
+}
+
+}  // namespace
+
+TEST_F(TransactionManagerTest, soft_abort_unknown_transaction) {
+  EXPECT_FALSE(mgr->softAbortManagedTrxForTesting(tid));
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::UNDEFINED);
+}
+
+TEST_F(TransactionManagerTest,
+       soft_aborted_transaction_is_aborted_not_expired) {
+  arangodb::ExecContextSuperuserScope exeScope;
+  beginWriteTransaction(vocbase, *mgr, tid);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(tid));
+
+  // the transaction reports as aborted
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+
+  // ... and is flagged as soft-aborted, but has not timed out
+  auto details = transactionDetails(*mgr, vocbase.name(), tid);
+  ASSERT_FALSE(details->isEmpty());
+  EXPECT_TRUE(details->slice().get("softAborted").isTrue());
+  EXPECT_TRUE(details->slice().get("expired").isFalse());
+  EXPECT_EQ(details->slice().get("type").copyString(), "managed");
+
+  // it cannot be leased anymore
+  EXPECT_EQ(leaseErrorNumber(*mgr, tid), TRI_ERROR_TRANSACTION_ABORTED);
+}
+
+TEST_F(TransactionManagerTest, soft_aborted_transaction_cannot_be_committed) {
+  arangodb::ExecContextSuperuserScope exeScope;
+  beginWriteTransaction(vocbase, *mgr, tid);
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(tid));
+
+  {
+    auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+    // the commit request turned into an abort, and is reported as failed
+    EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+    EXPECT_NE(res.errorMessage().find("soft-aborted"), std::string::npos)
+        << res.errorMessage();
+  }
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+
+  // the transaction is now a tombstone, and the tombstone is not marked
+  // as expired
+  auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+  EXPECT_NE(res.errorMessage().find("aborted"), std::string::npos)
+      << res.errorMessage();
+  EXPECT_EQ(res.errorMessage().find("expired"), std::string::npos)
+      << res.errorMessage();
+}
+
+TEST_F(TransactionManagerTest, soft_aborted_transaction_can_be_aborted) {
+  arangodb::ExecContextSuperuserScope exeScope;
+  beginWriteTransaction(vocbase, *mgr, tid);
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(tid));
+
+  EXPECT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+  EXPECT_EQ(leaseErrorNumber(*mgr, tid), TRI_ERROR_TRANSACTION_ABORTED);
+}
+
+TEST_F(TransactionManagerTest, garbage_collection_aborts_soft_aborted_trx) {
+  arangodb::ExecContextSuperuserScope exeScope;
+  beginWriteTransaction(vocbase, *mgr, tid);
+
+  // a running, unexpired transaction is left alone by the garbage collection
+  EXPECT_FALSE(mgr->garbageCollect(/*abortAll*/ false));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), tid)
+                  ->slice()
+                  .get("type")
+                  .isEqualString("managed"));
+
+  // once soft-aborted, it is aborted even though it has not expired
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(tid));
+  EXPECT_TRUE(mgr->garbageCollect(/*abortAll*/ false));
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+  // tombstones are not listed anymore
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), tid)->isEmpty());
+
+  // and is not soft-aborted a second time
+  EXPECT_FALSE(mgr->softAbortManagedTrxForTesting(tid));
+}
+
+TEST_F(TransactionManagerTest, shutdown_soft_aborts_transaction_in_use) {
+  arangodb::ExecContextSuperuserScope exeScope;
+  beginWriteTransaction(vocbase, *mgr, tid);
+
+  {
+    auto ctx =
+        mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).waitAndGet();
+    ASSERT_NE(ctx.get(), nullptr);
+
+    // the transaction is in use, so it can only be soft-aborted
+    EXPECT_TRUE(mgr->garbageCollect(/*abortAll*/ true));
+
+    EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+    auto details = transactionDetails(*mgr, vocbase.name(), tid);
+    ASSERT_FALSE(details->isEmpty());
+    EXPECT_TRUE(details->slice().get("type").isEqualString("managed"));
+    EXPECT_TRUE(details->slice().get("softAborted").isTrue());
+    EXPECT_TRUE(details->slice().get("expired").isFalse());
+
+    // nobody else can lease it in the meantime
+    EXPECT_EQ(leaseErrorNumber(*mgr, tid), TRI_ERROR_TRANSACTION_ABORTED);
+  }
+
+  // returning the lease aborted the transaction
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+  // tombstones are not listed anymore
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), tid)->isEmpty());
+  EXPECT_EQ(
+      mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet().errorNumber(),
+      TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerTest, expired_transaction_is_not_soft_aborted) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+  arangodb::ExecContextSuperuserScope exeScope;
+
+  // disables garbage-collection
+  TRI_AddFailurePointDebugging("transaction::Manager::noGC");
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  beginWriteTransaction(vocbase, *mgr, tid);
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+  auto details = transactionDetails(*mgr, vocbase.name(), tid);
+  ASSERT_FALSE(details->isEmpty());
+  EXPECT_TRUE(details->slice().get("expired").isTrue());
+  EXPECT_TRUE(details->slice().get("softAborted").isFalse());
+
+  // expired transactions are reported as such, not as aborted
+  EXPECT_EQ(leaseErrorNumber(*mgr, tid), TRI_ERROR_TRANSACTION_NOT_FOUND);
+
+  // garbage collection aborts expired transactions
+  TRI_RemoveFailurePointDebugging("transaction::Manager::noGC");
+  EXPECT_TRUE(mgr->garbageCollect(/*abortAll*/ false));
+  // tombstones are not listed anymore
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), tid)->isEmpty());
+  auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+  EXPECT_NE(res.errorMessage().find("expired"), std::string::npos)
+      << res.errorMessage();
+}
+
+TEST_F(TransactionManagerTest, commit_of_expired_transaction_fails) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+  arangodb::ExecContextSuperuserScope exeScope;
+
+  // disables garbage-collection
+  TRI_AddFailurePointDebugging("transaction::Manager::noGC");
+  // sets TTL for transaction to a very low value
+  TRI_AddFailurePointDebugging("transaction::Manager::shortTTL");
+  beginWriteTransaction(vocbase, *mgr, tid);
+
+  // wait until trx is expired
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  // the expired transaction is aborted instead, which must not be reported
+  // as a successful commit
+  auto res = mgr->commitManagedTrx(tid, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+  EXPECT_NE(res.errorMessage().find("expired"), std::string::npos)
+      << res.errorMessage();
+  EXPECT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                          aborting follower transactions on shard
+// -----------------------------------------------------------------------------
+
+class TransactionManagerFollowerTrxOnShardTest : public TransactionManagerTest {
+ protected:
+  static constexpr DataSourceId shardA{42};
+  static constexpr DataSourceId shardB{43};
+
+  arangodb::ServerState::RoleEnum beforeRole;
+  arangodb::ExecContextSuperuserScope exeScope;
+
+  TransactionManagerFollowerTrxOnShardTest()
+      : beforeRole(arangodb::ServerState::instance()->getRole()) {
+    // follower transactions only exist on DB servers
+    arangodb::ServerState::instance()->setRole(
+        arangodb::ServerState::ROLE_DBSERVER);
+    for (auto [name, id] : {std::pair{"shardA", shardA}, {"shardB", shardB}}) {
+      auto colDescriptor = arangodb::tests::testCollectionDescriptor(name, id);
+      EXPECT_NE(vocbase.createCollection(colDescriptor), nullptr);
+    }
+  }
+
+  ~TransactionManagerFollowerTrxOnShardTest() {
+    arangodb::ServerState::instance()->setRole(beforeRole);
+  }
+
+  /// @brief begins a write transaction on `collection`
+  void begin(TransactionId tid, std::string_view collection) {
+    auto json = arangodb::velocypack::Parser::fromJson(absl::StrCat(
+        "{ \"collections\":{\"write\": [\"", collection, "\"]}}"));
+    ASSERT_TRUE(mgr->ensureManagedTrx(vocbase, tid, json->slice(),
+                                      transaction::OperationOriginTestCase{},
+                                      tid.isFollowerTransactionId())
+                    .waitAndGet()
+                    .ok());
+    ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
+  }
+
+  std::shared_ptr<transaction::Context> lease(TransactionId tid) {
+    return mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false)
+        .waitAndGet();
+  }
+};
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       aborts_only_follower_transactions_on_the_shard) {
+  auto followerOnA = TransactionId::createFollower();
+  auto followerOnB = TransactionId::createFollower();
+  auto leaderOnA = TransactionId::createLeader();
+  begin(followerOnA, "shardA");
+  begin(followerOnB, "shardB");
+  begin(leaderOnA, "shardA");
+
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  // tombstones are not listed anymore
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+  // follower transactions on other shards are left alone
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
+  // leader transactions are left alone
+  EXPECT_EQ(mgr->getManagedTrxStatus(leaderOnA), transaction::Status::RUNNING);
+}
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       reports_whether_follower_transactions_were_found) {
+  auto leaderOnA = TransactionId::createLeader();
+  auto followerOnB = TransactionId::createFollower();
+  begin(leaderOnA, "shardA");
+  begin(followerOnB, "shardB");
+
+  EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(leaderOnA), transaction::Status::RUNNING);
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
+
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardB).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::ABORTED);
+  // nothing left to abort
+  EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardB).waitAndGet());
+}
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       waits_for_follower_transaction_in_use) {
+  auto followerOnA = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+
+  std::atomic<bool> leased{false};
+  std::thread user([&] {
+    arangodb::ExecContextSuperuserScope scope;
+    auto ctx = lease(followerOnA);
+    EXPECT_NE(ctx, nullptr);
+    leased.store(true);
+    // keep it in use for a while, then return it
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  });
+  auto joinGuard = scopeGuard([&]() noexcept { user.join(); });
+  while (!leased.load()) {
+    std::this_thread::yield();
+  }
+
+  // the transaction is in use, but it is found nonetheless, and aborted once
+  // its user has returned it
+  EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  // it was aborted for real, not just soft-aborted
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       soft_aborts_follower_transaction_remaining_in_use) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+  // do not wait 9s for the transaction to be returned
+  TRI_AddFailurePointDebugging(
+      "transaction::Manager::shortStatusChangeTimeout");
+
+  auto followerOnA = TransactionId::createFollower();
+  auto followerOnB = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+  begin(followerOnB, "shardB");
+
+  {
+    auto ctxA = lease(followerOnA);
+    ASSERT_NE(ctxA, nullptr);
+    auto ctxB = lease(followerOnB);
+    ASSERT_NE(ctxB, nullptr);
+
+    EXPECT_TRUE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+    // still in use, so it is only soft-aborted
+    EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+              transaction::Status::ABORTED);
+    auto details = transactionDetails(*mgr, vocbase.name(), followerOnA);
+    ASSERT_FALSE(details->isEmpty());
+    EXPECT_TRUE(details->slice().get("type").isEqualString("managed"));
+    EXPECT_TRUE(details->slice().get("softAborted").isTrue());
+
+    // the follower transaction in use on the other shard is left alone
+    EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+              transaction::Status::RUNNING);
+    details = transactionDetails(*mgr, vocbase.name(), followerOnB);
+    ASSERT_FALSE(details->isEmpty());
+    EXPECT_TRUE(details->slice().get("softAborted").isFalse());
+
+    // soft-aborted transactions are not waited for again
+    EXPECT_FALSE(mgr->abortFollowerTrxOnShard(shardA).waitAndGet());
+
+    // nobody else can lease it anymore
+    EXPECT_EQ(leaseErrorNumber(*mgr, followerOnA),
+              TRI_ERROR_TRANSACTION_ABORTED);
+  }
+
+  // returning the lease aborted the transaction for real
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+  EXPECT_TRUE(transactionDetails(*mgr, vocbase.name(), followerOnA)->isEmpty());
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnB),
+            transaction::Status::RUNNING);
+}
+#endif
+
+TEST_F(TransactionManagerFollowerTrxOnShardTest,
+       commit_of_soft_aborted_follower_transaction_fails) {
+  auto followerOnA = TransactionId::createFollower();
+  begin(followerOnA, "shardA");
+  ASSERT_TRUE(mgr->softAbortManagedTrxForTesting(followerOnA));
+
+  // a leader committing the transaction must learn that the follower did not
+  // commit it, so that it drops the follower
+  auto res = mgr->commitManagedTrx(followerOnA, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_ABORTED);
+  EXPECT_EQ(mgr->getManagedTrxStatus(followerOnA),
+            transaction::Status::ABORTED);
+
+  // a repeated commit is refused as well
+  res = mgr->commitManagedTrx(followerOnA, vocbase.name()).waitAndGet();
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+}

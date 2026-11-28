@@ -34,6 +34,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <absl/hash/hash.h>
@@ -97,8 +98,16 @@ class Manager final : public IManager {
     ~ManagedTrx();
 
     bool hasPerformedIntermediateCommits() const noexcept;
+    /// @brief whether the transaction's time-to-live has run out
     bool expired() const noexcept;
     void updateExpiry() noexcept;
+    /// @brief mark the transaction for abortion. it is aborted by
+    /// returnManagedTrx() once its current user returns it, or by the next
+    /// garbage collection run otherwise. must be called under the bucket's
+    /// write lock
+    void softAbort() noexcept;
+    /// @brief whether the transaction was soft-aborted
+    bool aborted() const noexcept;
 
     /// @brief managed, AQL or tombstone
     MetaType type;
@@ -107,6 +116,9 @@ class Manager final : public IManager {
     bool intermediateCommits;
     /// @brief whether or not the transaction did expire at least once
     bool wasExpired;
+    /// @brief whether or not the transaction was soft-aborted, i.e. marked
+    /// to be aborted as soon as it is no longer in use
+    bool softAborted;
     /// @brief number of (reading) side users of the transaction. this number
     /// is currently only increased on DB servers when they handle incoming
     /// requests by the AQL document function. while this number is > 0, there
@@ -135,6 +147,12 @@ class Manager final : public IManager {
     /// will be cleared once the transaction gets turned into
     /// a tombstone
     std::string context;
+    /// ids of the collections the transaction was started with. set once in
+    /// storeManagedState() under the bucket's write lock and not changed
+    /// afterwards, so it can be read under the bucket lock alone, even while
+    /// the transaction is in use. collections added at runtime are not
+    /// recorded here
+    std::vector<DataSourceId> collections;
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -207,6 +225,13 @@ class Manager final : public IManager {
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /// @brief test-only access to softAbortManagedTrx()
+  bool softAbortManagedTrxForTesting(TransactionId tid) noexcept {
+    return softAbortManagedTrx(tid);
+  }
+#endif
+
   /// @brief a managed transaction selected for a bulk operation
   struct SelectedTrx {
     TransactionId tid;
@@ -230,6 +255,13 @@ class Manager final : public IManager {
   /// permission check (see abortSelectedTrx)
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
+
+  /// @brief abort all follower transactions on shard `cid`. Transactions
+  /// still in use are waited for, and soft-aborted if they remain in use (see
+  /// abortOrSoftAbortManagedTrx()), so that they cannot keep holding the
+  /// shard's locks. Unlike selectManagedTrx(), transactions in use are not
+  /// skipped. Returns whether any transaction was found.
+  futures::Future<bool> abortFollowerTrxOnShard(DataSourceId cid);
 
   /// @brief abort all managed write transactions
   Result abortAllManagedWriteTrx(std::string_view username, bool fanout);
@@ -310,6 +342,17 @@ class Manager final : public IManager {
   futures::Future<Result> statusChangeWithTimeout(TransactionId tid,
                                                   std::string const& database,
                                                   transaction::Status status);
+
+  /// @brief Aborts a managed transaction. Should it be still in
+  /// use, soft-abort instead, so it is aborted when its current
+  /// user returns it, or by the next garbage collection run
+  futures::Future<Result> abortOrSoftAbortManagedTrx(
+      TransactionId tid, std::string const& database);
+
+  /// @brief Mark a managed transaction expired, it is aborted
+  /// when it is returned by its current user or by the next garbage
+  /// collection run. Returns whether the transaction was found
+  bool softAbortManagedTrx(TransactionId tid) noexcept;
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
