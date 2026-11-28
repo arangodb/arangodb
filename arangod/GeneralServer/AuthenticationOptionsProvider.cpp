@@ -145,6 +145,50 @@ use RBAC if you run ArangoDB standalone.
 - When set to an empty string, RBAC is disabled and instead the classic
   permission system is used.)");
 
+  opts->addOption(
+          "--server.rbac-cache-unused-timeout",
+          "The time (in seconds) after which an unused entry of the RBAC "
+          "authorization cache is evicted (0 = cache disabled).",
+          new DoubleParameter(&options.rbacCacheUnusedTimeout, /*base*/ 1.0,
+                              /*minValue*/ 0.0),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31215)
+      .setLongDescription(R"(When RBAC is enabled via
+`--server.external-rbac-service`, answers of the external authorization service
+are cached per JWT token, action, and resource, so that repeated permission
+checks do not each need a network round-trip.
+
+Entries that have not been used for the configured number of seconds are
+evicted from the cache. Set this option to `0` to disable the cache, so that
+every permission check asks the external service.)");
+
+  opts->addOption(
+          "--server.rbac-cache-refresh-age",
+          "The age (in seconds) after which an entry of the RBAC "
+          "authorization cache is refreshed with the external RBAC service.",
+          new DoubleParameter(&options.rbacCacheRefreshAge, /*base*/ 1.0,
+                              /*minValue*/ 0.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31215)
+      .setLongDescription(R"(A background thread re-asks the external RBAC
+service for every cached authorization decision older than this many seconds,
+and replaces the entry with the new answer. This bounds how long a change of
+permissions in the external service can take to become effective. Cached
+entries older than twice this value are never used, even if the background
+refresh lags behind.)");
+
   opts->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);

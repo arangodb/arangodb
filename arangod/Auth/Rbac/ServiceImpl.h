@@ -29,14 +29,23 @@
 
 namespace arangodb::rbac {
 
+class AuthorizationCache;
+
 struct ServiceImpl : Service {
-  explicit ServiceImpl(std::unique_ptr<Backend> backend);
+  // `cache` is optional. If given, single-pair checks are answered from it
+  // where possible, and the ServiceImpl registers itself as the cache's
+  // refresher for the duration of its lifetime. The cache must outlive this
+  // object.
+  explicit ServiceImpl(std::unique_ptr<Backend> backend,
+                       AuthorizationCache* cache = nullptr);
+  ~ServiceImpl() override;
 
   auto check(JwtToken const& token, std::span<ActionResource const> queries)
       -> Result override;
 
  private:
   std::unique_ptr<Backend> _backend;
+  AuthorizationCache* _cache;
 };
 
 }  // namespace arangodb::rbac
