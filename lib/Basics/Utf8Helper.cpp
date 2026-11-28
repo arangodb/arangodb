@@ -507,6 +507,9 @@ std::unique_ptr<icu_64_64::RegexMatcher> Utf8Helper::buildMatcher(
 
   auto matcher = std::make_unique<icu_64_64::RegexMatcher>(
       icu_64_64::UnicodeString::fromUTF8(pattern), 0, status);
+  if (matcher == nullptr || status == U_MEMORY_ALLOCATION_ERROR) {
+    throw std::bad_alloc();
+  }
   if (U_FAILURE(status)) {
     matcher.reset();
   }
@@ -538,6 +541,9 @@ bool Utf8Helper::matches(icu_64_64::RegexMatcher* matcher, char const* value,
   } else {
     // full match
     result = matcher->matches(status);
+  }
+  if (status == U_MEMORY_ALLOCATION_ERROR) {
+    throw std::bad_alloc();
   }
   if (U_FAILURE(status)) {
     error = true;
@@ -578,7 +584,9 @@ std::string Utf8Helper::replace(icu_64_64::RegexMatcher* matcher,
     // full match
     result = matcher->replaceAll(r, status);
   }
-
+  if (status == U_MEMORY_ALLOCATION_ERROR) {
+    throw std::bad_alloc();
+  }
   if (U_FAILURE(status)) {
     error = true;
     return StaticStrings::Empty;

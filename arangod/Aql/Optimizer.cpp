@@ -223,8 +223,6 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
   plan->root()->walk(checker);
 #endif  // ARANGODB_ENABLE_MAINTAINER_MODE
 
-  plan->setValidity(true);
-
   if (wasModified) {
     if (!rule.isHidden()) {
       // register which rules modified / created the plan
@@ -235,6 +233,8 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
     plan->clearVarUsageComputed();
     plan->findVarUsage();
   }
+
+  plan->setValidity(true);
 
   // hand over ownership
   _newPlans.push_back(std::move(plan), nextRule);

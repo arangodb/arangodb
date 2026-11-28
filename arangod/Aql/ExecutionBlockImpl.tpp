@@ -45,6 +45,7 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <absl/strings/str_cat.h>
@@ -520,6 +521,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  auto settlePrefetchTask = [this]() {
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
+    }
+  };
+
   try {
     initOnce();
     auto res = executeWithoutTrace(stack);
@@ -553,13 +564,17 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      if (!_prefetchTask->tryClaim()) {
-        _prefetchTask->waitFor();
-      } else {
-        _prefetchTask->discard(/*isFinished*/ false);
-      }
-    }
+    settlePrefetchTask();
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  } catch (std::bad_alloc const&) {
+    TRI_ASSERT(_firstFailure.ok());
+    // Before the generic branch: a limit hit must not become an internal error.
+    setFailure(_engine->getQuery().allocationFailure(
+        absl::StrCat(" [node #", getPlanNode()->id().id(), ": ",
+                     getPlanNode()->getTypeString(), "]")));
+    LOG_QUERY("5c0e1", DEBUG)
+        << printBlockInfo() << " local statemachine failed: out of memory";
+    settlePrefetchTask();
     THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
@@ -570,13 +585,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      if (!_prefetchTask->tryClaim()) {
-        _prefetchTask->waitFor();
-      } else {
-        _prefetchTask->discard(/*isFinished*/ false);
-      }
-    }
+    settlePrefetchTask();
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
@@ -1009,7 +1018,9 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       if (shouldSchedule) {
         bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
-            [block = this, task = _prefetchTask]() mutable {
+            [block = this, task = _prefetchTask,
+             monitor =
+                 _engine->getQuery().resourceMonitor().monitorRef]() mutable {
               TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
                 // We need to simulate that we are not picking up this task.
                 // So we simply continue sleeping until the failure point is
@@ -1039,7 +1050,13 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
               // destroyed, because in this case we will not be able to claim
               // the task and simply return early without accessing the block.
               try {
+                infra::ResourceMonitorScope memoryScope(std::move(monitor));
                 task->execute();
+              } catch (std::bad_alloc const&) {
+                task->setFailure(
+                    block->_engine->getQuery().allocationFailure(absl::StrCat(
+                        " [node #", block->getPlanNode()->id().id(), ": ",
+                        block->getPlanNode()->getTypeString(), "]")));
               } catch (basics::Exception const& ex) {
                 task->setFailure(
                     {ex.code(),
@@ -2692,7 +2709,8 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared()) {}
+      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared(),
+              block._engine->getQuery().resourceMonitor().monitorRef) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2734,8 +2752,10 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    std::shared_ptr<ExecContext const> execContext) {
+    std::shared_ptr<ExecContext const> execContext,
+    infra::ResourceMonitorRef monitor) {
   ExecContextScope scope(execContext);
+  infra::ResourceMonitorScope memoryScope(std::move(monitor));
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {

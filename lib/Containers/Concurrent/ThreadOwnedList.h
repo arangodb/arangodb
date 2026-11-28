@@ -112,7 +112,7 @@ struct ThreadOwnedList
     requires requires(F f) {
       { f() } -> std::same_as<T>;
     }
-  auto add(F&& create_data) noexcept -> std::shared_ptr<Node> {
+  auto add(F&& create_data) -> std::shared_ptr<Node> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::add was called from thread "

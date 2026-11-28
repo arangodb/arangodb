@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <malloc.h>
+#include <new>
 #include <optional>
 #include <unistd.h>
 
@@ -206,4 +207,117 @@ TEST_F(MallocSymmetryTest, accounting_is_symmetric) {
 
   EXPECT_GT(allocated, before);
   EXPECT_EQ(before, after);
+}
+
+// The later free must follow the moved charge, or one monitor drifts by the
+// block size. Aligned blocks must keep the tag bit free() relies on.
+TEST_F(MallocSymmetryTest, recharge_moves_the_charge_and_the_later_free) {
+  for (size_t alignment : {size_t{0}, size_t{64}}) {
+    SCOPED_TRACE(alignment);
+    StaticResourceMonitor target;
+    void* p = alignment == 0 ? malloc(100) : memalign(alignment, 100);
+    mustEscape(p);
+    auto actual = je_malloc_usable_size(getRealPtr(headerPtr(p)));
+    auto sourceBefore = _monitor.actualBytes();
+    bool moved = false;
+    {
+      ResourceMonitorScope scope{ResourceMonitorRef{target}};
+      moved = rechargeAllocation(p);
+    }
+    auto sourceAfter = _monitor.actualBytes();
+    auto targetAfter = target.actualBytes();
+    auto* owner = getMonitor(headerPtr(p));
+    free(p);
+    auto sourceAfterFree = _monitor.actualBytes();
+    auto targetAfterFree = target.actualBytes();
+
+    EXPECT_TRUE(moved);
+    EXPECT_EQ(&target, owner);
+    EXPECT_EQ(sourceBefore - actual, sourceAfter);
+    EXPECT_EQ(actual, targetAfter);
+    EXPECT_EQ(sourceAfter, sourceAfterFree);
+    EXPECT_EQ(0u, targetAfterFree);
+  }
+}
+
+// Moving a block to its own monitor must not count it twice; a full monitor
+// would then refuse it.
+TEST_F(MallocSymmetryTest, recharge_to_the_current_owner_changes_nothing) {
+  void* p = malloc(100);
+  mustEscape(p);
+  auto before = _monitor.actualBytes();
+  _monitor.setLimit(before);
+  bool moved = rechargeAllocation(p);
+  _monitor.setLimit(0);
+  auto after = _monitor.actualBytes();
+  free(p);
+
+  EXPECT_TRUE(moved);
+  EXPECT_EQ(before, after);
+}
+
+// A full target refuses the block; it must stay entirely on its old monitor.
+TEST_F(MallocSymmetryTest, recharge_into_a_full_monitor_leaves_the_charge) {
+  StaticResourceMonitor target;
+  target.setLimit(1);
+  void* p = malloc(100);
+  mustEscape(p);
+  auto actual = je_malloc_usable_size(getRealPtr(headerPtr(p)));
+  auto sourceBefore = _monitor.actualBytes();
+  bool moved = true;
+  {
+    ResourceMonitorScope scope{ResourceMonitorRef{target}};
+    moved = rechargeAllocation(p);
+  }
+  auto sourceAfter = _monitor.actualBytes();
+  auto* owner = getMonitor(headerPtr(p));
+  free(p);
+  auto sourceAfterFree = _monitor.actualBytes();
+
+  EXPECT_FALSE(moved);
+  EXPECT_EQ(&_monitor, owner);
+  EXPECT_EQ(sourceBefore, sourceAfter);
+  EXPECT_EQ(0u, target.actualBytes());
+  EXPECT_EQ(sourceBefore - actual, sourceAfterFree);
+}
+
+// Callers can tell a limit hit from real out-of-memory by this flag
+TEST_F(MallocSymmetryTest, only_a_limit_refusal_sets_the_limit_flag) {
+  StaticResourceMonitor viaMalloc;
+  StaticResourceMonitor viaNew;
+  StaticResourceMonitor viaOverflow;
+  viaMalloc.setLimit(1024);
+  viaNew.setLimit(1024);
+  viaOverflow.setLimit(1024);
+
+  void* refused = nullptr;
+  {
+    ResourceMonitorScope scope{ResourceMonitorRef{viaMalloc}};
+    refused = malloc(4096);
+  }
+  bool threw = false;
+  {
+    ResourceMonitorScope scope{ResourceMonitorRef{viaNew}};
+    try {
+      auto* p = new char[4096];
+      mustEscape(p);
+      delete[] p;
+    } catch (std::bad_alloc const&) {
+      threw = true;
+    }
+  }
+  void* overflowed = nullptr;
+  {
+    // volatile: a constant SIZE_MAX would be rejected at compile time.
+    volatile size_t huge = SIZE_MAX;
+    ResourceMonitorScope scope{ResourceMonitorRef{viaOverflow}};
+    overflowed = malloc(huge);
+  }
+
+  EXPECT_EQ(nullptr, refused);
+  EXPECT_TRUE(viaMalloc.limitHit());
+  EXPECT_TRUE(threw);
+  EXPECT_TRUE(viaNew.limitHit());
+  EXPECT_EQ(nullptr, overflowed);
+  EXPECT_FALSE(viaOverflow.limitHit());
 }

@@ -2633,6 +2633,9 @@ void ExecutionPlan::findVarUsage() {
   // ~ExecutionPlan must skip its count check.
   _planValid = false;
 
+  bool const wasValid = _planValid;
+  _planValid = false;
+
   // reset all counters
   for (auto& counter : _typeCounts) {
     counter = 0;

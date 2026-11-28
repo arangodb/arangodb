@@ -77,6 +77,10 @@ class QueryContext : public arangodb::ICancellationToken {
   ResourceMonitor const& resourceMonitor() const noexcept {
     return *_resourceMonitor;
   }
+
+  /// @brief error handling for a std::bad_alloc: a memory limit hit if
+  /// the query monitor refused the allocation, otherwise out of memory
+  Result allocationFailure(std::string_view suffix) const;
   std::shared_ptr<ResourceMonitor> resourceMonitorAsSharedPtr() noexcept {
     return _resourceMonitor;
   }

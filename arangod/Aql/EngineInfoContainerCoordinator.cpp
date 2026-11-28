@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
+#include "infra/ResourceMonitorScope.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -126,6 +127,7 @@ Result EngineInfoContainerCoordinator::buildEngines(
     Query& query, AqlItemBlockManager& mgr,
     MapRemoteToSnippet const& dbServerQueryIds,
     SnippetList& coordSnippets) const {
+  infra::ResourceMonitorScope memoryScope(query.resourceMonitor().monitorRef);
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 

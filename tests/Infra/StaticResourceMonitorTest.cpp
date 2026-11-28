@@ -75,6 +75,7 @@ TEST(StaticResourceMonitorTest, increase_within_limit_succeeds) {
   monitor.setLimit(1024);
   EXPECT_TRUE(monitor.increase(512, 600));
   EXPECT_EQ(512u, monitor.requestedBytes());
+  EXPECT_FALSE(monitor.limitHit());
 }
 
 TEST(StaticResourceMonitorTest, increase_exceeding_limit_fails) {
@@ -84,6 +85,7 @@ TEST(StaticResourceMonitorTest, increase_exceeding_limit_fails) {
   EXPECT_FALSE(monitor.increase(600, 700));
   EXPECT_EQ(512u, monitor.requestedBytes());
   EXPECT_EQ(600u, monitor.actualBytes());
+  EXPECT_TRUE(monitor.limitHit());
 }
 
 TEST(StaticResourceMonitorTest, increase_at_exact_limit_succeeds) {

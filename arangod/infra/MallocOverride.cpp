@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
+#include <stdio.h>
 
 #define JEMALLOC_NO_DEMANGLE
 #include <jemalloc/jemalloc.h>
@@ -87,10 +88,26 @@ void doDecrease(ResourceMonitorBase* base, uint64_t requested,
   }
 }
 
+// Diagnostics: the size class this allocation would get without our header.
+// Alignment is ignored, so add and subtract always agree.
+auto noHeaderSize(size_t requested) -> uint64_t {
+  return je_nallocx(requested == 0 ? 1 : requested, 0);
+}
+
+// Diagnostics for a new allocation: the live no-header bytes and the
+// per-size-bucket totals.
+void trackAlloc(ResourceMonitorBase* monitor, size_t requested, size_t actual) {
+  auto noHeader = noHeaderSize(requested);
+  monitor->addNoHeader(noHeader);
+  monitor->recordAllocation(requested, noHeader, actual);
+}
+
 void trackFree(AllocHeader* header) {
   auto requested = header->requested_size;
   auto actual = je_malloc_usable_size(getRealPtr(header));
-  doDecrease(getMonitor(header), requested, actual);
+  auto* monitor = getMonitor(header);
+  doDecrease(monitor, requested, actual);
+  monitor->subNoHeader(noHeaderSize(requested));
 }
 
 }  // namespace
@@ -99,6 +116,26 @@ namespace arangodb::infra {
 
 auto getGlobalResourceMonitor() noexcept -> StaticResourceMonitor& {
   return g_global_monitor;
+}
+
+bool rechargeAllocation(void* user) noexcept {
+  auto* header = headerPtr(user);
+  auto* from = getMonitor(header);
+  auto* to = effectiveMonitor();
+  if (from == to) {
+    return true;
+  }
+  auto requested = header->requested_size;
+  auto actual = je_malloc_usable_size(getRealPtr(header));
+  if (!tryIncrease(to, requested, actual)) {
+    return false;
+  }
+  doDecrease(from, requested, actual);
+  from->subNoHeader(noHeaderSize(requested));
+  to->addNoHeader(noHeaderSize(requested));
+  header->monitor_tagged =
+      reinterpret_cast<uintptr_t>(to) | (header->monitor_tagged & uintptr_t{1});
+  return true;
 }
 
 }  // namespace arangodb::infra
@@ -127,6 +164,7 @@ void* malloc(size_t size) noexcept {
   }
   auto* header = static_cast<AllocHeader*>(real);
   initHeader(header, monitor, size);
+  trackAlloc(monitor, size, actual);
   return userPtr(header);
 }
 
@@ -163,6 +201,7 @@ void* calloc(size_t nmemb, size_t size) noexcept {
   }
   auto* header = static_cast<AllocHeader*>(real);
   initHeader(header, monitor, total_user);
+  trackAlloc(monitor, total_user, actual);
   void* user = userPtr(header);
   std::memset(user, 0, total_user);
   return user;
@@ -190,7 +229,7 @@ void* realloc(void* ptr, size_t size) noexcept {
   auto old_actual = je_malloc_usable_size(old_real);
 
   auto* new_monitor = effectiveMonitor();
-  TRI_ASSERT(new_monitor == old_monitor);
+  // TRI_ASSERT(new_monitor == old_monitor);
 
   // Net the resize against the still-counted old allocation when it stays on
   // the same monitor, so a small growth (or a shrink) is not checked against
@@ -217,6 +256,8 @@ void* realloc(void* ptr, size_t size) noexcept {
     void* new_user = userPtr(new_header);
     std::memcpy(new_user, ptr, size < old_requested ? size : old_requested);
     doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
+    old_monitor->subNoHeader(noHeaderSize(old_requested));
+    trackAlloc(new_monitor, size, new_actual);
     je_free(old_real);
     return new_user;
   }
@@ -228,6 +269,8 @@ void* realloc(void* ptr, size_t size) noexcept {
   }
 
   doDecrease(old_monitor, delta.releaseRequested, delta.releaseActual);
+  old_monitor->subNoHeader(noHeaderSize(old_requested));
+  trackAlloc(new_monitor, size, new_actual);
   auto* new_header = static_cast<AllocHeader*>(new_real);
   initHeader(new_header, new_monitor, size);
   return userPtr(new_header);
@@ -259,6 +302,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
     }
     auto* header = static_cast<AllocHeader*>(real);
     initHeader(header, monitor, size);
+    trackAlloc(monitor, size, actual);
     *memptr = userPtr(header);
     return 0;
   }
@@ -289,6 +333,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size) noexcept {
   void* user = reinterpret_cast<void*>(addr);
   auto* header = headerPtr(user);
   initAlignedHeader(header, monitor, real, size);
+  trackAlloc(monitor, size, actual);
   *memptr = user;
   return 0;
 }
@@ -301,9 +346,9 @@ void* aligned_alloc(size_t alignment, size_t size) noexcept {
   return result;
 }
 
-// glibc defines these and prefixed jemalloc exports none of them, so without our
-// definitions the call reaches glibc's arena while the matching free() reaches
-// us. Each reduces to an entry point above; only the contracts differ.
+// glibc defines these and prefixed jemalloc exports none of them, so without
+// our definitions the call reaches glibc's arena while the matching free()
+// reaches us. Each reduces to an entry point above; only the contracts differ.
 
 void* memalign(size_t alignment, size_t size) noexcept {
   if (!isPowerOfTwo(alignment)) [[unlikely]] {

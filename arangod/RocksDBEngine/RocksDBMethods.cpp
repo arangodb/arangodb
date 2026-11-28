@@ -22,8 +22,13 @@
 
 #include "RocksDBMethods.h"
 
+#include "infra/ResourceMonitorScope.h"
+
+#include <rocksdb/slice.h>
+
 #include <algorithm>
 #include <string>
+#include <tuple>
 
 namespace arangodb {
 namespace {
@@ -90,6 +95,21 @@ size_t RocksDBMethods::lockOverhead(bool lockingEnabled,
            fixedLockEntryOverhead;
   }
   return sizeof(std::string) + fixedLockEntryOverhead;
+}
+
+void rechargeIfCopied(rocksdb::PinnableSlice* slice) noexcept {
+  if (slice == nullptr || slice->IsPinned()) {
+    return;
+  }
+  std::string const& buf = *slice->GetSelf();
+  auto const* data = buf.data();
+  auto const* object = reinterpret_cast<char const*>(&buf);
+  if (data >= object && data < object + sizeof(buf)) {
+    return;  // short string stored inline; no heap allocation
+  }
+  // On failure the query is at its limit and fails on its next allocation;
+  // the copy stays on the RocksDB monitor.
+  std::ignore = infra::rechargeAllocation(const_cast<char*>(data));
 }
 
 }  // namespace arangodb
