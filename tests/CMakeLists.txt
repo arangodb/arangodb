@@ -78,6 +78,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/CleanUpLostCollectionTest.cpp
+  Agency/CommitIndexTest.cpp
   Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
