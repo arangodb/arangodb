@@ -27,6 +27,8 @@
 #endif
 
 #if defined(USE_MEMORY_PROFILE)
+#define JEMALLOC_NO_DEMANGLE
+#define JEMALLOC_MANGLE
 #include <jemalloc/jemalloc.h>
 #endif
 

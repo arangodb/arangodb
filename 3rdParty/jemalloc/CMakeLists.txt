@@ -77,6 +77,8 @@ if (LINUX OR DARWIN)
         CPPFLAGS=${JEMALLOC_CPPFLAGS}
         --prefix=${CMAKE_CURRENT_BINARY_DIR}
         --with-malloc-conf=${JEMALLOC_CONFIG}
+        ${JEMALLOC_PREFIX}
+        ${JEMALLOC_DISABLE_CXX}
         --with-version=${JEMALLOC_VERSION}-0-g0
         ${JEMALLOC_PROF}
         ${JEMALLOC_CHECKS}

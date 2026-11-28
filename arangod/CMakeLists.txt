@@ -61,6 +61,14 @@ target_link_libraries(${BIN_ARANGOD}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
+target_link_libraries(${BIN_ARANGOD} arango_infra)
+
+# Must be a direct source of the executable, not part of arango_infra, for the
+# same reason as SanitizerReportHook above: the linker only pulls .a members that
+# resolve undefined symbols, so the interposed malloc could be silently dropped.
+if (USE_MEMORY_TRACKING)
+  target_sources(${BIN_ARANGOD} PRIVATE infra/MallocOverride.cpp)
+endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
 if (NOT USE_PRECOMPILED_V8)
@@ -122,6 +130,7 @@ add_subdirectory(GeneralServer)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(IResearch)
+add_subdirectory(infra)
 add_subdirectory(Metrics)
 add_subdirectory(Network)
 add_subdirectory(Replication)
