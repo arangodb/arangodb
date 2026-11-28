@@ -4,7 +4,8 @@
 #include "jemalloc/internal/safety_check.h"
 
 bool fake_abort_called;
-void fake_abort(const char *message) {
+void
+fake_abort(const char *message) {
 	(void)message;
 	fake_abort_called = true;
 }
@@ -23,10 +24,9 @@ test_double_free_post(void) {
 
 static bool
 tcache_enabled(void) {
-	bool enabled;
+	bool   enabled;
 	size_t sz = sizeof(enabled);
-	assert_d_eq(
-	    mallctl("thread.tcache.enabled", &enabled, &sz, NULL, 0), 0,
+	assert_d_eq(mallctl("thread.tcache.enabled", &enabled, &sz, NULL, 0), 0,
 	    "Unexpected mallctl failure");
 	return enabled;
 }
@@ -41,7 +41,7 @@ TEST_BEGIN(test_large_double_free_tcache) {
 
 	test_double_free_pre();
 	char *ptr = malloc(SC_LARGE_MINCLASS);
-	bool guarded = extent_is_guarded(tsdn_fetch(), ptr);
+	bool  guarded = extent_is_guarded(tsdn_fetch(), ptr);
 	free(ptr);
 	if (!guarded) {
 		free(ptr);
@@ -64,7 +64,7 @@ TEST_BEGIN(test_large_double_free_no_tcache) {
 
 	test_double_free_pre();
 	char *ptr = mallocx(SC_LARGE_MINCLASS, MALLOCX_TCACHE_NONE);
-	bool guarded = extent_is_guarded(tsdn_fetch(), ptr);
+	bool  guarded = extent_is_guarded(tsdn_fetch(), ptr);
 	dallocx(ptr, MALLOCX_TCACHE_NONE);
 	if (!guarded) {
 		dallocx(ptr, MALLOCX_TCACHE_NONE);
@@ -87,7 +87,7 @@ TEST_BEGIN(test_small_double_free_tcache) {
 
 	test_double_free_pre();
 	char *ptr = malloc(1);
-	bool guarded = extent_is_guarded(tsdn_fetch(), ptr);
+	bool  guarded = extent_is_guarded(tsdn_fetch(), ptr);
 	free(ptr);
 	if (!guarded) {
 		free(ptr);
@@ -115,7 +115,7 @@ TEST_BEGIN(test_small_double_free_arena) {
 	 */
 	char *ptr1 = malloc(1);
 	char *ptr = malloc(1);
-	bool guarded = extent_is_guarded(tsdn_fetch(), ptr);
+	bool  guarded = extent_is_guarded(tsdn_fetch(), ptr);
 	free(ptr);
 	if (!guarded) {
 		mallctl("thread.tcache.flush", NULL, NULL, NULL, 0);
@@ -135,9 +135,7 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_large_double_free_no_tcache,
-	    test_large_double_free_tcache,
-	    test_small_double_free_tcache,
+	return test(test_large_double_free_no_tcache,
+	    test_large_double_free_tcache, test_small_double_free_tcache,
 	    test_small_double_free_arena);
 }

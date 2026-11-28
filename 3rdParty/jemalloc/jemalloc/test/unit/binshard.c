@@ -7,9 +7,9 @@
 
 static void *
 thd_producer(void *varg) {
-	void **mem = varg;
+	void   **mem = varg;
 	unsigned arena, i;
-	size_t sz;
+	size_t   sz;
 
 	sz = sizeof(arena);
 	/* Remote arena. */
@@ -28,8 +28,8 @@ thd_producer(void *varg) {
 }
 
 TEST_BEGIN(test_producer_consumer) {
-	thd_t thds[NTHREADS];
-	void *mem[NTHREADS][REMOTE_NALLOC];
+	thd_t    thds[NTHREADS];
+	void    *mem[NTHREADS][REMOTE_NALLOC];
 	unsigned i;
 
 	/* Create producer threads to allocate. */
@@ -42,8 +42,8 @@ TEST_BEGIN(test_producer_consumer) {
 	/* Remote deallocation by the current thread. */
 	for (i = 0; i < NTHREADS; i++) {
 		for (unsigned j = 0; j < REMOTE_NALLOC; j++) {
-			expect_ptr_not_null(mem[i][j],
-			    "Unexpected remote allocation failure");
+			expect_ptr_not_null(
+			    mem[i][j], "Unexpected remote allocation failure");
 			dallocx(mem[i][j], 0);
 		}
 	}
@@ -52,7 +52,7 @@ TEST_END
 
 static void *
 thd_start(void *varg) {
-	void *ptr, *ptr2;
+	void    *ptr, *ptr2;
 	edata_t *edata;
 	unsigned shard1, shard2;
 
@@ -82,10 +82,10 @@ thd_start(void *varg) {
 }
 
 TEST_BEGIN(test_bin_shard_mt) {
-	test_skip_if(have_percpu_arena &&
-	    PERCPU_ARENA_ENABLED(opt_percpu_arena));
+	test_skip_if(
+	    have_percpu_arena && PERCPU_ARENA_ENABLED(opt_percpu_arena));
 
-	thd_t thds[NTHREADS];
+	thd_t    thds[NTHREADS];
 	unsigned i;
 	for (i = 0; i < NTHREADS; i++) {
 		thd_create(&thds[i], thd_start, NULL);
@@ -104,8 +104,8 @@ TEST_END
 
 TEST_BEGIN(test_bin_shard) {
 	unsigned nbins, i;
-	size_t mib[4], mib2[4];
-	size_t miblen, miblen2, len;
+	size_t   mib[4], mib2[4];
+	size_t   miblen, miblen2, len;
 
 	len = sizeof(nbins);
 	expect_d_eq(mallctl("arenas.nbins", (void *)&nbins, &len, NULL, 0), 0,
@@ -120,17 +120,19 @@ TEST_BEGIN(test_bin_shard) {
 
 	for (i = 0; i < nbins; i++) {
 		uint32_t nshards;
-		size_t size, sz1, sz2;
+		size_t   size, sz1, sz2;
 
 		mib[2] = i;
 		sz1 = sizeof(nshards);
-		expect_d_eq(mallctlbymib(mib, miblen, (void *)&nshards, &sz1,
-		    NULL, 0), 0, "Unexpected mallctlbymib() failure");
+		expect_d_eq(
+		    mallctlbymib(mib, miblen, (void *)&nshards, &sz1, NULL, 0),
+		    0, "Unexpected mallctlbymib() failure");
 
 		mib2[2] = i;
 		sz2 = sizeof(size);
-		expect_d_eq(mallctlbymib(mib2, miblen2, (void *)&size, &sz2,
-		    NULL, 0), 0, "Unexpected mallctlbymib() failure");
+		expect_d_eq(
+		    mallctlbymib(mib2, miblen2, (void *)&size, &sz2, NULL, 0),
+		    0, "Unexpected mallctlbymib() failure");
 
 		if (size >= 1 && size <= 128) {
 			expect_u_eq(nshards, 16, "Unexpected nshards");
@@ -148,7 +150,5 @@ TEST_END
 int
 main(void) {
 	return test_no_reentrancy(
-	    test_bin_shard,
-	    test_bin_shard_mt,
-	    test_producer_consumer);
+	    test_bin_shard, test_bin_shard_mt, test_producer_consumer);
 }

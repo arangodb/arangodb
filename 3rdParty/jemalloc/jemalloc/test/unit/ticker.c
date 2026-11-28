@@ -6,7 +6,7 @@ TEST_BEGIN(test_ticker_tick) {
 #define NREPS 2
 #define NTICKS 3
 	ticker_t ticker;
-	int32_t i, j;
+	int32_t  i, j;
 
 	ticker_init(&ticker, NTICKS);
 	for (i = 0; i < NREPS; i++) {
@@ -16,12 +16,12 @@ TEST_BEGIN(test_ticker_tick) {
 			expect_false(ticker_tick(&ticker, false),
 			    "Unexpected ticker fire (i=%d, j=%d)", i, j);
 		}
-		expect_u32_eq(ticker_read(&ticker), 0,
-		    "Expected ticker depletion");
+		expect_u32_eq(
+		    ticker_read(&ticker), 0, "Expected ticker depletion");
 		expect_true(ticker_tick(&ticker, false),
 		    "Expected ticker fire (i=%d)", i);
-		expect_u32_eq(ticker_read(&ticker), NTICKS,
-		    "Expected ticker reset");
+		expect_u32_eq(
+		    ticker_read(&ticker), NTICKS, "Expected ticker reset");
 	}
 #undef NTICKS
 }
@@ -34,15 +34,15 @@ TEST_BEGIN(test_ticker_ticks) {
 	ticker_init(&ticker, NTICKS);
 
 	expect_u_eq(ticker_read(&ticker), NTICKS, "Unexpected ticker value");
-	expect_false(ticker_ticks(&ticker, NTICKS, false),
-	    "Unexpected ticker fire");
+	expect_false(
+	    ticker_ticks(&ticker, NTICKS, false), "Unexpected ticker fire");
 	expect_u_eq(ticker_read(&ticker), 0, "Unexpected ticker value");
-	expect_true(ticker_ticks(&ticker, NTICKS, false),
-	    "Expected ticker fire");
+	expect_true(
+	    ticker_ticks(&ticker, NTICKS, false), "Expected ticker fire");
 	expect_u_eq(ticker_read(&ticker), NTICKS, "Unexpected ticker value");
 
-	expect_true(ticker_ticks(&ticker, NTICKS + 1, false),
-	    "Expected ticker fire");
+	expect_true(
+	    ticker_ticks(&ticker, NTICKS + 1, false), "Expected ticker fire");
 	expect_u_eq(ticker_read(&ticker), NTICKS, "Unexpected ticker value");
 #undef NTICKS
 }
@@ -55,8 +55,8 @@ TEST_BEGIN(test_ticker_copy) {
 	ticker_init(&ta, NTICKS);
 	ticker_copy(&tb, &ta);
 	expect_u_eq(ticker_read(&tb), NTICKS, "Unexpected ticker value");
-	expect_true(ticker_ticks(&tb, NTICKS + 1, false),
-	    "Expected ticker fire");
+	expect_true(
+	    ticker_ticks(&tb, NTICKS + 1, false), "Expected ticker fire");
 	expect_u_eq(ticker_read(&tb), NTICKS, "Unexpected ticker value");
 
 	ticker_tick(&ta, false);
@@ -69,7 +69,7 @@ TEST_BEGIN(test_ticker_copy) {
 TEST_END
 
 TEST_BEGIN(test_ticker_geom) {
-	const int32_t ticks = 100;
+	const int32_t  ticks = 100;
 	const uint64_t niters = 100 * 1000;
 
 	ticker_geom_t ticker;
@@ -78,7 +78,7 @@ TEST_BEGIN(test_ticker_geom) {
 	/* Just some random constant. */
 	uint64_t prng_state = 0x343219f93496db9fULL;
 	for (uint64_t i = 0; i < niters; i++) {
-		while(!ticker_geom_tick(&ticker, &prng_state, false)) {
+		while (!ticker_geom_tick(&ticker, &prng_state, false)) {
 			total_ticks++;
 		}
 	}
@@ -87,15 +87,15 @@ TEST_BEGIN(test_ticker_geom) {
 	 * used at the time this was tested, total_ticks is 95.1% of the
 	 * expected ticks.
 	 */
-	expect_u64_ge(total_ticks , niters * ticks * 9 / 10,
-	    "Mean off by > 10%%");
-	expect_u64_le(total_ticks , niters * ticks * 11 / 10,
-	    "Mean off by > 10%%");
+	expect_u64_ge(
+	    total_ticks, niters * ticks * 9 / 10, "Mean off by > 10%%");
+	expect_u64_le(
+	    total_ticks, niters * ticks * 11 / 10, "Mean off by > 10%%");
 }
 TEST_END
 
 TEST_BEGIN(test_ticker_delay) {
-	const int32_t ticks = 1000;
+	const int32_t  ticks = 1000;
 	const uint64_t niters = 10000;
 
 	ticker_t t1;
@@ -120,22 +120,19 @@ TEST_BEGIN(test_ticker_delay) {
 		expect_false(ticker_geom_tick(&t2, &prng_state, delay),
 		    "Unexpected ticker fire");
 		expect_d_eq(ticker_read(&t1), 0, "Unexpected ticker value");
-		expect_d_eq(ticker_geom_read(&t2), 0, "Unexpected ticker value");
+		expect_d_eq(
+		    ticker_geom_read(&t2), 0, "Unexpected ticker value");
 	}
 
 	delay = false;
 	expect_true(ticker_tick(&t1, delay), "Expected ticker fire");
-	expect_true(ticker_geom_tick(&t2, &prng_state, delay),
-	    "Expected ticker fire");
+	expect_true(
+	    ticker_geom_tick(&t2, &prng_state, delay), "Expected ticker fire");
 }
 TEST_END
 
 int
 main(void) {
-	return test(
-	    test_ticker_tick,
-	    test_ticker_ticks,
-	    test_ticker_copy,
-	    test_ticker_geom,
-	    test_ticker_delay);
+	return test(test_ticker_tick, test_ticker_ticks, test_ticker_copy,
+	    test_ticker_geom, test_ticker_delay);
 }

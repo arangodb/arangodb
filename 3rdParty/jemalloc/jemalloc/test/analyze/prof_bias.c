@@ -46,15 +46,15 @@ do_allocs(size_t sz, size_t cnt, bool do_frees) {
 int
 main(void) {
 	size_t lg_prof_sample_local = 19;
-	int err = mallctl("prof.reset", NULL, NULL,
-	    (void *)&lg_prof_sample_local, sizeof(lg_prof_sample_local));
+	int    err = mallctl("prof.reset", NULL, NULL,
+	       (void *)&lg_prof_sample_local, sizeof(lg_prof_sample_local));
 	assert(err == 0);
 
 	prof_backtrace_hook_set(mock_backtrace);
 	do_allocs(16, 32 * 1024 * 1024, /* do_frees */ true);
-	do_allocs(32 * 1024* 1024, 16, /* do_frees */ true);
+	do_allocs(32 * 1024 * 1024, 16, /* do_frees */ true);
 	do_allocs(16, 32 * 1024 * 1024, /* do_frees */ false);
-	do_allocs(32 * 1024* 1024, 16, /* do_frees */ false);
+	do_allocs(32 * 1024 * 1024, 16, /* do_frees */ false);
 
 	return 0;
 }

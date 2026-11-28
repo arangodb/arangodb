@@ -96,12 +96,6 @@ struct pa_shard_s {
 	/* Allocates from a PAC. */
 	pac_t pac;
 
-	/*
-	 * We place a small extent cache in front of the HPA, since we intend
-	 * these configurations to use many fewer arenas, and therefore have a
-	 * higher risk of hot locks.
-	 */
-	sec_t hpa_sec;
 	hpa_shard_t hpa_shard;
 
 	/* The source of edata_t objects. */
@@ -109,7 +103,7 @@ struct pa_shard_s {
 
 	unsigned ind;
 
-	malloc_mutex_t *stats_mtx;
+	malloc_mutex_t   *stats_mtx;
 	pa_shard_stats_t *stats;
 
 	/* The emap this shard is tied to. */
@@ -121,8 +115,8 @@ struct pa_shard_s {
 
 static inline bool
 pa_shard_dont_decay_muzzy(pa_shard_t *shard) {
-	return ecache_npages_get(&shard->pac.ecache_muzzy) == 0 &&
-	    pac_decay_ms_get(&shard->pac, extent_state_muzzy) <= 0;
+	return ecache_npages_get(&shard->pac.ecache_muzzy) == 0
+	    && pac_decay_ms_get(&shard->pac, extent_state_muzzy) <= 0;
 }
 
 static inline ehooks_t *
@@ -166,6 +160,9 @@ void pa_shard_reset(tsdn_t *tsdn, pa_shard_t *shard);
  */
 void pa_shard_destroy(tsdn_t *tsdn, pa_shard_t *shard);
 
+/* Flush any caches used by shard */
+void pa_shard_flush(tsdn_t *tsdn, pa_shard_t *shard);
+
 /* Gets an edata for the given allocation. */
 edata_t *pa_alloc(tsdn_t *tsdn, pa_shard_t *shard, size_t size,
     size_t alignment, bool slab, szind_t szind, bool zero, bool guarded,
@@ -186,10 +183,10 @@ bool pa_shrink(tsdn_t *tsdn, pa_shard_t *shard, edata_t *edata, size_t old_size,
  * (We could make generated_dirty the return value of course, but this is more
  * consistent with the shrink pathway and our error codes here).
  */
-void pa_dalloc(tsdn_t *tsdn, pa_shard_t *shard, edata_t *edata,
-    bool *deferred_work_generated);
-bool pa_decay_ms_set(tsdn_t *tsdn, pa_shard_t *shard, extent_state_t state,
-    ssize_t decay_ms, pac_purge_eagerness_t eagerness);
+void    pa_dalloc(tsdn_t *tsdn, pa_shard_t *shard, edata_t *edata,
+       bool *deferred_work_generated);
+bool    pa_decay_ms_set(tsdn_t *tsdn, pa_shard_t *shard, extent_state_t state,
+       ssize_t decay_ms, pac_purge_eagerness_t eagerness);
 ssize_t pa_decay_ms_get(pa_shard_t *shard, extent_state_t state);
 
 /*
@@ -199,10 +196,10 @@ ssize_t pa_decay_ms_get(pa_shard_t *shard, extent_state_t state);
  * though, the arena, background thread, and PAC modules are tightly interwoven
  * in a way that's tricky to extricate, so we only do the HPA-specific parts.
  */
-void pa_shard_set_deferral_allowed(tsdn_t *tsdn, pa_shard_t *shard,
-    bool deferral_allowed);
-void pa_shard_do_deferred_work(tsdn_t *tsdn, pa_shard_t *shard);
-void pa_shard_try_deferred_work(tsdn_t *tsdn, pa_shard_t *shard);
+void pa_shard_set_deferral_allowed(
+    tsdn_t *tsdn, pa_shard_t *shard, bool deferral_allowed);
+void     pa_shard_do_deferred_work(tsdn_t *tsdn, pa_shard_t *shard);
+void     pa_shard_try_deferred_work(tsdn_t *tsdn, pa_shard_t *shard);
 uint64_t pa_shard_time_until_deferred_work(tsdn_t *tsdn, pa_shard_t *shard);
 
 /******************************************************************************/
@@ -224,13 +221,16 @@ void pa_shard_prefork5(tsdn_t *tsdn, pa_shard_t *shard);
 void pa_shard_postfork_parent(tsdn_t *tsdn, pa_shard_t *shard);
 void pa_shard_postfork_child(tsdn_t *tsdn, pa_shard_t *shard);
 
-void pa_shard_basic_stats_merge(pa_shard_t *shard, size_t *nactive,
-    size_t *ndirty, size_t *nmuzzy);
+size_t pa_shard_nactive(pa_shard_t *shard);
+size_t pa_shard_ndirty(pa_shard_t *shard);
+size_t pa_shard_nmuzzy(pa_shard_t *shard);
+
+void pa_shard_basic_stats_merge(
+    pa_shard_t *shard, size_t *nactive, size_t *ndirty, size_t *nmuzzy);
 
 void pa_shard_stats_merge(tsdn_t *tsdn, pa_shard_t *shard,
     pa_shard_stats_t *pa_shard_stats_out, pac_estats_t *estats_out,
-    hpa_shard_stats_t *hpa_stats_out, sec_stats_t *sec_stats_out,
-    size_t *resident);
+    hpa_shard_stats_t *hpa_stats_out, size_t *resident);
 
 /*
  * Reads the PA-owned mutex stats into the output stats array, at the

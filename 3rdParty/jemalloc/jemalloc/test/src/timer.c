@@ -25,8 +25,8 @@ timer_ratio(timedelta_t *a, timedelta_t *b, char *buf, size_t buflen) {
 	uint64_t t0 = timer_usec(a);
 	uint64_t t1 = timer_usec(b);
 	uint64_t mult;
-	size_t i = 0;
-	size_t j, n;
+	size_t   i = 0;
+	size_t   j, n;
 
 	/*
  	* The time difference could be 0 if the two clock readings are
@@ -36,11 +36,11 @@ timer_ratio(timedelta_t *a, timedelta_t *b, char *buf, size_t buflen) {
  	* Thus, bump t1 if it is 0 to avoid dividing 0.
  	*/
 	if (t1 == 0) {
-	    t1 = 1;
+		t1 = 1;
 	}
 
 	/* Whole. */
-	n = malloc_snprintf(&buf[i], buflen-i, "%"FMTu64, t0 / t1);
+	n = malloc_snprintf(&buf[i], buflen - i, "%" FMTu64, t0 / t1);
 	i += n;
 	if (i >= buflen) {
 		return;
@@ -51,15 +51,17 @@ timer_ratio(timedelta_t *a, timedelta_t *b, char *buf, size_t buflen) {
 	}
 
 	/* Decimal. */
-	n = malloc_snprintf(&buf[i], buflen-i, ".");
+	n = malloc_snprintf(&buf[i], buflen - i, ".");
 	i += n;
 
 	/* Fraction. */
-	while (i < buflen-1) {
-		uint64_t round = (i+1 == buflen-1 && ((t0 * mult * 10 / t1) % 10
-		    >= 5)) ? 1 : 0;
-		n = malloc_snprintf(&buf[i], buflen-i,
-		    "%"FMTu64, (t0 * mult / t1) % 10 + round);
+	while (i < buflen - 1) {
+		uint64_t round = (i + 1 == buflen - 1
+		                     && ((t0 * mult * 10 / t1) % 10 >= 5))
+		    ? 1
+		    : 0;
+		n = malloc_snprintf(&buf[i], buflen - i, "%" FMTu64,
+		    (t0 * mult / t1) % 10 + round);
 		i += n;
 		mult *= 10;
 	}

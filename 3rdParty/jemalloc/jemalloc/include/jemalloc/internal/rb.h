@@ -26,7 +26,7 @@
  */
 
 #ifndef __PGI
-#define RB_COMPACT
+#	define RB_COMPACT
 #endif
 
 /*
@@ -38,6 +38,7 @@
  */
 #define RB_MAX_DEPTH (sizeof(void *) << 4)
 
+/* clang-format off */
 #ifdef RB_COMPACT
 /* Node structure. */
 #define rb_node(a_type)							\
@@ -1871,5 +1872,6 @@ a_prefix##reverse_iter_filtered(a_rbt_type *rbtree, a_type *start,	\
     return ret;								\
 }									\
 ) /* end rb_summarized_only */
+/* clang-format on */
 
 #endif /* JEMALLOC_INTERNAL_RB_H */

@@ -3,7 +3,7 @@
 #include "jemalloc/internal/prof_sys.h"
 
 static const char *test_filename = "test_filename";
-static bool did_prof_dump_open;
+static bool        did_prof_dump_open;
 
 static int
 prof_dump_open_file_intercept(const char *filename, int mode) {
@@ -35,8 +35,8 @@ TEST_BEGIN(test_mdump_normal) {
 	prof_dump_open_file = prof_dump_open_file_intercept;
 	did_prof_dump_open = false;
 	expect_d_eq(mallctl("prof.dump", NULL, NULL, (void *)&test_filename,
-	    sizeof(test_filename)), 0,
-	    "Unexpected mallctl failure while dumping");
+	                sizeof(test_filename)),
+	    0, "Unexpected mallctl failure while dumping");
 	expect_true(did_prof_dump_open, "Expected a profile dump");
 
 	dallocx(p, 0);
@@ -89,7 +89,8 @@ static void
 expect_write_failure(int count) {
 	prof_dump_write_file_count = count;
 	expect_d_eq(mallctl("prof.dump", NULL, NULL, (void *)&test_filename,
-	    sizeof(test_filename)), EFAULT, "Dump should err");
+	                sizeof(test_filename)),
+	    EFAULT, "Dump should err");
 	expect_d_eq(prof_dump_write_file_count, 0,
 	    "Dumping stopped after a wrong number of writes");
 }
@@ -98,7 +99,7 @@ TEST_BEGIN(test_mdump_output_error) {
 	test_skip_if(!config_prof);
 	test_skip_if(!config_debug);
 
-	prof_dump_open_file_t *open_file_orig = prof_dump_open_file;
+	prof_dump_open_file_t  *open_file_orig = prof_dump_open_file;
 	prof_dump_write_file_t *write_file_orig = prof_dump_write_file;
 
 	prof_dump_write_file = prof_dump_write_file_error;
@@ -166,10 +167,11 @@ expect_maps_write_failure(int count) {
 TEST_BEGIN(test_mdump_maps_error) {
 	test_skip_if(!config_prof);
 	test_skip_if(!config_debug);
+	test_skip_if(prof_dump_open_maps == NULL);
 
-	prof_dump_open_file_t *open_file_orig = prof_dump_open_file;
+	prof_dump_open_file_t  *open_file_orig = prof_dump_open_file;
 	prof_dump_write_file_t *write_file_orig = prof_dump_write_file;
-	prof_dump_open_maps_t *open_maps_orig = prof_dump_open_maps;
+	prof_dump_open_maps_t  *open_maps_orig = prof_dump_open_maps;
 
 	prof_dump_open_file = prof_dump_open_file_intercept;
 	prof_dump_write_file = prof_dump_write_maps_file_error;
@@ -185,8 +187,8 @@ TEST_BEGIN(test_mdump_maps_error) {
 	started_piping_maps_file = false;
 	prof_dump_write_file_count = 0;
 	expect_d_eq(mallctl("prof.dump", NULL, NULL, (void *)&test_filename,
-	    sizeof(test_filename)), 0,
-	    "mallctl should not fail in case of maps file opening failure");
+	                sizeof(test_filename)),
+	    0, "mallctl should not fail in case of maps file opening failure");
 	expect_false(started_piping_maps_file, "Shouldn't start piping maps");
 	expect_d_eq(prof_dump_write_file_count, 0,
 	    "Dumping stopped after a wrong number of writes");
@@ -210,7 +212,5 @@ TEST_END
 int
 main(void) {
 	return test(
-	    test_mdump_normal,
-	    test_mdump_output_error,
-	    test_mdump_maps_error);
+	    test_mdump_normal, test_mdump_output_error, test_mdump_maps_error);
 }

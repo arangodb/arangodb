@@ -15,8 +15,8 @@
 
 typedef unsigned long fb_group_t;
 #define FB_GROUP_BITS (ZU(1) << (LG_SIZEOF_LONG + 3))
-#define FB_NGROUPS(nbits) ((nbits) / FB_GROUP_BITS \
-    + ((nbits) % FB_GROUP_BITS == 0 ? 0 : 1))
+#define FB_NGROUPS(nbits)                                                      \
+	((nbits) / FB_GROUP_BITS + ((nbits) % FB_GROUP_BITS == 0 ? 0 : 1))
 
 static inline void
 fb_init(fb_group_t *fb, size_t nbits) {
@@ -75,7 +75,6 @@ fb_unset(fb_group_t *fb, size_t nbits, size_t bit) {
 	fb[group_ind] &= ~((fb_group_t)1 << bit_ind);
 }
 
-
 /*
  * Some implementation details.  This visitation function lets us apply a group
  * visitor to each group in the bitmap (potentially modifying it).  The mask
@@ -94,7 +93,8 @@ fb_visit_impl(fb_group_t *fb, size_t nbits, fb_group_visitor_t visit, void *ctx,
 	 * to from bit 0.
 	 */
 	size_t first_group_cnt = (start_bit_ind + cnt > FB_GROUP_BITS
-		? FB_GROUP_BITS - start_bit_ind : cnt);
+	        ? FB_GROUP_BITS - start_bit_ind
+	        : cnt);
 	/*
 	 * We can basically split affected words into:
 	 *   - The first group, where we touch only the high bits
@@ -104,8 +104,8 @@ fb_visit_impl(fb_group_t *fb, size_t nbits, fb_group_visitor_t visit, void *ctx,
 	 * this can lead to bad codegen for those middle words.
 	 */
 	/* First group */
-	fb_group_t mask = ((~(fb_group_t)0)
-	    >> (FB_GROUP_BITS - first_group_cnt))
+	fb_group_t mask =
+	    ((~(fb_group_t)0) >> (FB_GROUP_BITS - first_group_cnt))
 	    << start_bit_ind;
 	visit(ctx, &fb[group_ind], mask);
 
@@ -176,12 +176,12 @@ fb_ucount(fb_group_t *fb, size_t nbits, size_t start, size_t cnt) {
  * Returns the number of bits in the bitmap if no such bit exists.
  */
 JEMALLOC_ALWAYS_INLINE ssize_t
-fb_find_impl(fb_group_t *fb, size_t nbits, size_t start, bool val,
-    bool forward) {
+fb_find_impl(
+    fb_group_t *fb, size_t nbits, size_t start, bool val, bool forward) {
 	assert(start < nbits);
-	size_t ngroups = FB_NGROUPS(nbits);
+	size_t  ngroups = FB_NGROUPS(nbits);
 	ssize_t group_ind = start / FB_GROUP_BITS;
-	size_t bit_ind = start % FB_GROUP_BITS;
+	size_t  bit_ind = start % FB_GROUP_BITS;
 
 	fb_group_t maybe_invert = (val ? 0 : (fb_group_t)-1);
 
@@ -265,8 +265,8 @@ fb_iter_range_impl(fb_group_t *fb, size_t nbits, size_t start, size_t *r_begin,
 		return false;
 	}
 	/* Half open range; the set bits are [begin, end). */
-	ssize_t next_range_end = fb_find_impl(fb, nbits, next_range_begin, !val,
-	    forward);
+	ssize_t next_range_end = fb_find_impl(
+	    fb, nbits, next_range_begin, !val, forward);
 	if (forward) {
 		*r_begin = next_range_begin;
 		*r_len = next_range_end - next_range_begin;
@@ -324,8 +324,9 @@ fb_range_longest_impl(fb_group_t *fb, size_t nbits, bool val) {
 	size_t begin = 0;
 	size_t longest_len = 0;
 	size_t len = 0;
-	while (begin < nbits && fb_iter_range_impl(fb, nbits, begin, &begin,
-	    &len, val, /* forward */ true)) {
+	while (begin < nbits
+	    && fb_iter_range_impl(
+	        fb, nbits, begin, &begin, &len, val, /* forward */ true)) {
 		if (len > longest_len) {
 			longest_len = len;
 		}

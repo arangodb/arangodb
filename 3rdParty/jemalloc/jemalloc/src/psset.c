@@ -11,7 +11,6 @@ psset_init(psset_t *psset) {
 		hpdata_age_heap_new(&psset->pageslabs[i]);
 	}
 	fb_init(psset->pageslab_bitmap, PSSET_NPSIZES);
-	memset(&psset->merged_stats, 0, sizeof(psset->merged_stats));
 	memset(&psset->stats, 0, sizeof(psset->stats));
 	hpdata_empty_list_init(&psset->empty);
 	for (int i = 0; i < PSSET_NPURGE_LISTS; i++) {
@@ -30,15 +29,19 @@ psset_bin_stats_accum(psset_bin_stats_t *dst, psset_bin_stats_t *src) {
 
 void
 psset_stats_accum(psset_stats_t *dst, psset_stats_t *src) {
-	psset_bin_stats_accum(&dst->full_slabs[0], &src->full_slabs[0]);
-	psset_bin_stats_accum(&dst->full_slabs[1], &src->full_slabs[1]);
-	psset_bin_stats_accum(&dst->empty_slabs[0], &src->empty_slabs[0]);
-	psset_bin_stats_accum(&dst->empty_slabs[1], &src->empty_slabs[1]);
+	psset_bin_stats_accum(&dst->merged, &src->merged);
+	for (int huge = 0; huge < PSSET_NHUGE; huge++) {
+		psset_bin_stats_accum(&dst->slabs[huge], &src->slabs[huge]);
+		psset_bin_stats_accum(
+		    &dst->full_slabs[huge], &src->full_slabs[huge]);
+		psset_bin_stats_accum(
+		    &dst->empty_slabs[huge], &src->empty_slabs[huge]);
+	}
 	for (pszind_t i = 0; i < PSSET_NPSIZES; i++) {
-		psset_bin_stats_accum(&dst->nonfull_slabs[i][0],
-		    &src->nonfull_slabs[i][0]);
-		psset_bin_stats_accum(&dst->nonfull_slabs[i][1],
-		    &src->nonfull_slabs[i][1]);
+		psset_bin_stats_accum(
+		    &dst->nonfull_slabs[i][0], &src->nonfull_slabs[i][0]);
+		psset_bin_stats_accum(
+		    &dst->nonfull_slabs[i][1], &src->nonfull_slabs[i][1]);
 	}
 }
 
@@ -48,57 +51,85 @@ psset_stats_accum(psset_stats_t *dst, psset_stats_t *src) {
  * bin) when we call psset_update_end.
  */
 JEMALLOC_ALWAYS_INLINE void
-psset_bin_stats_insert_remove(psset_t *psset, psset_bin_stats_t *binstats,
-    hpdata_t *ps, bool insert) {
+psset_slab_stats_insert_remove(psset_stats_t *stats,
+    psset_bin_stats_t *binstats, hpdata_t *ps, bool insert) {
 	size_t mul = insert ? (size_t)1 : (size_t)-1;
+	size_t nactive = hpdata_nactive_get(ps);
+	size_t ndirty = hpdata_ndirty_get(ps);
+
+	stats->merged.npageslabs += mul * 1;
+	stats->merged.nactive += mul * nactive;
+	stats->merged.ndirty += mul * ndirty;
+
+	/*
+	 * Stats above are necessary for purging logic to work, everything
+	 * below is to improve observability, thense is optional, so we don't
+	 * update it, when stats disabled.
+	 */
+	if (!config_stats) {
+		return;
+	}
+
 	size_t huge_idx = (size_t)hpdata_huge_get(ps);
 
-	binstats[huge_idx].npageslabs += mul * 1;
-	binstats[huge_idx].nactive += mul * hpdata_nactive_get(ps);
-	binstats[huge_idx].ndirty += mul * hpdata_ndirty_get(ps);
+	stats->slabs[huge_idx].npageslabs += mul * 1;
+	stats->slabs[huge_idx].nactive += mul * nactive;
+	stats->slabs[huge_idx].ndirty += mul * ndirty;
 
-	psset->merged_stats.npageslabs += mul * 1;
-	psset->merged_stats.nactive += mul * hpdata_nactive_get(ps);
-	psset->merged_stats.ndirty += mul * hpdata_ndirty_get(ps);
+	binstats[huge_idx].npageslabs += mul * 1;
+	binstats[huge_idx].nactive += mul * nactive;
+	binstats[huge_idx].ndirty += mul * ndirty;
 
 	if (config_debug) {
-		psset_bin_stats_t check_stats = {0};
-		for (size_t huge = 0; huge <= 1; huge++) {
-			psset_bin_stats_accum(&check_stats,
-			    &psset->stats.full_slabs[huge]);
-			psset_bin_stats_accum(&check_stats,
-			    &psset->stats.empty_slabs[huge]);
+		psset_bin_stats_t check_stats[PSSET_NHUGE] = {{0}};
+		for (int huge = 0; huge < PSSET_NHUGE; huge++) {
+			psset_bin_stats_accum(
+			    &check_stats[huge], &stats->full_slabs[huge]);
+			psset_bin_stats_accum(
+			    &check_stats[huge], &stats->empty_slabs[huge]);
 			for (pszind_t pind = 0; pind < PSSET_NPSIZES; pind++) {
-				psset_bin_stats_accum(&check_stats,
-				    &psset->stats.nonfull_slabs[pind][huge]);
+				psset_bin_stats_accum(&check_stats[huge],
+				    &stats->nonfull_slabs[pind][huge]);
 			}
 		}
-		assert(psset->merged_stats.npageslabs
-		    == check_stats.npageslabs);
-		assert(psset->merged_stats.nactive == check_stats.nactive);
-		assert(psset->merged_stats.ndirty == check_stats.ndirty);
+
+		assert(stats->merged.npageslabs
+		    == check_stats[0].npageslabs + check_stats[1].npageslabs);
+		assert(stats->merged.nactive
+		    == check_stats[0].nactive + check_stats[1].nactive);
+		assert(stats->merged.ndirty
+		    == check_stats[0].ndirty + check_stats[1].ndirty);
+
+		for (int huge = 0; huge < PSSET_NHUGE; huge++) {
+			assert(stats->slabs[huge].npageslabs
+			    == check_stats[huge].npageslabs);
+			assert(stats->slabs[huge].nactive
+			    == check_stats[huge].nactive);
+			assert(stats->slabs[huge].ndirty
+			    == check_stats[huge].ndirty);
+		}
 	}
 }
 
 static void
-psset_bin_stats_insert(psset_t *psset, psset_bin_stats_t *binstats,
-    hpdata_t *ps) {
-	psset_bin_stats_insert_remove(psset, binstats, ps, true);
+psset_slab_stats_insert(
+    psset_stats_t *stats, psset_bin_stats_t *binstats, hpdata_t *ps) {
+	psset_slab_stats_insert_remove(stats, binstats, ps, true);
 }
 
 static void
-psset_bin_stats_remove(psset_t *psset, psset_bin_stats_t *binstats,
-    hpdata_t *ps) {
-	psset_bin_stats_insert_remove(psset, binstats, ps, false);
+psset_slab_stats_remove(
+    psset_stats_t *stats, psset_bin_stats_t *binstats, hpdata_t *ps) {
+	psset_slab_stats_insert_remove(stats, binstats, ps, false);
 }
 
 static pszind_t
 psset_hpdata_heap_index(const hpdata_t *ps) {
 	assert(!hpdata_full(ps));
 	assert(!hpdata_empty(ps));
-	size_t longest_free_range = hpdata_longest_free_range_get(ps);
-	pszind_t pind = sz_psz2ind(sz_psz_quantize_floor(
-	    longest_free_range << LG_PAGE));
+	size_t   longest_free_range = hpdata_longest_free_range_get(ps);
+	pszind_t pind = sz_psz2ind(
+	    sz_psz_quantize_floor(longest_free_range << LG_PAGE));
 	assert(pind < PSSET_NPSIZES);
 	return pind;
 }
@@ -122,28 +153,30 @@ psset_hpdata_heap_insert(psset_t *psset, hpdata_t *ps) {
 }
 
 static void
-psset_stats_insert(psset_t* psset, hpdata_t *ps) {
+psset_stats_insert(psset_t *psset, hpdata_t *ps) {
+	psset_stats_t *stats = &psset->stats;
 	if (hpdata_empty(ps)) {
-		psset_bin_stats_insert(psset, psset->stats.empty_slabs, ps);
+		psset_slab_stats_insert(stats, psset->stats.empty_slabs, ps);
 	} else if (hpdata_full(ps)) {
-		psset_bin_stats_insert(psset, psset->stats.full_slabs, ps);
+		psset_slab_stats_insert(stats, psset->stats.full_slabs, ps);
 	} else {
 		pszind_t pind = psset_hpdata_heap_index(ps);
-		psset_bin_stats_insert(psset, psset->stats.nonfull_slabs[pind],
-		    ps);
+		psset_slab_stats_insert(
+		    stats, psset->stats.nonfull_slabs[pind], ps);
 	}
 }
 
 static void
 psset_stats_remove(psset_t *psset, hpdata_t *ps) {
+	psset_stats_t *stats = &psset->stats;
 	if (hpdata_empty(ps)) {
-		psset_bin_stats_remove(psset, psset->stats.empty_slabs, ps);
+		psset_slab_stats_remove(stats, psset->stats.empty_slabs, ps);
 	} else if (hpdata_full(ps)) {
-		psset_bin_stats_remove(psset, psset->stats.full_slabs, ps);
+		psset_slab_stats_remove(stats, psset->stats.full_slabs, ps);
 	} else {
 		pszind_t pind = psset_hpdata_heap_index(ps);
-		psset_bin_stats_remove(psset, psset->stats.nonfull_slabs[pind],
-		    ps);
+		psset_slab_stats_remove(
+		    stats, psset->stats.nonfull_slabs[pind], ps);
 	}
 }
 
@@ -231,7 +264,7 @@ psset_maybe_remove_purge_list(psset_t *psset, hpdata_t *ps) {
 	 * purge LRU within a given dirtiness bucket.
 	 */
 	if (hpdata_purge_allowed_get(ps)) {
-		size_t ind = psset_purge_list_ind(ps);
+		size_t               ind = psset_purge_list_ind(ps);
 		hpdata_purge_list_t *purge_list = &psset->to_purge[ind];
 		hpdata_purge_list_remove(purge_list, ps);
 		if (hpdata_purge_list_empty(purge_list)) {
@@ -243,14 +276,13 @@ psset_maybe_remove_purge_list(psset_t *psset, hpdata_t *ps) {
 static void
 psset_maybe_insert_purge_list(psset_t *psset, hpdata_t *ps) {
 	if (hpdata_purge_allowed_get(ps)) {
-		size_t ind = psset_purge_list_ind(ps);
+		size_t               ind = psset_purge_list_ind(ps);
 		hpdata_purge_list_t *purge_list = &psset->to_purge[ind];
 		if (hpdata_purge_list_empty(purge_list)) {
 			fb_set(psset->purge_bitmap, PSSET_NPURGE_LISTS, ind);
 		}
 		hpdata_purge_list_append(purge_list, ps);
 	}
-
 }
 
 void
@@ -304,18 +336,50 @@ psset_update_end(psset_t *psset, hpdata_t *ps) {
 	hpdata_assert_consistent(ps);
 }
 
+static hpdata_t *
+psset_enumerate_search(psset_t *psset, pszind_t pind, size_t size) {
+	if (hpdata_age_heap_empty(&psset->pageslabs[pind])) {
+		return NULL;
+	}
+
+	hpdata_t                          *ps = NULL;
+	hpdata_age_heap_enumerate_helper_t helper;
+	hpdata_age_heap_enumerate_prepare(&psset->pageslabs[pind], &helper,
+	    PSSET_ENUMERATE_MAX_NUM, sizeof(helper.bfs_queue) / sizeof(void *));
+
+	while ((ps = hpdata_age_heap_enumerate_next(
+	            &psset->pageslabs[pind], &helper))) {
+		if (hpdata_longest_free_range_get(ps) >= size) {
+			return ps;
+		}
+	}
+
+	return NULL;
+}
+
 hpdata_t *
 psset_pick_alloc(psset_t *psset, size_t size) {
 	assert((size & PAGE_MASK) == 0);
 	assert(size <= HUGEPAGE);
 
-	pszind_t min_pind = sz_psz2ind(sz_psz_quantize_ceil(size));
-	pszind_t pind = (pszind_t)fb_ffs(psset->pageslab_bitmap, PSSET_NPSIZES,
-	    (size_t)min_pind);
+	pszind_t  min_pind = sz_psz2ind(sz_psz_quantize_ceil(size));
+	hpdata_t *ps = NULL;
+
+	/* See comments in eset_first_fit for why we enumerate search below. */
+	pszind_t pind_prev = sz_psz2ind(sz_psz_quantize_floor(size));
+	if (sz_large_size_classes_disabled() && pind_prev < min_pind) {
+		ps = psset_enumerate_search(psset, pind_prev, size);
+		if (ps != NULL) {
+			return ps;
+		}
+	}
+
+	pszind_t pind = (pszind_t)fb_ffs(
+	    psset->pageslab_bitmap, PSSET_NPSIZES, (size_t)min_pind);
 	if (pind == PSSET_NPSIZES) {
 		return hpdata_empty_list_first(&psset->empty);
 	}
-	hpdata_t *ps = hpdata_age_heap_first(&psset->pageslabs[pind]);
+	ps = hpdata_age_heap_first(&psset->pageslabs[pind]);
 	if (ps == NULL) {
 		return NULL;
 	}
@@ -326,17 +390,40 @@ psset_pick_alloc(psset_t *psset, size_t size) {
 }
 
 hpdata_t *
-psset_pick_purge(psset_t *psset) {
-	ssize_t ind_ssz = fb_fls(psset->purge_bitmap, PSSET_NPURGE_LISTS,
-	    PSSET_NPURGE_LISTS - 1);
-	if (ind_ssz < 0) {
-		return NULL;
+psset_pick_purge(psset_t *psset, const nstime_t *now) {
+	size_t max_bit = PSSET_NPURGE_LISTS - 1;
+	while (1) {
+		ssize_t ind_ssz = fb_fls(
+		    psset->purge_bitmap, PSSET_NPURGE_LISTS, max_bit);
+		if (ind_ssz < 0) {
+			break;
+		}
+		pszind_t ind = (pszind_t)ind_ssz;
+		assert(ind < PSSET_NPURGE_LISTS);
+		hpdata_t *ps = hpdata_purge_list_first(&psset->to_purge[ind]);
+		assert(ps != NULL);
+		if (now == NULL) {
+			return ps;
+		}
+		/*
+		 * We only check the first page (it had least recent hpa_alloc
+		 * or hpa_dalloc). It is possible that some page in the list
+		 * would meet the time, but we only guarantee the min delay. If
+		 * we want to get the one that changed the state to purgable
+		 * the earliest, we would change the list into a heap ordered by
+		 * time.  We will use benchmark to make a decision.
+		 */
+		const nstime_t *tm_allowed = hpdata_time_purge_allowed_get(ps);
+		if (nstime_compare(tm_allowed, now) <= 0) {
+			return ps;
+		}
+		if (ind == 0) {
+			break;
+		}
+		max_bit = ind - 1;
 	}
-	pszind_t ind = (pszind_t)ind_ssz;
-	assert(ind < PSSET_NPURGE_LISTS);
-	hpdata_t *ps = hpdata_purge_list_first(&psset->to_purge[ind]);
-	assert(ps != NULL);
-	return ps;
+	/* No page is ready yet */
+	return NULL;
 }
 
 hpdata_t *

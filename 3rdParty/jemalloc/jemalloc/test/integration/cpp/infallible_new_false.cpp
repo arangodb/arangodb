@@ -17,7 +17,5 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_failing_alloc);
+	return test(test_failing_alloc);
 }
-

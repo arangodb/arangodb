@@ -17,21 +17,22 @@
  */
 
 /* Ring definitions. */
-#define qr(a_type)							\
-struct {								\
-	a_type	*qre_next;						\
-	a_type	*qre_prev;						\
-}
+#define qr(a_type)                                                             \
+	struct {                                                               \
+		a_type *qre_next;                                              \
+		a_type *qre_prev;                                              \
+	}
 
 /*
  * Initialize a qr link.  Every link must be initialized before being used, even
  * if that initialization is going to be immediately overwritten (say, by being
  * passed into an insertion macro).
  */
-#define qr_new(a_qr, a_field) do {					\
-	(a_qr)->a_field.qre_next = (a_qr);				\
-	(a_qr)->a_field.qre_prev = (a_qr);				\
-} while (0)
+#define qr_new(a_qr, a_field)                                                  \
+	do {                                                                   \
+		(a_qr)->a_field.qre_next = (a_qr);                             \
+		(a_qr)->a_field.qre_prev = (a_qr);                             \
+	} while (0)
 
 /*
  * Go forwards or backwards in the ring.  Note that (the ring being circular), this
@@ -58,26 +59,27 @@ struct {								\
  *
  * a_qr_a can directly be a qr_next() macro, but a_qr_b cannot.
  */
-#define qr_meld(a_qr_a, a_qr_b, a_field) do {				\
-	(a_qr_b)->a_field.qre_prev->a_field.qre_next =			\
-	    (a_qr_a)->a_field.qre_prev;					\
-	(a_qr_a)->a_field.qre_prev = (a_qr_b)->a_field.qre_prev;	\
-	(a_qr_b)->a_field.qre_prev =					\
-	    (a_qr_b)->a_field.qre_prev->a_field.qre_next;		\
-	(a_qr_a)->a_field.qre_prev->a_field.qre_next = (a_qr_a);	\
-	(a_qr_b)->a_field.qre_prev->a_field.qre_next = (a_qr_b);	\
-} while (0)
+#define qr_meld(a_qr_a, a_qr_b, a_field)                                       \
+	do {                                                                   \
+		(a_qr_b)->a_field.qre_prev->a_field.qre_next =                 \
+		    (a_qr_a)->a_field.qre_prev;                                \
+		(a_qr_a)->a_field.qre_prev = (a_qr_b)->a_field.qre_prev;       \
+		(a_qr_b)->a_field.qre_prev =                                   \
+		    (a_qr_b)->a_field.qre_prev->a_field.qre_next;              \
+		(a_qr_a)->a_field.qre_prev->a_field.qre_next = (a_qr_a);       \
+		(a_qr_b)->a_field.qre_prev->a_field.qre_next = (a_qr_b);       \
+	} while (0)
 
 /*
  * Logically, this is just a meld.  The intent, though, is that a_qrelm is a
  * single-element ring, so that "before" has a more obvious interpretation than
  * meld.
  */
-#define qr_before_insert(a_qrelm, a_qr, a_field)			\
+#define qr_before_insert(a_qrelm, a_qr, a_field)                               \
 	qr_meld((a_qrelm), (a_qr), a_field)
 
 /* Ditto, but inserting after rather than before. */
-#define qr_after_insert(a_qrelm, a_qr, a_field)				\
+#define qr_after_insert(a_qrelm, a_qr, a_field)                                \
 	qr_before_insert(qr_next(a_qrelm, a_field), (a_qr), a_field)
 
 /*
@@ -98,14 +100,13 @@ struct {								\
  * qr_meld() and qr_split() are functionally equivalent, so there's no need to
  * have two copies of the code.
  */
-#define qr_split(a_qr_a, a_qr_b, a_field)				\
-	qr_meld((a_qr_a), (a_qr_b), a_field)
+#define qr_split(a_qr_a, a_qr_b, a_field) qr_meld((a_qr_a), (a_qr_b), a_field)
 
 /*
  * Splits off a_qr from the rest of its ring, so that it becomes a
  * single-element ring.
  */
-#define qr_remove(a_qr, a_field)					\
+#define qr_remove(a_qr, a_field)                                               \
 	qr_split(qr_next(a_qr, a_field), (a_qr), a_field)
 
 /*
@@ -121,20 +122,19 @@ struct {								\
  *   return sum;
  * }
  */
-#define qr_foreach(var, a_qr, a_field)					\
-	for ((var) = (a_qr);						\
-	    (var) != NULL;						\
-	    (var) = (((var)->a_field.qre_next != (a_qr))		\
-	    ? (var)->a_field.qre_next : NULL))
+#define qr_foreach(var, a_qr, a_field)                                         \
+	for ((var) = (a_qr); (var) != NULL;                                    \
+	     (var) = (((var)->a_field.qre_next != (a_qr))                      \
+	             ? (var)->a_field.qre_next                                 \
+	             : NULL))
 
 /*
  * The same (and with the same usage) as qr_foreach, but in the opposite order,
  * ending with a_qr.
  */
-#define qr_reverse_foreach(var, a_qr, a_field)				\
-	for ((var) = ((a_qr) != NULL) ? qr_prev(a_qr, a_field) : NULL;	\
-	    (var) != NULL;						\
-	    (var) = (((var) != (a_qr))					\
-	    ? (var)->a_field.qre_prev : NULL))
+#define qr_reverse_foreach(var, a_qr, a_field)                                 \
+	for ((var) = ((a_qr) != NULL) ? qr_prev(a_qr, a_field) : NULL;         \
+	     (var) != NULL;                                                    \
+	     (var) = (((var) != (a_qr)) ? (var)->a_field.qre_prev : NULL))
 
 #endif /* JEMALLOC_INTERNAL_QR_H */

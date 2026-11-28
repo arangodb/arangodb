@@ -17,91 +17,104 @@
  * knowledge of the underlying PAI implementation).
  */
 
-/*
- * For now, this is just one field; eventually, we'll probably want to get more
- * fine-grained data out (like per-size class statistics).
- */
+typedef struct sec_bin_stats_s sec_bin_stats_t;
+struct sec_bin_stats_s {
+	/* Number of alloc requests that did not find extent in this bin */
+	size_t nmisses;
+	/* Number of successful alloc requests. */
+	size_t nhits;
+	/* Number of dallocs causing the flush */
+	size_t ndalloc_flush;
+	/* Number of dallocs not causing the flush */
+	size_t ndalloc_noflush;
+	/* Number of fills that hit max_bytes */
+	size_t noverfills;
+};
 typedef struct sec_stats_s sec_stats_t;
 struct sec_stats_s {
 	/* Sum of bytes_cur across all shards. */
 	size_t bytes;
+
+	/* Totals of bin_stats. */
+	sec_bin_stats_t total;
 };
+
+static inline void
+sec_bin_stats_init(sec_bin_stats_t *stats) {
+	stats->ndalloc_flush = 0;
+	stats->nmisses = 0;
+	stats->nhits = 0;
+	stats->ndalloc_noflush = 0;
+	stats->noverfills = 0;
+}
+
+static inline void
+sec_bin_stats_accum(sec_bin_stats_t *dst, sec_bin_stats_t *src) {
+	dst->nmisses += src->nmisses;
+	dst->nhits += src->nhits;
+	dst->ndalloc_flush += src->ndalloc_flush;
+	dst->ndalloc_noflush += src->ndalloc_noflush;
+	dst->noverfills += src->noverfills;
+}
 
 static inline void
 sec_stats_accum(sec_stats_t *dst, sec_stats_t *src) {
 	dst->bytes += src->bytes;
+	sec_bin_stats_accum(&dst->total, &src->total);
 }
 
 /* A collections of free extents, all of the same size. */
 typedef struct sec_bin_s sec_bin_t;
 struct sec_bin_s {
 	/*
-	 * When we fail to fulfill an allocation, we do a batch-alloc on the
-	 * underlying allocator to fill extra items, as well.  We drop the SEC
-	 * lock while doing so, to allow operations on other bins to succeed.
-	 * That introduces the possibility of other threads also trying to
-	 * allocate out of this bin, failing, and also going to the backing
-	 * allocator.  To avoid a thundering herd problem in which lots of
-	 * threads do batch allocs and overfill this bin as a result, we only
-	 * allow one batch allocation at a time for a bin.  This bool tracks
-	 * whether or not some thread is already batch allocating.
-	 *
-	 * Eventually, the right answer may be a smarter sharding policy for the
-	 * bins (e.g. a mutex per bin, which would also be more scalable
-	 * generally; the batch-allocating thread could hold it while
-	 * batch-allocating).
-	 */
-	bool being_batch_filled;
-
-	/*
-	 * Number of bytes in this particular bin (as opposed to the
-	 * sec_shard_t's bytes_cur.  This isn't user visible or reported in
-	 * stats; rather, it allows us to quickly determine the change in the
-	 * centralized counter when flushing.
-	 */
-	size_t bytes_cur;
-	edata_list_active_t freelist;
-};
-
-typedef struct sec_shard_s sec_shard_t;
-struct sec_shard_s {
-	/*
-	 * We don't keep per-bin mutexes, even though that would allow more
-	 * sharding; this allows global cache-eviction, which in turn allows for
-	 * better balancing across free lists.
+	 * Protects the data members of the bin.
 	 */
 	malloc_mutex_t mtx;
+
 	/*
-	 * A SEC may need to be shut down (i.e. flushed of its contents and
-	 * prevented from further caching).  To avoid tricky synchronization
-	 * issues, we just track enabled-status in each shard, guarded by a
-	 * mutex.  In practice, this is only ever checked during brief races,
-	 * since the arena-level atomic boolean tracking HPA enabled-ness means
-	 * that we won't go down these pathways very often after custom extent
-	 * hooks are installed.
+	 * Number of bytes in this particular bin.
 	 */
-	bool enabled;
-	sec_bin_t *bins;
-	/* Number of bytes in all bins in the shard. */
-	size_t bytes_cur;
-	/* The next pszind to flush in the flush-some pathways. */
-	pszind_t to_flush_next;
+	size_t              bytes_cur;
+	edata_list_active_t freelist;
+	sec_bin_stats_t     stats;
 };
 
 typedef struct sec_s sec_t;
 struct sec_s {
-	pai_t pai;
-	pai_t *fallback;
-
 	sec_opts_t opts;
-	sec_shard_t *shards;
-	pszind_t npsizes;
+	sec_bin_t *bins;
+	pszind_t   npsizes;
 };
 
-bool sec_init(tsdn_t *tsdn, sec_t *sec, base_t *base, pai_t *fallback,
-    const sec_opts_t *opts);
-void sec_flush(tsdn_t *tsdn, sec_t *sec);
-void sec_disable(tsdn_t *tsdn, sec_t *sec);
+static inline bool
+sec_is_used(sec_t *sec) {
+	return sec->opts.nshards != 0;
+}
+
+static inline bool
+sec_size_supported(sec_t *sec, size_t size) {
+	return sec_is_used(sec) && size <= sec->opts.max_alloc;
+}
+
+/* If sec does not have extent available, it will return NULL. */
+edata_t *sec_alloc(tsdn_t *tsdn, sec_t *sec, size_t size);
+void     sec_fill(tsdn_t *tsdn, sec_t *sec, size_t size,
+        edata_list_active_t *result, size_t nallocs);
+
+/*
+ * Upon return dalloc_list may be empty if edata is consumed by sec or non-empty
+ * if there are extents that need to be flushed from cache.  Please note, that
+ * if we need to flush, extent(s) returned in the list to be deallocated
+ * will almost certainly not contain the one being dalloc-ed (that one will be
+ * considered "hot" and preserved in the cache, while "colder" ones are
+ * returned).
+ */
+void sec_dalloc(tsdn_t *tsdn, sec_t *sec, edata_list_active_t *dalloc_list);
+
+bool sec_init(tsdn_t *tsdn, sec_t *sec, base_t *base, const sec_opts_t *opts);
+
+/* Fills to_flush with extents that need to be deallocated */
+void sec_flush(tsdn_t *tsdn, sec_t *sec, edata_list_active_t *to_flush);
 
 /*
  * Morally, these two stats methods probably ought to be a single one (and the
@@ -110,8 +123,8 @@ void sec_disable(tsdn_t *tsdn, sec_t *sec);
  * split), which simplifies the stats management.
  */
 void sec_stats_merge(tsdn_t *tsdn, sec_t *sec, sec_stats_t *stats);
-void sec_mutex_stats_read(tsdn_t *tsdn, sec_t *sec,
-    mutex_prof_data_t *mutex_prof_data);
+void sec_mutex_stats_read(
+    tsdn_t *tsdn, sec_t *sec, mutex_prof_data_t *mutex_prof_data);
 
 /*
  * We use the arena lock ordering; these are acquired in phase 2 of forking, but

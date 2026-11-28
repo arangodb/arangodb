@@ -2,55 +2,51 @@
 
 TEST_BEGIN(test_new_delete) {
 	tsd_t *tsd;
-	ckh_t ckh;
+	ckh_t  ckh;
 
 	tsd = tsd_fetch();
 
-	expect_false(ckh_new(tsd, &ckh, 2, ckh_string_hash,
-	    ckh_string_keycomp), "Unexpected ckh_new() error");
+	expect_false(ckh_new(tsd, &ckh, 2, ckh_string_hash, ckh_string_keycomp),
+	    "Unexpected ckh_new() error");
 	ckh_delete(tsd, &ckh);
 
-	expect_false(ckh_new(tsd, &ckh, 3, ckh_pointer_hash,
-	    ckh_pointer_keycomp), "Unexpected ckh_new() error");
+	expect_false(
+	    ckh_new(tsd, &ckh, 3, ckh_pointer_hash, ckh_pointer_keycomp),
+	    "Unexpected ckh_new() error");
 	ckh_delete(tsd, &ckh);
 }
 TEST_END
 
 TEST_BEGIN(test_count_insert_search_remove) {
-	tsd_t *tsd;
-	ckh_t ckh;
-	const char *strs[] = {
-	    "a string",
-	    "A string",
-	    "a string.",
-	    "A string."
-	};
+	tsd_t      *tsd;
+	ckh_t       ckh;
+	const char *strs[] = {"a string", "A string", "a string.", "A string."};
 	const char *missing = "A string not in the hash table.";
-	size_t i;
+	size_t      i;
 
 	tsd = tsd_fetch();
 
-	expect_false(ckh_new(tsd, &ckh, 2, ckh_string_hash,
-	    ckh_string_keycomp), "Unexpected ckh_new() error");
+	expect_false(ckh_new(tsd, &ckh, 2, ckh_string_hash, ckh_string_keycomp),
+	    "Unexpected ckh_new() error");
 	expect_zu_eq(ckh_count(&ckh), 0,
 	    "ckh_count() should return %zu, but it returned %zu", ZU(0),
 	    ckh_count(&ckh));
 
 	/* Insert. */
-	for (i = 0; i < sizeof(strs)/sizeof(const char *); i++) {
+	for (i = 0; i < sizeof(strs) / sizeof(const char *); i++) {
 		ckh_insert(tsd, &ckh, strs[i], strs[i]);
-		expect_zu_eq(ckh_count(&ckh), i+1,
-		    "ckh_count() should return %zu, but it returned %zu", i+1,
+		expect_zu_eq(ckh_count(&ckh), i + 1,
+		    "ckh_count() should return %zu, but it returned %zu", i + 1,
 		    ckh_count(&ckh));
 	}
 
 	/* Search. */
-	for (i = 0; i < sizeof(strs)/sizeof(const char *); i++) {
+	for (i = 0; i < sizeof(strs) / sizeof(const char *); i++) {
 		union {
-			void *p;
+			void       *p;
 			const char *s;
 		} k, v;
-		void **kp, **vp;
+		void      **kp, **vp;
 		const char *ks, *vs;
 
 		kp = (i & 1) ? &k.p : NULL;
@@ -62,21 +58,21 @@ TEST_BEGIN(test_count_insert_search_remove) {
 
 		ks = (i & 1) ? strs[i] : (const char *)NULL;
 		vs = (i & 2) ? strs[i] : (const char *)NULL;
-		expect_ptr_eq((void *)ks, (void *)k.s, "Key mismatch, i=%zu",
-		    i);
-		expect_ptr_eq((void *)vs, (void *)v.s, "Value mismatch, i=%zu",
-		    i);
+		expect_ptr_eq(
+		    (void *)ks, (void *)k.s, "Key mismatch, i=%zu", i);
+		expect_ptr_eq(
+		    (void *)vs, (void *)v.s, "Value mismatch, i=%zu", i);
 	}
 	expect_true(ckh_search(&ckh, missing, NULL, NULL),
 	    "Unexpected ckh_search() success");
 
 	/* Remove. */
-	for (i = 0; i < sizeof(strs)/sizeof(const char *); i++) {
+	for (i = 0; i < sizeof(strs) / sizeof(const char *); i++) {
 		union {
-			void *p;
+			void       *p;
 			const char *s;
 		} k, v;
-		void **kp, **vp;
+		void      **kp, **vp;
 		const char *ks, *vs;
 
 		kp = (i & 1) ? &k.p : NULL;
@@ -88,14 +84,14 @@ TEST_BEGIN(test_count_insert_search_remove) {
 
 		ks = (i & 1) ? strs[i] : (const char *)NULL;
 		vs = (i & 2) ? strs[i] : (const char *)NULL;
-		expect_ptr_eq((void *)ks, (void *)k.s, "Key mismatch, i=%zu",
-		    i);
-		expect_ptr_eq((void *)vs, (void *)v.s, "Value mismatch, i=%zu",
-		    i);
+		expect_ptr_eq(
+		    (void *)ks, (void *)k.s, "Key mismatch, i=%zu", i);
+		expect_ptr_eq(
+		    (void *)vs, (void *)v.s, "Value mismatch, i=%zu", i);
 		expect_zu_eq(ckh_count(&ckh),
-		    sizeof(strs)/sizeof(const char *) - i - 1,
+		    sizeof(strs) / sizeof(const char *) - i - 1,
 		    "ckh_count() should return %zu, but it returned %zu",
-		        sizeof(strs)/sizeof(const char *) - i - 1,
+		    sizeof(strs) / sizeof(const char *) - i - 1,
 		    ckh_count(&ckh));
 	}
 
@@ -106,18 +102,19 @@ TEST_END
 TEST_BEGIN(test_insert_iter_remove) {
 #define NITEMS ZU(1000)
 	tsd_t *tsd;
-	ckh_t ckh;
+	ckh_t  ckh;
 	void **p[NITEMS];
-	void *q, *r;
+	void  *q, *r;
 	size_t i;
 
 	tsd = tsd_fetch();
 
-	expect_false(ckh_new(tsd, &ckh, 2, ckh_pointer_hash,
-	    ckh_pointer_keycomp), "Unexpected ckh_new() error");
+	expect_false(
+	    ckh_new(tsd, &ckh, 2, ckh_pointer_hash, ckh_pointer_keycomp),
+	    "Unexpected ckh_new() error");
 
 	for (i = 0; i < NITEMS; i++) {
-		p[i] = mallocx(i+1, 0);
+		p[i] = mallocx(i + 1, 0);
 		expect_ptr_not_null(p[i], "Unexpected mallocx() failure");
 	}
 
@@ -151,7 +148,7 @@ TEST_BEGIN(test_insert_iter_remove) {
 		}
 
 		{
-			bool seen[NITEMS];
+			bool   seen[NITEMS];
 			size_t tabind;
 
 			memset(seen, 0, sizeof(seen));
@@ -195,8 +192,8 @@ TEST_BEGIN(test_insert_iter_remove) {
 	}
 
 	expect_zu_eq(ckh_count(&ckh), 0,
-	    "ckh_count() should return %zu, but it returned %zu",
-	    ZU(0), ckh_count(&ckh));
+	    "ckh_count() should return %zu, but it returned %zu", ZU(0),
+	    ckh_count(&ckh));
 	ckh_delete(tsd, &ckh);
 #undef NITEMS
 }
@@ -204,8 +201,6 @@ TEST_END
 
 int
 main(void) {
-	return test(
-	    test_new_delete,
-	    test_count_insert_search_remove,
+	return test(test_new_delete, test_count_insert_search_remove,
 	    test_insert_iter_remove);
 }
